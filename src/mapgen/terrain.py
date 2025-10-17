@@ -190,7 +190,7 @@ def smooth_terrain(map: Map, tiles: dict[str, Tile], iterations: int = 5) -> Map
 
                 # Count different neighbor types based on properties
                 obstacle_count = sum(1 for n in neighbors if not n.walkable)
-                liquid_count = sum(1 for n in neighbors if n.movement_cost >= 2.0 and n.habitability == 0.0)
+                liquid_count = sum(1 for n in neighbors if not n.can_build_road)
                 difficult_count = sum(1 for n in neighbors if n.movement_cost > 1.0 and n.movement_cost < 2.0)
                 elevated_count = sum(1 for n in neighbors if n.elevation_influence > 0.5)
 

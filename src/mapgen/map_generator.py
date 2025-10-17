@@ -123,7 +123,7 @@ class MapGenerator:
                 blocks_line_of_sight=False,
                 buildable=False,
                 habitability=0.0,
-                road_buildable=True,
+                road_buildable=False,
                 elevation_penalty=0.0,
                 elevation_influence=-0.5,
                 smoothing_weight=1.0,

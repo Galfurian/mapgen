@@ -99,7 +99,7 @@ def is_coastal(map: Map, x: int, y: int, max_distance: int = 2) -> bool:
         for dy in range(-max_distance, max_distance + 1):
             nx, ny = x + dx, y + dy
             tile = map.get_terrain(nx, ny)
-            if tile.movement_cost >= 2.0 and tile.habitability == 0.0:  # Check for liquid/water tiles
+            if not tile.can_build_road:
                 return True
     return False
 

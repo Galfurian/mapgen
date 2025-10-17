@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Basic example of using MapGen to generate a fantasy map."""
 
+from pathlib import Path
+
 from mapgen import MapGenerator
 
 
@@ -33,8 +35,11 @@ def main() -> None:
     fig = generator.plot()
 
     # Save to file (since we can't display in headless environment)
-    fig.savefig("fantasy_map.png", dpi=300, bbox_inches="tight", facecolor="white")
-    print("Map saved as 'fantasy_map.png'")
+    output_dir = Path("output")
+    output_dir.mkdir(exist_ok=True)
+    output_path = output_dir / "fantasy_map.png"
+    fig.savefig(output_path, dpi=300, bbox_inches="tight", facecolor='white')
+    print(f"Map saved as '{output_path}'")
 
     # You can also access the raw data:
     # generator.map - Map object with terrain types

@@ -177,14 +177,8 @@ def generate_roads(
             high_points=[],
         )
         if path is not None:
-            road_type = "land"
-            for pos in path:
-                tile = map.get_terrain(pos.x, pos.y)
-                if (
-                    tile.movement_cost >= 2.0 and tile.habitability == 0.0
-                ):  # Check for liquid/water tiles
-                    road_type = "water"
-                    break
+            # Determine road type based on whether path contains non-road-buildable tiles
+            road_type = "water" if any(not map.get_terrain(pos.x, pos.y).can_build_road for pos in path) else "land"
             graph.add_edge(
                 settlement1.name, settlement2.name, type=road_type, path=path
             )
@@ -236,14 +230,8 @@ def generate_roads(
                         high_points,
                     )
                     if path is not None:
-                        road_type = "land"
-                        for pos in path:
-                            tile = map.get_terrain(pos.x, pos.y)
-                            if (
-                                tile.movement_cost >= 2.0 and tile.habitability == 0.0
-                            ):  # Check for liquid/water tiles
-                                road_type = "water"
-                                break
+                        # Determine road type based on whether path contains non-road-buildable tiles
+                        road_type = "water" if any(not map.get_terrain(pos.x, pos.y).can_build_road for pos in path) else "land"
                         graph.add_edge(
                             settlement1.name,
                             settlement2.name,
