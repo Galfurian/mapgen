@@ -7,7 +7,7 @@ from matplotlib import patches
 from matplotlib.figure import Figure
 from scipy.interpolate import interp1d
 
-from .map import Map, Settlement, Position
+from .map import Map, Settlement, Position, RoadType
 
 
 def apply_curves_to_path(
@@ -155,7 +155,7 @@ def plot_map(
             path = data["path"]
             x_coords = [pos.x for pos in path]
             y_coords = [pos.y for pos in path]
-            if data["type"] == "water":
+            if data.get("type") == RoadType.WATER:
                 ax.plot(
                     x_coords, y_coords, color="gray", linestyle="dotted", linewidth=2, zorder=1
                 )

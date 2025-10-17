@@ -7,7 +7,7 @@ import networkx as nx
 import numpy as np
 from sklearn.neighbors import KDTree as SKLearnKDTree
 
-from .map import Map, Position, Settlement
+from .map import Map, Position, Settlement, RoadType
 
 
 def reconstruct_path(
@@ -177,8 +177,11 @@ def generate_roads(
             high_points=[],
         )
         if path is not None:
-            # Determine road type based on whether path contains non-road-buildable tiles
-            road_type = "water" if any(not map.get_terrain(pos.x, pos.y).can_build_road for pos in path) else "land"
+            # Determine road type: if any tile in path cannot have roads built, it's a water crossing
+            has_water_tiles = any(
+                not map.get_terrain(pos.x, pos.y).can_build_road for pos in path
+            )
+            road_type = RoadType.WATER if has_water_tiles else RoadType.LAND
             graph.add_edge(
                 settlement1.name, settlement2.name, type=road_type, path=path
             )
@@ -230,8 +233,13 @@ def generate_roads(
                         high_points,
                     )
                     if path is not None:
-                        # Determine road type based on whether path contains non-road-buildable tiles
-                        road_type = "water" if any(not map.get_terrain(pos.x, pos.y).can_build_road for pos in path) else "land"
+                        # Determine road type: if any tile in path cannot have
+                        # roads built, it's a water crossing.
+                        has_water_tiles = any(
+                            not map.get_terrain(pos.x, pos.y).can_build_road
+                            for pos in path
+                        )
+                        road_type = RoadType.WATER if has_water_tiles else RoadType.LAND
                         graph.add_edge(
                             settlement1.name,
                             settlement2.name,

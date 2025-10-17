@@ -1,6 +1,22 @@
 """Data models for the map generator."""
 
 from dataclasses import dataclass
+from enum import Enum
+
+
+class RoadType(Enum):
+    """Enumeration of different road types for visualization and gameplay.
+
+    Road types determine how roads are rendered and can affect gameplay mechanics.
+    This enum can be extended with additional types like BRIDGE, TUNNEL, HIGHWAY, etc.
+
+    Attributes:
+        LAND: Standard land roads (rendered as curved solid lines)
+        WATER: Roads that cross water bodies (rendered as straight dotted lines)
+    """
+
+    LAND = "land"
+    WATER = "water"
 
 
 @dataclass
