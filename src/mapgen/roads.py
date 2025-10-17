@@ -7,7 +7,7 @@ import networkx as nx
 import numpy as np
 from sklearn.neighbors import KDTree as SKLearnKDTree
 
-from .map import Map, Position, Settlement, RoadType
+from .map_data import MapData, Position, RoadType, Settlement
 
 
 def reconstruct_path(
@@ -33,7 +33,7 @@ def reconstruct_path(
 
 
 def a_star_search(
-    map: Map,
+    map_data: MapData,
     start: Position,
     goal: Position,
     elevation_map: np.ndarray,
@@ -43,7 +43,7 @@ def a_star_search(
     """Perform A* search with high point avoidance.
 
     Args:
-        map (Map): The map grid.
+        map_data (MapData): The map grid.
         start (Position): The start position.
         goal (Position): The goal position.
         elevation_map (np.ndarray): The elevation map.
@@ -75,11 +75,11 @@ def a_star_search(
         open_set.remove(current)
         closed_set.add(current_pos)
 
-        for neighbor in map.get_neighbors(current_pos.x, current_pos.y):
+        for neighbor in map_data.get_neighbors(current_pos.x, current_pos.y):
             if neighbor in closed_set:
                 continue
 
-            tile = map.get_terrain(neighbor.x, neighbor.y)
+            tile = map_data.get_terrain(neighbor.x, neighbor.y)
             base_cost = tile.pathfinding_cost
             high_point_cost = high_point_penalty if neighbor in high_points else 0
             tentative_cost = current_cost + base_cost + high_point_cost
@@ -116,8 +116,8 @@ def find_enclosed_points(
 
     Args:
         contour_data: The contour data from matplotlib.
-        level (float): The elevation map value.
-        elevation_map (np.ndarray): The elevation map.
+        level (float): The elevation map_data value.
+        elevation_map (np.ndarray): The elevation map_data.
 
     Returns:
         List[Position]: List of enclosed points.
@@ -138,14 +138,14 @@ def find_enclosed_points(
 
 def generate_roads(
     settlements: list[Settlement],
-    map: Map,
+    map_data: MapData,
     elevation_map: np.ndarray,
 ) -> nx.Graph:
     """Generate road network connecting settlements.
 
     Args:
         settlements (list[Settlement]): List of settlements.
-        map (Map): The map grid.
+        map_data (MapData): The map grid.
         elevation_map (np.ndarray): The elevation map.
 
     Returns:
@@ -170,7 +170,7 @@ def generate_roads(
         settlement1 = settlements[i]
         settlement2 = settlements[j]
         path = a_star_search(
-            map,
+            map_data,
             settlement1.position,
             settlement2.position,
             elevation_map,
@@ -179,7 +179,7 @@ def generate_roads(
         if path is not None:
             # Determine road type: if any tile in path cannot have roads built, it's a water crossing
             has_water_tiles = any(
-                not map.get_terrain(pos.x, pos.y).can_build_road for pos in path
+                not map_data.get_terrain(pos.x, pos.y).can_build_road for pos in path
             )
             road_type = RoadType.WATER if has_water_tiles else RoadType.LAND
             graph.add_edge(
@@ -226,7 +226,7 @@ def generate_roads(
 
                 if random.random() < connection_probability:
                     path = a_star_search(
-                        map,
+                        map_data,
                         settlement1.position,
                         settlement2.position,
                         elevation_map,
@@ -236,7 +236,7 @@ def generate_roads(
                         # Determine road type: if any tile in path cannot have
                         # roads built, it's a water crossing.
                         has_water_tiles = any(
-                            not map.get_terrain(pos.x, pos.y).can_build_road
+                            not map_data.get_terrain(pos.x, pos.y).can_build_road
                             for pos in path
                         )
                         road_type = RoadType.WATER if has_water_tiles else RoadType.LAND

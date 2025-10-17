@@ -3,8 +3,9 @@
 import random
 
 import numpy as np
+from onymancer import generate
 
-from .map import Map, Settlement
+from .map_data import MapData, Settlement
 
 
 def generate_settlement_name() -> str:
@@ -14,85 +15,30 @@ def generate_settlement_name() -> str:
         str: A randomly generated settlement name.
 
     """
-    prefixes = [
-        "North",
-        "South",
-        "East",
-        "West",
-        "New",
-        "Old",
-        "Bright",
-        "Dark",
-        "Green",
-        "Silver",
-        "Golden",
-        "Whispering",
-        "Silent",
-        "Hidden",
-        "Sunlit",
-        "Starlit",
-        "Crimson",
-        "Azure",
-        "Iron",
-        "Stone",
-        "Frost",
-        "Ember",
-    ]
-    suffixes = [
-        "wood",
-        "haven",
-        "gate",
-        "ville",
-        "burgh",
-        "ton",
-        "ford",
-        "brook",
-        "glen",
-        "hollow",
-        "vale",
-        "Reach",
-        "Hold",
-        "Keep",
-        "Crest",
-        "Crag",
-        "Falls",
-        "Ridge",
-        "Spire",
-        "Moor",
-        "Fells",
-        "Run",
-        "Pass",
-        "Wold",
-        "Downs",
-    ]
-    middles = [
-        "High",
-        "Low",
-        "Deep",
-        "Red",
-        "White",
-        "Black",
-        "Gray",
-        "Green",
-        "Silver",
-        "Golden",
-        "Blue",
-        "Swift",
-        "Cold",
-        "Burning",
-        "Silent",
-        "Ancient",
+    # Define various patterns for different name styles
+    patterns = [
+        "sVs",      # Simple: Ael, Bor, etc.
+        "sVsV",     # Longer: Aelon, Borin, etc.
+        "VsV",      # Starting with vowel: Elor, Orin, etc.
+        "sVsVs",    # Compound: Aelbor, Thorin, etc.
+        "BVs",      # With consonant cluster: Bran, Thor, etc.
+        "sVB",      # Ending with cluster: Aeld, Dorn, etc.
     ]
 
-    name_parts = [random.choice(prefixes)]
-    if random.random() < 0.5:
-        name_parts.append(random.choice(middles))
-    name_parts.append(random.choice(suffixes))
-    return " ".join(name_parts)
+    # Randomly select a pattern
+    pattern = random.choice(patterns)
+
+    # Generate seed for reproducibility if needed, but use random for variety
+    seed = random.randint(0, 1000000)
+
+    name = generate(pattern, seed)
+
+    # Capitalize first letter
+    return name.capitalize()
 
 
 def generate_settlements(
-    map: Map,
+    map_data: MapData,
     noise_map: np.ndarray,
     settlement_density: float = 0.002,
     min_radius: float = 0.5,
@@ -101,7 +47,7 @@ def generate_settlements(
     """Generate settlements on suitable terrain.
 
     Args:
-        map (Map): The terrain map grid.
+        map_data (MapData): The terrain map grid.
         noise_map (np.ndarray): The noise map array.
         settlement_density (float): The probability of placing a settlement on suitable terrain.
         min_radius (float): The minimum radius of settlements.
@@ -111,14 +57,14 @@ def generate_settlements(
         List[Settlement]: A list of generated settlements.
 
     """
-    height = map.height
-    width = map.width
+    height = map_data.height
+    width = map_data.width
 
     settlements: list[Settlement] = []
     for y in range(height):
         for x in range(width):
-            tile = map.get_terrain(x, y)
-            if tile.can_build_settlement:  # Uses habitability > 0.5
+            tile = map_data.get_terrain(x, y)
+            if tile.can_build_settlement:
                 if random.random() < settlement_density:
                     # Check for overlaps
                     is_overlapping = False

@@ -13,6 +13,7 @@ class RoadType(Enum):
     Attributes:
         LAND: Standard land roads (rendered as curved solid lines)
         WATER: Roads that cross water bodies (rendered as straight dotted lines)
+
     """
 
     LAND = "land"
@@ -45,6 +46,7 @@ class Tile:
         name (str): Human-readable name for this tile type.
         description (str): Detailed description of this tile type.
         resources (list[str]): list of resources available on this tile type.
+
     """
 
     # Core properties that drive all algorithms
@@ -157,6 +159,7 @@ class Settlement:
         radius (float): Radius of the settlement (affects size and connectivity).
         name (str): Human-readable name of the settlement.
         connectivity (int): Road connectivity factor (higher = more likely to have roads).
+
     """
 
     x: int
@@ -172,7 +175,7 @@ class Settlement:
 
 
 @dataclass
-class Map:
+class MapData:
     """Represents a 2D map grid with terrain data.
 
     This class encapsulates the map data and provides convenient methods

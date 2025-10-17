@@ -7,7 +7,7 @@ from matplotlib import patches
 from matplotlib.figure import Figure
 from scipy.interpolate import interp1d
 
-from .map import Map, Settlement, Position, RoadType
+from .map_data import MapData, Position, RoadType, Settlement
 
 
 def apply_curves_to_path(
@@ -39,11 +39,15 @@ def apply_curves_to_path(
     total_distance = distances[-1]
     control_point_distances = np.linspace(0, total_distance, num=num_control_points)
 
-    control_points_x = interp1d(distances, x, kind="linear")(control_point_distances).astype(float)
-    control_points_y = interp1d(distances, y, kind="linear")(control_point_distances).astype(float)
+    control_points_x = interp1d(distances, x, kind="linear")(
+        control_point_distances
+    ).astype(float)
+    control_points_y = interp1d(distances, y, kind="linear")(
+        control_point_distances
+    ).astype(float)
 
     for i in range(1, num_control_points - 1):
-        cx, cy = int(round(control_points_x[i])), int(round(control_points_y[i]))
+        cx, cy = round(control_points_x[i]), round(control_points_y[i])
         left_x = max(0, cx - 1)
         right_x = min(elevation_map.shape[1] - 1, cx + 1)
         top_y = max(0, cy - 1)
@@ -75,15 +79,22 @@ def apply_curves_to_path(
     new_path_distances = np.linspace(0, total_distance, num=len(path))
     new_x = f_x(new_path_distances)
     new_y = f_y(new_path_distances)
-    curved_path = [Position(int(round(x)), int(round(y))) for x, y in zip(new_x, new_y)]
+    curved_path = [
+        Position(round(x), round(y)) for x, y in zip(new_x, new_y, strict=True)
+    ]
     return curved_path
 
 
-def is_coastal(map: Map, x: int, y: int, max_distance: int = 2) -> bool:
+def is_coastal(
+    map_data: MapData,
+    x: int,
+    y: int,
+    max_distance: int = 2,
+) -> bool:
     """Check if a point is within distance from water.
 
     Args:
-        map (Map): The map grid.
+        map_data (MapData): The map grid.
         x (int): The x coordinate.
         y (int): The y coordinate.
         max_distance (int): Maximum distance to check.
@@ -92,20 +103,17 @@ def is_coastal(map: Map, x: int, y: int, max_distance: int = 2) -> bool:
         bool: True if coastal, False otherwise.
 
     """
-    height = map.height
-    width = map.width
-
     for dx in range(-max_distance, max_distance + 1):
         for dy in range(-max_distance, max_distance + 1):
             nx, ny = x + dx, y + dy
-            tile = map.get_terrain(nx, ny)
+            tile = map_data.get_terrain(nx, ny)
             if not tile.can_build_road:
                 return True
     return False
 
 
 def plot_map(
-    map: Map,
+    map_data: MapData,
     noise_map: np.ndarray,
     settlements: list[Settlement],
     roads_graph: nx.Graph,
@@ -114,7 +122,7 @@ def plot_map(
     """Plot the map with terrain, settlements, and roads.
 
     Args:
-        map (Map): The map grid.
+        map_data (MapData): The map grid.
         noise_map (np.ndarray): The noise map.
         settlements (list[Settlement]): List of settlements.
         roads_graph (nx.Graph): The roads graph.
@@ -124,14 +132,14 @@ def plot_map(
         Figure: The matplotlib figure.
 
     """
-    height = map.height
-    width = map.width
+    height = map_data.height
+    width = map_data.width
 
     rgb_values = np.zeros((height, width, 3))
 
     for y in range(height):
         for x in range(width):
-            tile = map.get_terrain(x, y)
+            tile = map_data.get_terrain(x, y)
             base_color = tile.color  # Uses tile's color property
             noise_value = noise_map[y, x]
             shade_factor = (noise_value + 1) / 2
@@ -139,25 +147,35 @@ def plot_map(
             rgb_values[y, x, :] = shaded_color
 
     fig, ax = plt.subplots()
-    im = ax.imshow(rgb_values)
+    ax.imshow(rgb_values)
 
     # Contour lines
     contour_levels = 10
     contour_colors = "k"
     X, Y = np.meshgrid(np.arange(width), np.arange(height))
     ax.contour(
-        X, Y, noise_map, levels=contour_levels, colors=contour_colors, linewidths=0.5
+        X,
+        Y,
+        noise_map,
+        levels=contour_levels,
+        colors=contour_colors,
+        linewidths=0.5,
     )
 
     # Plot roads first (so settlements appear on top)
-    for u, v, data in roads_graph.edges(data=True):
+    for _, _, data in roads_graph.edges(data=True):
         if "path" in data:
             path = data["path"]
             x_coords = [pos.x for pos in path]
             y_coords = [pos.y for pos in path]
             if data.get("type") == RoadType.WATER:
                 ax.plot(
-                    x_coords, y_coords, color="gray", linestyle="dotted", linewidth=2, zorder=1
+                    x_coords,
+                    y_coords,
+                    color="gray",
+                    linestyle="dotted",
+                    linewidth=2,
+                    zorder=1,
                 )
             else:
                 curved_path = apply_curves_to_path(path, elevation_map)

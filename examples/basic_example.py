@@ -38,7 +38,7 @@ def main() -> None:
     output_dir = Path("output")
     output_dir.mkdir(exist_ok=True)
     output_path = output_dir / "fantasy_map.png"
-    fig.savefig(output_path, dpi=300, bbox_inches="tight", facecolor='white')
+    fig.savefig(output_path, dpi=300, bbox_inches="tight", facecolor="white")
     print(f"Map saved as '{output_path}'")
 
     # You can also access the raw data:

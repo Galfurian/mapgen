@@ -4,8 +4,15 @@ import networkx as nx
 import numpy as np
 from matplotlib.figure import Figure
 
-from . import roads, settlements, terrain, visualization
-from .map import Map, Tile, Settlement
+from . import (
+    roads,
+    settlements,
+    terrain,
+    visualization,
+    MapData,
+    Settlement,
+    Tile,
+)
 
 
 class MapGenerator:
@@ -72,7 +79,7 @@ class MapGenerator:
         # Tile catalog - centralized tile definitions
         self.tiles = self._create_tile_catalog()
 
-        self.map: Map | None = None
+        self.map_data: MapData | None = None
         self.noise_map: np.ndarray | None = None
         self.elevation_map: np.ndarray | None = None
         self.settlements: list[Settlement] | None = None
@@ -83,6 +90,7 @@ class MapGenerator:
 
         Returns:
             dict[str, Tile]: Dictionary mapping tile names to Tile instances.
+
         """
         return {
             "wall": Tile(
@@ -190,15 +198,22 @@ class MapGenerator:
         including terrain, settlements, and roads.
         """
         # Initialize map
-        self.map = terrain.initialize_level(self.width, self.height, self.tiles)
+        self.map_data = terrain.initialize_level(
+            self.width,
+            self.height,
+            self.tiles,
+        )
 
         # Initialize character
         character = terrain.initialize_character(
-            self.width, self.height, self.padding, self.wall_countdown
+            self.width,
+            self.height,
+            self.padding,
+            self.wall_countdown,
         )
 
         # Dig
-        terrain.dig(self.map, character, self.tiles)
+        terrain.dig(self.map_data, character, self.tiles)
 
         # Generate noise
         self.noise_map = terrain.generate_noise_map(
@@ -211,8 +226,8 @@ class MapGenerator:
         )
 
         # Apply terrain features
-        self.map, self.elevation_map = terrain.apply_terrain_features(
-            self.map,
+        self.map_data, self.elevation_map = terrain.apply_terrain_features(
+            self.map_data,
             self.noise_map,
             self.tiles,
             self.sea_level,
@@ -221,11 +236,13 @@ class MapGenerator:
         )
 
         # Smooth terrain
-        self.map = terrain.smooth_terrain(self.map, self.tiles, self.smoothing_iterations)
+        self.map_data = terrain.smooth_terrain(
+            self.map_data, self.tiles, self.smoothing_iterations
+        )
 
         # Generate settlements
         self.settlements = settlements.generate_settlements(
-            self.map,
+            self.map_data,
             self.noise_map,
             self.settlement_density,
             self.min_settlement_radius,
@@ -234,7 +251,7 @@ class MapGenerator:
 
         # Generate roads
         self.roads_graph = roads.generate_roads(
-            self.settlements, self.map, self.elevation_map
+            self.settlements, self.map_data, self.elevation_map
         )
 
     def plot(self) -> Figure:
@@ -247,14 +264,14 @@ class MapGenerator:
             ValueError: If the map has not been generated yet.
 
         """
-        if self.map is None:
+        if self.map_data is None:
             raise ValueError("Map not generated yet. Call generate() first.")
         assert self.noise_map is not None
         assert self.settlements is not None
         assert self.roads_graph is not None
         assert self.elevation_map is not None
         return visualization.plot_map(
-            self.map,
+            self.map_data,
             self.noise_map,
             self.settlements,
             self.roads_graph,
