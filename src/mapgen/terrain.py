@@ -5,21 +5,22 @@ import random
 import noise
 import numpy as np
 
-from .map import Map
+from .map import Map, Tile
 
 
-def initialize_level(width: int, height: int) -> Map:
+def initialize_level(width: int, height: int, tiles: dict[str, Tile]) -> Map:
     """Initialize a map grid filled with walls.
 
     Args:
         width (int): The width of the map.
         height (int): The height of the map.
+        tiles (dict[str, Tile]): The tile catalog.
 
     Returns:
         Map: A Map instance representing the map grid filled with walls.
 
     """
-    return Map([["#"] * width for _ in range(height)])
+    return Map([[tiles["wall"] for _ in range(width)] for _ in range(height)])
 
 
 def initialize_character(
@@ -45,20 +46,22 @@ def initialize_character(
     }
 
 
-def dig(map: Map, character: dict) -> None:
+def dig(map: Map, character: dict, tiles: dict[str, Tile]) -> None:
     """Simulate character digging through the map.
 
     Args:
         map (Map): The map grid to modify.
         character (dict): The character state dictionary.
+        tiles (dict[str, Tile]): The tile catalog.
 
     """
     while character["wallCountdown"] > 0:
         x = character["x"]
         y = character["y"]
 
-        if map.get_terrain(x, y) == "#":
-            map.set_terrain(x, y, " ")
+        current_tile = map.get_terrain(x, y)
+        if not current_tile.walkable:
+            map.set_terrain(x, y, tiles["floor"])
             character["wallCountdown"] -= 1
 
         traverse = random.randint(1, 4)
@@ -118,6 +121,7 @@ def generate_noise_map(
 def apply_terrain_features(
     map: Map,
     noise_map: np.ndarray,
+    tiles: dict[str, Tile],
     sea_level: float = 0.03,
     mountain_level: float = 0.5,
     forest_threshold: float = 0.1,
@@ -127,6 +131,7 @@ def apply_terrain_features(
     Args:
         map (Map): The map grid to modify.
         noise_map (np.ndarray): The noise map.
+        tiles (dict[str, Tile]): The tile catalog.
         sea_level (float): The threshold for sea map.
         mountain_level (float): The threshold for mountain map.
         forest_threshold (float): The threshold for forest.
@@ -143,23 +148,24 @@ def apply_terrain_features(
             noise_value = noise_map[y, x]
 
             if noise_value < sea_level:
-                map.set_terrain(x, y, "W")  # Water
+                map.set_terrain(x, y, tiles["water"])  # Water
             elif noise_value < mountain_level:
                 if noise_value > forest_threshold:
-                    map.set_terrain(x, y, "F")  # Forest
+                    map.set_terrain(x, y, tiles["forest"])  # Forest
                 else:
-                    map.set_terrain(x, y, "P")  # Plains
+                    map.set_terrain(x, y, tiles["plains"])  # Plains
             else:
-                map.set_terrain(x, y, "M")  # Mountain
+                map.set_terrain(x, y, tiles["mountain"])  # Mountain
 
     return map, elevation_map
 
 
-def smooth_terrain(map: Map, iterations: int = 5) -> Map:
+def smooth_terrain(map: Map, tiles: dict[str, Tile], iterations: int = 5) -> Map:
     """Smooth the terrain using cellular automata rules.
 
     Args:
         map (Map): The map grid to smooth.
+        tiles (dict[str, Tile]): The tile catalog.
         iterations (int): The number of smoothing iterations.
 
     Returns:
@@ -173,11 +179,14 @@ def smooth_terrain(map: Map, iterations: int = 5) -> Map:
         new_grid = [row[:] for row in map.grid]
         for y in range(1, height - 1):
             for x in range(1, width - 1):
-                current_terrain = map.get_terrain(x, y)
-                if current_terrain in ("#", " "):
+                current_tile = map.get_terrain(x, y)
+                
+                # Skip obstacles (non-walkable tiles)
+                if not current_tile.walkable:
                     continue
 
-                neighbor_values = [
+                # Get neighbor properties
+                neighbors = [
                     map.get_terrain(x - 1, y - 1),
                     map.get_terrain(x, y - 1),
                     map.get_terrain(x + 1, y - 1),
@@ -188,13 +197,21 @@ def smooth_terrain(map: Map, iterations: int = 5) -> Map:
                     map.get_terrain(x + 1, y + 1),
                 ]
 
-                if current_terrain != "#" and current_terrain != "W":
-                    if neighbor_values.count("M") > 4:
-                        new_grid[y][x] = "M"
-                    elif neighbor_values.count("F") > 5:
-                        new_grid[y][x] = "F"
-                    elif neighbor_values.count("P") > 6:
-                        new_grid[y][x] = "P"
+                # Count different neighbor types based on properties
+                obstacle_count = sum(1 for n in neighbors if not n.walkable)
+                liquid_count = sum(1 for n in neighbors if n.movement_cost >= 2.0 and n.habitability == 0.0)
+                difficult_count = sum(1 for n in neighbors if n.movement_cost > 1.0 and n.movement_cost < 2.0)
+                elevated_count = sum(1 for n in neighbors if n.elevation_influence > 0.5)
+
+                # Apply smoothing rules based on neighbor majority
+                if obstacle_count > 4:
+                    new_grid[y][x] = tiles["wall"]
+                elif liquid_count > 3:
+                    new_grid[y][x] = tiles["water"]
+                elif elevated_count > 3:
+                    new_grid[y][x] = tiles["mountain"]
+                elif difficult_count > 4:
+                    new_grid[y][x] = tiles["forest"]
         map.grid = new_grid
 
     return map

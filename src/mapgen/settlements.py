@@ -4,7 +4,7 @@ import random
 
 import numpy as np
 
-from .map import Map
+from .map import Map, Settlement
 
 
 def generate_settlement_name() -> str:
@@ -97,7 +97,7 @@ def generate_settlements(
     settlement_density: float = 0.002,
     min_radius: float = 0.5,
     max_radius: float = 1.0,
-) -> list[dict[str, int | float | str]]:
+) -> list[Settlement]:
     """Generate settlements on suitable terrain.
 
     Args:
@@ -114,19 +114,20 @@ def generate_settlements(
     height = map.height
     width = map.width
 
-    settlements: list[dict[str, int | float | str]] = []
+    settlements: list[Settlement] = []
     for y in range(height):
         for x in range(width):
-            if map.get_terrain(x, y) in ("P", "F"):  # Plains or Forest
+            tile = map.get_terrain(x, y)
+            if tile.can_build_settlement:  # Uses habitability > 0.5
                 if random.random() < settlement_density:
                     # Check for overlaps
                     is_overlapping = False
                     for existing in settlements:
                         distance = (
-                            (x - int(existing["x"])) ** 2
-                            + (y - int(existing["y"])) ** 2
+                            (x - existing.x) ** 2
+                            + (y - existing.y) ** 2
                         ) ** 0.5
-                        if distance < float(existing["radius"]) + max_radius:
+                        if distance < existing.radius + max_radius:
                             is_overlapping = True
                             break
 
@@ -134,12 +135,12 @@ def generate_settlements(
                         radius = random.uniform(min_radius, max_radius)
                         name = generate_settlement_name()
                         settlements.append(
-                            {
-                                "x": x,
-                                "y": y,
-                                "radius": radius,
-                                "name": name,
-                                "connectivity": int(radius * 5),
-                            }
+                            Settlement(
+                                x=x,
+                                y=y,
+                                radius=radius,
+                                name=name,
+                                connectivity=int(radius * 5),
+                            )
                         )
     return settlements

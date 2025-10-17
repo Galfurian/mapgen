@@ -7,7 +7,7 @@ from matplotlib import patches
 from matplotlib.figure import Figure
 from scipy.interpolate import interp1d
 
-from .map import Map, Position
+from .map import Map, Settlement, Position
 
 
 def apply_curves_to_path(
@@ -39,8 +39,8 @@ def apply_curves_to_path(
     total_distance = distances[-1]
     control_point_distances = np.linspace(0, total_distance, num=num_control_points)
 
-    control_points_x = interp1d(distances, x, kind="linear")(control_point_distances)
-    control_points_y = interp1d(distances, y, kind="linear")(control_point_distances)
+    control_points_x = interp1d(distances, x, kind="linear")(control_point_distances).astype(float)
+    control_points_y = interp1d(distances, y, kind="linear")(control_point_distances).astype(float)
 
     for i in range(1, num_control_points - 1):
         cx, cy = int(round(control_points_x[i])), int(round(control_points_y[i]))
@@ -98,7 +98,8 @@ def is_coastal(map: Map, x: int, y: int, max_distance: int = 2) -> bool:
     for dx in range(-max_distance, max_distance + 1):
         for dy in range(-max_distance, max_distance + 1):
             nx, ny = x + dx, y + dy
-            if map.is_valid_position(nx, ny) and map.get_terrain(nx, ny) == "W":
+            tile = map.get_terrain(nx, ny)
+            if tile.movement_cost >= 2.0 and tile.habitability == 0.0:  # Check for liquid/water tiles
                 return True
     return False
 
@@ -106,7 +107,7 @@ def is_coastal(map: Map, x: int, y: int, max_distance: int = 2) -> bool:
 def plot_map(
     map: Map,
     noise_map: np.ndarray,
-    settlements: list[dict],
+    settlements: list[Settlement],
     roads_graph: nx.Graph,
     elevation_map: np.ndarray,
 ) -> Figure:
@@ -115,7 +116,7 @@ def plot_map(
     Args:
         map (Map): The map grid.
         noise_map (np.ndarray): The noise map.
-        settlements (List[Dict]): List of settlements.
+        settlements (list[Settlement]): List of settlements.
         roads_graph (nx.Graph): The roads graph.
         elevation_map (np.ndarray): The elevation map.
 
@@ -126,21 +127,12 @@ def plot_map(
     height = map.height
     width = map.width
 
-    color_map = {
-        "#": (0.2, 0.2, 0.2),  # Wall
-        " ": (1.0, 1.0, 1.0),  # Empty
-        "W": (0.2, 0.5, 1.0),  # Water
-        "M": (0.5, 0.5, 0.5),  # Mountain
-        "F": (0.2, 0.7, 0.2),  # Forest
-        "P": (0.9, 0.8, 0.6),  # Plains
-    }
-
     rgb_values = np.zeros((height, width, 3))
 
     for y in range(height):
         for x in range(width):
-            terrain_type = map.get_terrain(x, y)
-            base_color = color_map.get(terrain_type, (1.0, 1.0, 1.0))
+            tile = map.get_terrain(x, y)
+            base_color = tile.color  # Uses tile's color property
             noise_value = noise_map[y, x]
             shade_factor = (noise_value + 1) / 2
             shaded_color = tuple(c * shade_factor for c in base_color)
@@ -176,9 +168,9 @@ def plot_map(
     # Plot settlements
     existing_texts: list[tuple[int, int]] = []
     for settlement in settlements:
-        x = settlement["x"]
-        y = settlement["y"]
-        radius = settlement["radius"]
+        x = settlement.x
+        y = settlement.y
+        radius = settlement.radius
 
         circle = patches.Circle(
             (x, y),
@@ -231,7 +223,7 @@ def plot_map(
             ax.text(
                 text_x,
                 text_y,
-                settlement["name"],
+                settlement.name,
                 color="white",
                 fontsize=font_size,
                 rotation=0,
