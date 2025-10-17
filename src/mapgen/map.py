@@ -224,6 +224,82 @@ class Map:
         """
         return 0 <= x < self.width and 0 <= y < self.height
 
+    def get_neighbors(
+        self,
+        x: int,
+        y: int,
+        walkable_only: bool = True,
+        include_diagonals: bool = False,
+    ) -> list[Position]:
+        """Get neighboring positions within map boundaries.
+
+        Args:
+            x: The x coordinate.
+            y: The y coordinate.
+            walkable_only: If True, only return walkable neighbors.
+            include_diagonals: If True, include diagonal neighbors (8 directions), otherwise only cardinal directions (4 directions).
+
+        Returns:
+            list[Position]: List of valid neighboring positions.
+
+        """
+        # Cardinal directions (4-way)
+        neighbors = [
+            Position(x - 1, y),  # left
+            Position(x + 1, y),  # right
+            Position(x, y - 1),  # up
+            Position(x, y + 1),  # down
+        ]
+
+        # Add diagonal directions if requested (8-way)
+        if include_diagonals:
+            neighbors.extend(
+                [
+                    Position(x - 1, y - 1),  # top-left
+                    Position(x + 1, y - 1),  # top-right
+                    Position(x - 1, y + 1),  # bottom-left
+                    Position(x + 1, y + 1),  # bottom-right
+                ]
+            )
+
+        valid_neighbors = []
+        for neighbor in neighbors:
+            # If the neighbor is out of bounds, skip it.
+            if not self.is_valid_position(neighbor.x, neighbor.y):
+                continue
+            # If walkable_only is True, skip non-walkable tiles.
+            terrain = self.get_terrain(neighbor.x, neighbor.y)
+            if walkable_only and not terrain.is_walkable:
+                continue
+            # If we passed all checks, add to valid neighbors.
+            valid_neighbors.append(neighbor)
+
+        return valid_neighbors
+
+    def get_neighbor_tiles(
+        self,
+        x: int,
+        y: int,
+        walkable_only: bool = True,
+        include_diagonals: bool = False,
+    ) -> list[Tile]:
+        """Get neighboring tiles within map boundaries.
+
+        Args:
+            x: The x coordinate.
+            y: The y coordinate.
+            walkable_only: If True, only return walkable neighbors.
+            include_diagonals: If True, include diagonal neighbors (8 directions), otherwise only cardinal directions (4 directions).
+
+        Returns:
+            list[Tile]: List of valid neighboring tiles.
+
+        """
+        return [
+            self.get_terrain(pos.x, pos.y)
+            for pos in self.get_neighbors(x, y, walkable_only, include_diagonals)
+        ]
+
     def __getitem__(self, key: int) -> list[Tile]:
         """Get a row from the grid."""
         return self.grid[key]

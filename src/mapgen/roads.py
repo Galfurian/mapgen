@@ -10,53 +10,26 @@ from sklearn.neighbors import KDTree as SKLearnKDTree
 from .map import Map, Position, Settlement
 
 
-def reconstruct_path(current: Position, came_from: dict) -> list[Position]:
-    """Reconstruct path from A* search.
+def reconstruct_path(
+    current: Position,
+    came_from: dict[Position, Position],
+) -> list[Position]:
+    """Reconstruct the path from A* search.
 
     Args:
         current (Position): The current position.
-        came_from (dict): The came_from dictionary from A* search.
+        came_from (Dict[Position, Position]): The came_from dictionary.
 
     Returns:
         List[Position]: The reconstructed path.
 
     """
-    total_path = [current]
+    path = [current]
     while current in came_from:
         current = came_from[current]
-        total_path.append(current)
-    return total_path[::-1]
-
-
-def get_neighbors(
-    map: Map,
-    pos: Position,
-) -> list[Position]:
-    """Get valid neighboring positions.
-
-    Args:
-        map (Map): The map grid.
-        pos (Position): The current position.
-
-    Returns:
-        List[Position]: List of valid neighboring positions.
-
-    """
-    x, y = pos.x, pos.y
-    neighbors = [
-        Position(x - 1, y),
-        Position(x + 1, y),
-        Position(x, y - 1),
-        Position(x, y + 1),
-    ]
-    valid_neighbors = []
-    for neighbor in neighbors:
-        if not map.is_valid_position(neighbor.x, neighbor.y):
-            continue
-        tile = map.get_terrain(neighbor.x, neighbor.y)
-        if tile.is_walkable:
-            valid_neighbors.append(neighbor)
-    return valid_neighbors
+        path.append(current)
+    path.reverse()
+    return path
 
 
 def a_star_search(
@@ -78,7 +51,7 @@ def a_star_search(
         high_point_penalty (int): Penalty for high points.
 
     Returns:
-        Optional[List[Position]]: The path if found, None otherwise.
+        list[Position] | None: The path if found, None otherwise.
 
     """
 
@@ -102,7 +75,7 @@ def a_star_search(
         open_set.remove(current)
         closed_set.add(current_pos)
 
-        for neighbor in get_neighbors(map, current_pos):
+        for neighbor in map.get_neighbors(current_pos.x, current_pos.y):
             if neighbor in closed_set:
                 continue
 
@@ -198,8 +171,8 @@ def generate_roads(
         settlement2 = settlements[j]
         path = a_star_search(
             map,
-            Position(settlement1.x, settlement1.y),
-            Position(settlement2.x, settlement2.y),
+            settlement1.position,
+            settlement2.position,
             elevation_map,
             high_points=[],
         )
@@ -222,9 +195,14 @@ def generate_roads(
         import matplotlib.pyplot as plt
 
         contour_data = plt.contourf(
-            elevation_map, levels=[level_value - 0.01, level_value + 0.01]
+            elevation_map,
+            levels=[level_value - 0.01, level_value + 0.01],
         )
-        enclosed_points = find_enclosed_points(contour_data, level_value, elevation_map)
+        enclosed_points = find_enclosed_points(
+            contour_data,
+            level_value,
+            elevation_map,
+        )
         high_points.extend(enclosed_points)
         plt.clf()
         plt.close()
@@ -234,9 +212,9 @@ def generate_roads(
     kdtree = SKLearnKDTree(settlement_positions)
 
     for i, settlement1 in enumerate(settlements):
-        neighbor_indices = kdtree.query_radius(
-            [(settlement1.x, settlement1.y)], r=40
-        )[0]
+        neighbor_indices = kdtree.query_radius([(settlement1.x, settlement1.y)], r=40)[
+            0
+        ]
         for j in neighbor_indices:
             settlement2 = settlements[j]
             if i != j and not graph.has_edge(settlement1.name, settlement2.name):
@@ -252,8 +230,8 @@ def generate_roads(
                 if random.random() < connection_probability:
                     path = a_star_search(
                         map,
-                        Position(settlement1.x, settlement1.y),
-                        Position(settlement2.x, settlement2.y),
+                        settlement1.position,
+                        settlement2.position,
                         elevation_map,
                         high_points,
                     )

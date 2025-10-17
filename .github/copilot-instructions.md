@@ -75,6 +75,9 @@ applyTo: '**'
 
 - Use type hints for function arguments and return values to improve code readability and maintainability.
 - Use type hints for variables where clarity is needed.
+- Prefer the modern union syntax (`X | Y`) over `Union[X, Y]` for Python 3.10+.
+- Use `X | None` instead of `Optional[X]` for optional types.
+- Only import from `typing` when necessary (e.g., for `List`, `Dict` in older Python versions, or specialized types like `Callable`).
 
 ## GIT Repository Management
 

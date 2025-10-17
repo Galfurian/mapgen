@@ -186,16 +186,7 @@ def smooth_terrain(map: Map, tiles: dict[str, Tile], iterations: int = 5) -> Map
                     continue
 
                 # Get neighbor properties
-                neighbors = [
-                    map.get_terrain(x - 1, y - 1),
-                    map.get_terrain(x, y - 1),
-                    map.get_terrain(x + 1, y - 1),
-                    map.get_terrain(x - 1, y),
-                    map.get_terrain(x + 1, y),
-                    map.get_terrain(x - 1, y + 1),
-                    map.get_terrain(x, y + 1),
-                    map.get_terrain(x + 1, y + 1),
-                ]
+                neighbors = map.get_neighbor_tiles(x, y, walkable_only=False, include_diagonals=True)
 
                 # Count different neighbor types based on properties
                 obstacle_count = sum(1 for n in neighbors if not n.walkable)
