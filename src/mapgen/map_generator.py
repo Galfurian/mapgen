@@ -1,9 +1,8 @@
 """Main map generator module."""
 
-from typing import Dict, List, Optional
-
 import networkx as nx
 import numpy as np
+from matplotlib.figure import Figure
 
 from . import roads, settlements, terrain, visualization
 
@@ -51,6 +50,7 @@ class MapGenerator:
             settlement_density (float): Density of settlements.
             min_settlement_radius (float): Minimum settlement radius.
             max_settlement_radius (float): Maximum settlement radius.
+
         """
         self.width = width
         self.height = height
@@ -68,11 +68,11 @@ class MapGenerator:
         self.min_settlement_radius = min_settlement_radius
         self.max_settlement_radius = max_settlement_radius
 
-        self.level: Optional[List[List[str]]] = None
-        self.noise_map: Optional[np.ndarray] = None
-        self.elevation_map: Optional[np.ndarray] = None
-        self.settlements: Optional[List[Dict]] = None
-        self.roads_graph: Optional[nx.Graph] = None
+        self.level: list[list[str]] | None = None
+        self.noise_map: np.ndarray | None = None
+        self.elevation_map: np.ndarray | None = None
+        self.settlements: list[dict] | None = None
+        self.roads_graph: nx.Graph | None = None
 
     def generate(self) -> None:
         """Generate the complete map.
@@ -127,7 +127,7 @@ class MapGenerator:
             self.settlements, self.level, self.elevation_map
         )
 
-    def plot(self):
+    def plot(self) -> Figure:
         """Plot the generated map.
 
         Returns:
@@ -135,6 +135,7 @@ class MapGenerator:
 
         Raises:
             ValueError: If the map has not been generated yet.
+
         """
         if self.level is None:
             raise ValueError("Map not generated yet. Call generate() first.")

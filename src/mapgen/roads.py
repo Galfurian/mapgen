@@ -1,17 +1,16 @@
 """Road generation module."""
 
 import random
-from typing import Dict, List, Optional, Tuple
+from typing import Any
 
 import networkx as nx
 import numpy as np
-from scipy.spatial import KDTree
 from sklearn.neighbors import KDTree as SKLearnKDTree
 
 
 def reconstruct_path(
-    current: Tuple[int, int], came_from: dict
-) -> List[Tuple[int, int]]:
+    current: tuple[int, int], came_from: dict
+) -> list[tuple[int, int]]:
     """Reconstruct path from A* search.
 
     Args:
@@ -20,6 +19,7 @@ def reconstruct_path(
 
     Returns:
         List[Tuple[int, int]]: The reconstructed path.
+
     """
     total_path = [current]
     while current in came_from:
@@ -29,8 +29,8 @@ def reconstruct_path(
 
 
 def get_neighbors(
-    level: List[List[str]], pos: Tuple[int, int]
-) -> List[Tuple[int, int]]:
+    level: list[list[str]], pos: tuple[int, int]
+) -> list[tuple[int, int]]:
     """Get valid neighboring positions.
 
     Args:
@@ -39,6 +39,7 @@ def get_neighbors(
 
     Returns:
         List[Tuple[int, int]]: List of valid neighboring positions.
+
     """
     x, y = pos
     neighbors = [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]
@@ -55,13 +56,13 @@ def get_neighbors(
 
 
 def a_star_search(
-    level: List[List[str]],
-    start: Tuple[int, int],
-    goal: Tuple[int, int],
+    level: list[list[str]],
+    start: tuple[int, int],
+    goal: tuple[int, int],
     elevation_map: np.ndarray,
-    high_points: List[Tuple[int, int]],
+    high_points: list[tuple[int, int]],
     high_point_penalty: int = 5,
-) -> Optional[List[Tuple[int, int]]]:
+) -> list[tuple[int, int]] | None:
     """Perform A* search with high point avoidance.
 
     Args:
@@ -74,14 +75,15 @@ def a_star_search(
 
     Returns:
         Optional[List[Tuple[int, int]]]: The path if found, None otherwise.
+
     """
 
-    def heuristic(a: Tuple[int, int], b: Tuple[int, int]) -> float:
+    def heuristic(a: tuple[int, int], b: tuple[int, int]) -> float:
         return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
     open_set = []
     closed_set = set()
-    came_from = {}
+    came_from: dict[tuple[int, int], tuple[int, int]] = {}
 
     start_node = (start, 0, heuristic(start, goal))
     open_set.append(start_node)
@@ -128,8 +130,8 @@ def a_star_search(
 
 
 def find_enclosed_points(
-    contour_data, level_value: float, elevation_map: np.ndarray
-) -> List[Tuple[int, int]]:
+    contour_data: Any, level_value: float, elevation_map: np.ndarray
+) -> list[tuple[int, int]]:
     """Find points enclosed within a contour line.
 
     Args:
@@ -139,6 +141,7 @@ def find_enclosed_points(
 
     Returns:
         List[Tuple[int, int]]: List of enclosed points.
+
     """
     paths = contour_data.allsegs[0]
     enclosed_points = []
@@ -156,8 +159,8 @@ def find_enclosed_points(
 
 
 def generate_roads(
-    settlements: List[Dict],
-    level: List[List[str]],
+    settlements: list[dict],
+    level: list[list[str]],
     elevation_map: np.ndarray,
 ) -> nx.Graph:
     """Generate road network connecting settlements.
@@ -169,8 +172,9 @@ def generate_roads(
 
     Returns:
         nx.Graph: The road network graph.
+
     """
-    graph = nx.Graph()
+    graph: nx.Graph = nx.Graph()
     for settlement in settlements:
         graph.add_node(settlement["name"], pos=(settlement["x"], settlement["y"]))
 

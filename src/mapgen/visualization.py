@@ -1,21 +1,19 @@
 """Visualization module for maps."""
 
-from typing import Dict, List, Tuple
-
-import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+from matplotlib import patches
 from matplotlib.figure import Figure
 from scipy.interpolate import interp1d
 
 
 def apply_curves_to_path(
-    path: List[Tuple[int, int]],
+    path: list[tuple[int, int]],
     elevation_map: np.ndarray,
     num_control_points: int = 5,
     smoothing_factor: float = 0.5,
-) -> List[Tuple[int, int]]:
+) -> list[tuple[int, int]]:
     """Apply curves to a path based on elevation.
 
     Args:
@@ -26,6 +24,7 @@ def apply_curves_to_path(
 
     Returns:
         List[Tuple[int, int]]: The curved path.
+
     """
     if len(path) <= 2:
         return path
@@ -60,8 +59,16 @@ def apply_curves_to_path(
         control_points_x[i] += adjusted_smoothing_factor * gradient_x
         control_points_y[i] += adjusted_smoothing_factor * gradient_y
 
-    f_x = interp1d(control_point_distances, control_points_x, kind="cubic")
-    f_y = interp1d(control_point_distances, control_points_y, kind="cubic")
+    f_x = interp1d(
+        control_point_distances,
+        control_points_x,
+        kind="cubic",
+    )
+    f_y = interp1d(
+        control_point_distances,
+        control_points_y,
+        kind="cubic",
+    )
 
     new_path_distances = np.linspace(0, total_distance, num=len(path))
     new_x = f_x(new_path_distances)
@@ -70,7 +77,7 @@ def apply_curves_to_path(
     return curved_path
 
 
-def is_coastal(level: List[List[str]], x: int, y: int, max_distance: int = 2) -> bool:
+def is_coastal(level: list[list[str]], x: int, y: int, max_distance: int = 2) -> bool:
     """Check if a point is within distance from water.
 
     Args:
@@ -81,6 +88,7 @@ def is_coastal(level: List[List[str]], x: int, y: int, max_distance: int = 2) ->
 
     Returns:
         bool: True if coastal, False otherwise.
+
     """
     height = len(level)
     width = len(level[0])
@@ -94,9 +102,9 @@ def is_coastal(level: List[List[str]], x: int, y: int, max_distance: int = 2) ->
 
 
 def plot_level(
-    level: List[List[str]],
+    level: list[list[str]],
     noise_map: np.ndarray,
-    settlements: List[Dict],
+    settlements: list[dict],
     roads_graph: nx.Graph,
     elevation_map: np.ndarray,
 ) -> Figure:
@@ -111,6 +119,7 @@ def plot_level(
 
     Returns:
         Figure: The matplotlib figure.
+
     """
     height = len(level)
     width = len(level[0])
@@ -147,7 +156,7 @@ def plot_level(
     )
 
     # Plot settlements
-    existing_texts = []
+    existing_texts: list[tuple[int, int]] = []
     for settlement in settlements:
         x = settlement["x"]
         y = settlement["y"]

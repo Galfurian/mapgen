@@ -4,7 +4,7 @@
 from mapgen import MapGenerator
 
 
-def main():
+def main() -> None:
     """Generate and display a fantasy map."""
     print("Generating fantasy map...")
 
@@ -22,6 +22,9 @@ def main():
 
     # Generate the map
     generator.generate()
+
+    assert generator.settlements is not None
+    assert generator.roads_graph is not None
 
     print(f"Generated map with {len(generator.settlements)} settlements")
     print(f"Road network has {len(generator.roads_graph.edges)} roads")

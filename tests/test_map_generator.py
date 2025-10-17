@@ -5,7 +5,7 @@ import pytest
 from mapgen import MapGenerator
 
 
-def test_map_generator_initialization():
+def test_map_generator_initialization() -> None:
     """Test MapGenerator initialization."""
     generator = MapGenerator(width=50, height=50)
     assert generator.width == 50
@@ -13,7 +13,7 @@ def test_map_generator_initialization():
     assert generator.level is None
 
 
-def test_map_generator_generate():
+def test_map_generator_generate() -> None:
     """Test map generation."""
     generator = MapGenerator(width=50, height=50, wall_countdown=1000)
     generator.generate()
@@ -26,7 +26,7 @@ def test_map_generator_generate():
     assert len(generator.level[0]) == 50
 
 
-def test_map_generator_plot_without_generate():
+def test_map_generator_plot_without_generate() -> None:
     """Test plotting without generating raises error."""
     generator = MapGenerator()
     with pytest.raises(ValueError, match="Map not generated yet"):

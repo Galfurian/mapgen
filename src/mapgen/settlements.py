@@ -1,7 +1,7 @@
 """Settlement generation module."""
 
 import random
-from typing import Dict, List, TypedDict, Union
+from typing import TypedDict
 
 
 class Settlement(TypedDict):
@@ -13,12 +13,15 @@ class Settlement(TypedDict):
         radius (float): The radius of the settlement.
         name (str): The name of the settlement.
         connectivity (int): The connectivity value of the settlement.
+
     """
+
     x: int
     y: int
     radius: float
     name: str
     connectivity: int
+
 
 import numpy as np
 
@@ -28,6 +31,7 @@ def generate_settlement_name() -> str:
 
     Returns:
         str: A randomly generated settlement name.
+
     """
     prefixes = [
         "North",
@@ -107,12 +111,12 @@ def generate_settlement_name() -> str:
 
 
 def generate_settlements(
-    level: List[List[str]],
+    level: list[list[str]],
     noise_map: np.ndarray,
     settlement_density: float = 0.002,
     min_radius: float = 0.5,
     max_radius: float = 1.0,
-) -> List[Dict[str, Union[int, float, str]]]:
+) -> list[dict[str, int | float | str]]:
     """Generate settlements on suitable terrain.
 
     Args:
@@ -124,11 +128,12 @@ def generate_settlements(
 
     Returns:
         List[Settlement]: A list of generated settlements.
+
     """
     height = len(level)
     width = len(level[0])
 
-    settlements: List[Dict[str, Union[int, float, str]]] = []
+    settlements: list[dict[str, int | float | str]] = []
     for y in range(height):
         for x in range(width):
             if level[y][x] in ("P", "F"):  # Plains or Forest
@@ -137,9 +142,10 @@ def generate_settlements(
                     is_overlapping = False
                     for existing in settlements:
                         distance = (
-                            (x - existing["x"]) ** 2 + (y - existing["y"]) ** 2
+                            (x - int(existing["x"])) ** 2
+                            + (y - int(existing["y"])) ** 2
                         ) ** 0.5
-                        if distance < existing["radius"] + max_radius:
+                        if distance < float(existing["radius"]) + max_radius:
                             is_overlapping = True
                             break
 

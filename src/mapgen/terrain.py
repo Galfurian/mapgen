@@ -1,13 +1,12 @@
 """Terrain generation module for procedural maps."""
 
 import random
-from typing import List, Tuple
 
 import noise
 import numpy as np
 
 
-def initialize_level(width: int, height: int) -> List[List[str]]:
+def initialize_level(width: int, height: int) -> list[list[str]]:
     """Initialize a level grid filled with walls.
 
     Args:
@@ -16,6 +15,7 @@ def initialize_level(width: int, height: int) -> List[List[str]]:
 
     Returns:
         List[List[str]]: A 2D list representing the level grid filled with walls.
+
     """
     return [["#"] * width for _ in range(height)]
 
@@ -33,6 +33,7 @@ def initialize_character(
 
     Returns:
         dict: A dictionary representing the character state.
+
     """
     return {
         "wallCountdown": wall_countdown,
@@ -42,12 +43,13 @@ def initialize_character(
     }
 
 
-def dig(level: List[List[str]], character: dict) -> None:
+def dig(level: list[list[str]], character: dict) -> None:
     """Simulate character digging through the level.
 
     Args:
         level (List[List[str]]): The level grid to modify.
         character (dict): The character state dictionary.
+
     """
     while character["wallCountdown"] > 0:
         x = character["x"]
@@ -89,6 +91,7 @@ def generate_noise_map(
 
     Returns:
         np.ndarray: The generated noise map.
+
     """
     offset_x = random.uniform(0, 10000)
     offset_y = random.uniform(0, 10000)
@@ -111,12 +114,12 @@ def generate_noise_map(
 
 
 def apply_terrain_features(
-    level: List[List[str]],
+    level: list[list[str]],
     noise_map: np.ndarray,
     sea_level: float = 0.03,
     mountain_level: float = 0.5,
     forest_threshold: float = 0.1,
-) -> Tuple[List[List[str]], np.ndarray]:
+) -> tuple[list[list[str]], np.ndarray]:
     """Apply terrain features based on noise map.
 
     Args:
@@ -128,6 +131,7 @@ def apply_terrain_features(
 
     Returns:
         Tuple[List[List[str]], np.ndarray]: The modified level and elevation map.
+
     """
     height, width = noise_map.shape
     elevation_map = noise_map.copy()
@@ -149,7 +153,7 @@ def apply_terrain_features(
     return level, elevation_map
 
 
-def smooth_terrain(level: List[List[str]], iterations: int = 5) -> List[List[str]]:
+def smooth_terrain(level: list[list[str]], iterations: int = 5) -> list[list[str]]:
     """Smooth the terrain using cellular automata rules.
 
     Args:
@@ -158,6 +162,7 @@ def smooth_terrain(level: List[List[str]], iterations: int = 5) -> List[List[str
 
     Returns:
         List[List[str]]: The smoothed level grid.
+
     """
     height = len(level)
     width = len(level[0])
