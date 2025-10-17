@@ -7,18 +7,20 @@ import networkx as nx
 import numpy as np
 from sklearn.neighbors import KDTree as SKLearnKDTree
 
+from .level import Level, Position
+
 
 def reconstruct_path(
-    current: tuple[int, int], came_from: dict
-) -> list[tuple[int, int]]:
+    current: Position, came_from: dict
+) -> list[Position]:
     """Reconstruct path from A* search.
 
     Args:
-        current (Tuple[int, int]): The current position.
+        current (Position): The current position.
         came_from (dict): The came_from dictionary from A* search.
 
     Returns:
-        List[Tuple[int, int]]: The reconstructed path.
+        List[Position]: The reconstructed path.
 
     """
     total_path = [current]
@@ -29,61 +31,60 @@ def reconstruct_path(
 
 
 def get_neighbors(
-    level: list[list[str]], pos: tuple[int, int]
-) -> list[tuple[int, int]]:
+    level: Level,
+    pos: Position,
+) -> list[Position]:
     """Get valid neighboring positions.
 
     Args:
-        level (List[List[str]]): The level grid.
-        pos (Tuple[int, int]): The current position.
+        level (Level): The level grid.
+        pos (Position): The current position.
 
     Returns:
-        List[Tuple[int, int]]: List of valid neighboring positions.
+        List[Position]: List of valid neighboring positions.
 
     """
-    x, y = pos
-    neighbors = [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]
+    x, y = pos.x, pos.y
+    neighbors = [Position(x - 1, y), Position(x + 1, y), Position(x, y - 1), Position(x, y + 1)]
     valid_neighbors = []
     for neighbor in neighbors:
-        nx_pos, ny_pos = neighbor
         if (
-            0 <= nx_pos < len(level[0])
-            and 0 <= ny_pos < len(level)
-            and level[ny_pos][nx_pos] not in ("#", "M")
+            level.is_valid_position(neighbor.x, neighbor.y)
+            and level.get_terrain(neighbor.x, neighbor.y) not in ("#", "M")
         ):
             valid_neighbors.append(neighbor)
     return valid_neighbors
 
 
 def a_star_search(
-    level: list[list[str]],
-    start: tuple[int, int],
-    goal: tuple[int, int],
+    level: Level,
+    start: Position,
+    goal: Position,
     elevation_map: np.ndarray,
-    high_points: list[tuple[int, int]],
+    high_points: list[Position],
     high_point_penalty: int = 5,
-) -> list[tuple[int, int]] | None:
+) -> list[Position] | None:
     """Perform A* search with high point avoidance.
 
     Args:
-        level (List[List[str]]): The level grid.
-        start (Tuple[int, int]): The start position.
-        goal (Tuple[int, int]): The goal position.
+        level (Level): The level grid.
+        start (Position): The start position.
+        goal (Position): The goal position.
         elevation_map (np.ndarray): The elevation map.
-        high_points (List[Tuple[int, int]]): List of high points to avoid.
+        high_points (List[Position]): List of high points to avoid.
         high_point_penalty (int): Penalty for high points.
 
     Returns:
-        Optional[List[Tuple[int, int]]]: The path if found, None otherwise.
+        Optional[List[Position]]: The path if found, None otherwise.
 
     """
 
-    def heuristic(a: tuple[int, int], b: tuple[int, int]) -> float:
-        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+    def heuristic(a: Position, b: Position) -> float:
+        return a.manhattan_distance_to(b)
 
     open_set = []
     closed_set = set()
-    came_from: dict[tuple[int, int], tuple[int, int]] = {}
+    came_from: dict[Position, Position] = {}
 
     start_node = (start, 0, heuristic(start, goal))
     open_set.append(start_node)
@@ -102,7 +103,7 @@ def a_star_search(
             if neighbor in closed_set:
                 continue
 
-            base_cost = 2 if level[neighbor[1]][neighbor[0]] == "W" else 1
+            base_cost = 2 if level.get_terrain(neighbor.x, neighbor.y) == "W" else 1
             high_point_cost = high_point_penalty if neighbor in high_points else 0
             tentative_cost = current_cost + base_cost + high_point_cost
 
@@ -131,7 +132,7 @@ def a_star_search(
 
 def find_enclosed_points(
     contour_data: Any, level_value: float, elevation_map: np.ndarray
-) -> list[tuple[int, int]]:
+) -> list[Position]:
     """Find points enclosed within a contour line.
 
     Args:
@@ -140,7 +141,7 @@ def find_enclosed_points(
         elevation_map (np.ndarray): The elevation map.
 
     Returns:
-        List[Tuple[int, int]]: List of enclosed points.
+        List[Position]: List of enclosed points.
 
     """
     paths = contour_data.allsegs[0]
@@ -154,13 +155,13 @@ def find_enclosed_points(
             if (elevation_map[y1, x1] > level_value) != (
                 elevation_map[y2, x2] > level_value
             ):
-                enclosed_points.append((x1, y1))
+                enclosed_points.append(Position(x1, y1))
     return enclosed_points
 
 
 def generate_roads(
     settlements: list[dict],
-    level: list[list[str]],
+    level: Level,
     elevation_map: np.ndarray,
 ) -> nx.Graph:
     """Generate road network connecting settlements.
@@ -193,15 +194,15 @@ def generate_roads(
         settlement2 = settlements[j]
         path = a_star_search(
             level,
-            (settlement1["x"], settlement1["y"]),
-            (settlement2["x"], settlement2["y"]),
+            Position(settlement1["x"], settlement1["y"]),
+            Position(settlement2["x"], settlement2["y"]),
             elevation_map,
             high_points=[],
         )
         if path is not None:
             road_type = "land"
-            for px, py in path:
-                if level[py][px] == "W":
+            for pos in path:
+                if level.get_terrain(pos.x, pos.y) == "W":
                     road_type = "water"
                     break
             graph.add_edge(
@@ -244,15 +245,15 @@ def generate_roads(
                 if random.random() < connection_probability:
                     path = a_star_search(
                         level,
-                        (settlement1["x"], settlement1["y"]),
-                        (settlement2["x"], settlement2["y"]),
+                        Position(settlement1["x"], settlement1["y"]),
+                        Position(settlement2["x"], settlement2["y"]),
                         elevation_map,
                         high_points,
                     )
                     if path is not None:
                         road_type = "land"
-                        for px, py in path:
-                            if level[py][px] == "W":
+                        for pos in path:
+                            if level.get_terrain(pos.x, pos.y) == "W":
                                 road_type = "water"
                                 break
                         graph.add_edge(

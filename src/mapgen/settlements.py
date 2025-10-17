@@ -3,27 +3,9 @@
 import random
 from typing import TypedDict
 
-
-class Settlement(TypedDict):
-    """Represents a settlement in the map.
-
-    Attributes:
-        x (int): The x-coordinate of the settlement.
-        y (int): The y-coordinate of the settlement.
-        radius (float): The radius of the settlement.
-        name (str): The name of the settlement.
-        connectivity (int): The connectivity value of the settlement.
-
-    """
-
-    x: int
-    y: int
-    radius: float
-    name: str
-    connectivity: int
-
-
 import numpy as np
+
+from .level import Level
 
 
 def generate_settlement_name() -> str:
@@ -111,7 +93,7 @@ def generate_settlement_name() -> str:
 
 
 def generate_settlements(
-    level: list[list[str]],
+    level: Level,
     noise_map: np.ndarray,
     settlement_density: float = 0.002,
     min_radius: float = 0.5,
@@ -120,7 +102,7 @@ def generate_settlements(
     """Generate settlements on suitable terrain.
 
     Args:
-        level (List[List[str]]): The terrain level grid.
+        level (Level): The terrain level grid.
         noise_map (np.ndarray): The noise map array.
         settlement_density (float): The probability of placing a settlement on suitable terrain.
         min_radius (float): The minimum radius of settlements.
@@ -130,13 +112,13 @@ def generate_settlements(
         List[Settlement]: A list of generated settlements.
 
     """
-    height = len(level)
-    width = len(level[0])
+    height = level.height
+    width = level.width
 
     settlements: list[dict[str, int | float | str]] = []
     for y in range(height):
         for x in range(width):
-            if level[y][x] in ("P", "F"):  # Plains or Forest
+            if level.get_terrain(x, y) in ("P", "F"):  # Plains or Forest
                 if random.random() < settlement_density:
                     # Check for overlaps
                     is_overlapping = False

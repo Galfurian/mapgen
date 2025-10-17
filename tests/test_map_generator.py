@@ -22,8 +22,8 @@ def test_map_generator_generate() -> None:
     assert generator.elevation_map is not None
     assert generator.settlements is not None
     assert generator.roads_graph is not None
-    assert len(generator.level) == 50
-    assert len(generator.level[0]) == 50
+    assert generator.level.height == 50
+    assert generator.level.width == 50
 
 
 def test_map_generator_plot_without_generate() -> None:

@@ -2,6 +2,7 @@
 
 __version__ = "0.1.0"
 
+from .level import Level, Position
 from .map_generator import MapGenerator
 
-__all__ = ["MapGenerator"]
+__all__ = ["Level", "Position", "MapGenerator"]

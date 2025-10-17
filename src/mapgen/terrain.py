@@ -5,8 +5,10 @@ import random
 import noise
 import numpy as np
 
+from .level import Level
 
-def initialize_level(width: int, height: int) -> list[list[str]]:
+
+def initialize_level(width: int, height: int) -> Level:
     """Initialize a level grid filled with walls.
 
     Args:
@@ -14,10 +16,10 @@ def initialize_level(width: int, height: int) -> list[list[str]]:
         height (int): The height of the level.
 
     Returns:
-        List[List[str]]: A 2D list representing the level grid filled with walls.
+        Level: A Level instance representing the level grid filled with walls.
 
     """
-    return [["#"] * width for _ in range(height)]
+    return Level([["#"] * width for _ in range(height)])
 
 
 def initialize_character(
@@ -43,11 +45,11 @@ def initialize_character(
     }
 
 
-def dig(level: list[list[str]], character: dict) -> None:
+def dig(level: Level, character: dict) -> None:
     """Simulate character digging through the level.
 
     Args:
-        level (List[List[str]]): The level grid to modify.
+        level (Level): The level grid to modify.
         character (dict): The character state dictionary.
 
     """
@@ -55,19 +57,19 @@ def dig(level: list[list[str]], character: dict) -> None:
         x = character["x"]
         y = character["y"]
 
-        if level[y][x] == "#":
-            level[y][x] = " "
+        if level.get_terrain(x, y) == "#":
+            level.set_terrain(x, y, " ")
             character["wallCountdown"] -= 1
 
         traverse = random.randint(1, 4)
 
         if traverse == 1 and x > character["padding"]:
             character["x"] -= 1
-        elif traverse == 2 and x < len(level[0]) - 1 - character["padding"]:
+        elif traverse == 2 and x < level.width - 1 - character["padding"]:
             character["x"] += 1
         elif traverse == 3 and y > character["padding"]:
             character["y"] -= 1
-        elif traverse == 4 and y < len(level) - 1 - character["padding"]:
+        elif traverse == 4 and y < level.height - 1 - character["padding"]:
             character["y"] += 1
 
 
@@ -114,23 +116,23 @@ def generate_noise_map(
 
 
 def apply_terrain_features(
-    level: list[list[str]],
+    level: Level,
     noise_map: np.ndarray,
     sea_level: float = 0.03,
     mountain_level: float = 0.5,
     forest_threshold: float = 0.1,
-) -> tuple[list[list[str]], np.ndarray]:
+) -> tuple[Level, np.ndarray]:
     """Apply terrain features based on noise map.
 
     Args:
-        level (List[List[str]]): The level grid to modify.
+        level (Level): The level grid to modify.
         noise_map (np.ndarray): The noise map.
         sea_level (float): The threshold for sea level.
         mountain_level (float): The threshold for mountain level.
         forest_threshold (float): The threshold for forest.
 
     Returns:
-        Tuple[List[List[str]], np.ndarray]: The modified level and elevation map.
+        Tuple[Level, np.ndarray]: The modified level and elevation map.
 
     """
     height, width = noise_map.shape
@@ -141,57 +143,58 @@ def apply_terrain_features(
             noise_value = noise_map[y, x]
 
             if noise_value < sea_level:
-                level[y][x] = "W"  # Water
+                level.set_terrain(x, y, "W")  # Water
             elif noise_value < mountain_level:
                 if noise_value > forest_threshold:
-                    level[y][x] = "F"  # Forest
+                    level.set_terrain(x, y, "F")  # Forest
                 else:
-                    level[y][x] = "P"  # Plains
+                    level.set_terrain(x, y, "P")  # Plains
             else:
-                level[y][x] = "M"  # Mountain
+                level.set_terrain(x, y, "M")  # Mountain
 
     return level, elevation_map
 
 
-def smooth_terrain(level: list[list[str]], iterations: int = 5) -> list[list[str]]:
+def smooth_terrain(level: Level, iterations: int = 5) -> Level:
     """Smooth the terrain using cellular automata rules.
 
     Args:
-        level (List[List[str]]): The level grid to smooth.
+        level (Level): The level grid to smooth.
         iterations (int): The number of smoothing iterations.
 
     Returns:
-        List[List[str]]: The smoothed level grid.
+        Level: The smoothed level grid.
 
     """
-    height = len(level)
-    width = len(level[0])
+    height = level.height
+    width = level.width
 
     for _ in range(iterations):
-        new_level = [row[:] for row in level]
+        new_grid = [row[:] for row in level.grid]
         for y in range(1, height - 1):
             for x in range(1, width - 1):
-                if level[y][x] in ("#", " "):
+                current_terrain = level.get_terrain(x, y)
+                if current_terrain in ("#", " "):
                     continue
 
                 neighbor_values = [
-                    level[y - 1][x - 1],
-                    level[y - 1][x],
-                    level[y - 1][x + 1],
-                    level[y][x - 1],
-                    level[y][x + 1],
-                    level[y + 1][x - 1],
-                    level[y + 1][x],
-                    level[y + 1][x + 1],
+                    level.get_terrain(x - 1, y - 1),
+                    level.get_terrain(x, y - 1),
+                    level.get_terrain(x + 1, y - 1),
+                    level.get_terrain(x - 1, y),
+                    level.get_terrain(x + 1, y),
+                    level.get_terrain(x - 1, y + 1),
+                    level.get_terrain(x, y + 1),
+                    level.get_terrain(x + 1, y + 1),
                 ]
 
-                if level[y][x] != "#" and level[y][x] != "W":
+                if current_terrain != "#" and current_terrain != "W":
                     if neighbor_values.count("M") > 4:
-                        new_level[y][x] = "M"
+                        new_grid[y][x] = "M"
                     elif neighbor_values.count("F") > 5:
-                        new_level[y][x] = "F"
+                        new_grid[y][x] = "F"
                     elif neighbor_values.count("P") > 6:
-                        new_level[y][x] = "P"
-        level = new_level
+                        new_grid[y][x] = "P"
+        level.grid = new_grid
 
     return level

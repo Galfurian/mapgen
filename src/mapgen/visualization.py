@@ -7,30 +7,32 @@ from matplotlib import patches
 from matplotlib.figure import Figure
 from scipy.interpolate import interp1d
 
+from .level import Level, Position
+
 
 def apply_curves_to_path(
-    path: list[tuple[int, int]],
+    path: list[Position],
     elevation_map: np.ndarray,
     num_control_points: int = 5,
     smoothing_factor: float = 0.5,
-) -> list[tuple[int, int]]:
+) -> list[Position]:
     """Apply curves to a path based on elevation.
 
     Args:
-        path (List[Tuple[int, int]]): The path to curve.
+        path (List[Position]): The path to curve.
         elevation_map (np.ndarray): The elevation map.
         num_control_points (int): Number of control points.
         smoothing_factor (float): Smoothing factor.
 
     Returns:
-        List[Tuple[int, int]]: The curved path.
+        List[Position]: The curved path.
 
     """
     if len(path) <= 2:
         return path
 
-    x = np.array([p[0] for p in path])
-    y = np.array([p[1] for p in path])
+    x = np.array([p.x for p in path])
+    y = np.array([p.y for p in path])
     distances = np.cumsum(np.sqrt(np.diff(x) ** 2 + np.diff(y) ** 2))
     distances = np.insert(distances, 0, 0)
 
@@ -73,15 +75,15 @@ def apply_curves_to_path(
     new_path_distances = np.linspace(0, total_distance, num=len(path))
     new_x = f_x(new_path_distances)
     new_y = f_y(new_path_distances)
-    curved_path = [(int(round(x)), int(round(y))) for x, y in zip(new_x, new_y)]
+    curved_path = [Position(int(round(x)), int(round(y))) for x, y in zip(new_x, new_y)]
     return curved_path
 
 
-def is_coastal(level: list[list[str]], x: int, y: int, max_distance: int = 2) -> bool:
+def is_coastal(level: Level, x: int, y: int, max_distance: int = 2) -> bool:
     """Check if a point is within distance from water.
 
     Args:
-        level (List[List[str]]): The level grid.
+        level (Level): The level grid.
         x (int): The x coordinate.
         y (int): The y coordinate.
         max_distance (int): Maximum distance to check.
@@ -90,19 +92,19 @@ def is_coastal(level: list[list[str]], x: int, y: int, max_distance: int = 2) ->
         bool: True if coastal, False otherwise.
 
     """
-    height = len(level)
-    width = len(level[0])
+    height = level.height
+    width = level.width
 
     for dx in range(-max_distance, max_distance + 1):
         for dy in range(-max_distance, max_distance + 1):
             nx, ny = x + dx, y + dy
-            if 0 <= nx < width and 0 <= ny < height and level[ny][nx] == "W":
+            if level.is_valid_position(nx, ny) and level.get_terrain(nx, ny) == "W":
                 return True
     return False
 
 
 def plot_level(
-    level: list[list[str]],
+    level: Level,
     noise_map: np.ndarray,
     settlements: list[dict],
     roads_graph: nx.Graph,
@@ -121,8 +123,8 @@ def plot_level(
         Figure: The matplotlib figure.
 
     """
-    height = len(level)
-    width = len(level[0])
+    height = level.height
+    width = level.width
 
     color_map = {
         "#": (0.2, 0.2, 0.2),  # Wall
@@ -137,7 +139,7 @@ def plot_level(
 
     for y in range(height):
         for x in range(width):
-            terrain_type = level[y][x]
+            terrain_type = level.get_terrain(x, y)
             base_color = color_map.get(terrain_type, (1.0, 1.0, 1.0))
             noise_value = noise_map[y, x]
             shade_factor = (noise_value + 1) / 2
@@ -159,14 +161,17 @@ def plot_level(
     for u, v, data in roads_graph.edges(data=True):
         if "path" in data:
             path = data["path"]
-            x_coords, y_coords = zip(*path)
+            x_coords = [pos.x for pos in path]
+            y_coords = [pos.y for pos in path]
             if data["type"] == "water":
                 ax.plot(
                     x_coords, y_coords, color="gray", linestyle="dotted", linewidth=2, zorder=1
                 )
             else:
                 curved_path = apply_curves_to_path(path, elevation_map)
-                ax.plot(*zip(*curved_path), color="gray", linewidth=2, zorder=1)
+                curved_x = [pos.x for pos in curved_path]
+                curved_y = [pos.y for pos in curved_path]
+                ax.plot(curved_x, curved_y, color="gray", linewidth=2, zorder=1)
 
     # Plot settlements
     existing_texts: list[tuple[int, int]] = []

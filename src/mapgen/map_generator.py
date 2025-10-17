@@ -5,6 +5,7 @@ import numpy as np
 from matplotlib.figure import Figure
 
 from . import roads, settlements, terrain, visualization
+from .level import Level
 
 
 class MapGenerator:
@@ -68,7 +69,7 @@ class MapGenerator:
         self.min_settlement_radius = min_settlement_radius
         self.max_settlement_radius = max_settlement_radius
 
-        self.level: list[list[str]] | None = None
+        self.level: Level | None = None
         self.noise_map: np.ndarray | None = None
         self.elevation_map: np.ndarray | None = None
         self.settlements: list[dict] | None = None
