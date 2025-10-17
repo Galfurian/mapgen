@@ -155,6 +155,19 @@ def plot_level(
         X, Y, noise_map, levels=contour_levels, colors=contour_colors, linewidths=0.5
     )
 
+    # Plot roads first (so settlements appear on top)
+    for u, v, data in roads_graph.edges(data=True):
+        if "path" in data:
+            path = data["path"]
+            x_coords, y_coords = zip(*path)
+            if data["type"] == "water":
+                ax.plot(
+                    x_coords, y_coords, color="gray", linestyle="dotted", linewidth=2, zorder=1
+                )
+            else:
+                curved_path = apply_curves_to_path(path, elevation_map)
+                ax.plot(*zip(*curved_path), color="gray", linewidth=2, zorder=1)
+
     # Plot settlements
     existing_texts: list[tuple[int, int]] = []
     for settlement in settlements:
@@ -163,11 +176,16 @@ def plot_level(
         radius = settlement["radius"]
 
         circle = patches.Circle(
-            (x, y), radius, facecolor="white", edgecolor="black", linewidth=1
+            (x, y),
+            radius,
+            facecolor="white",
+            edgecolor="black",
+            linewidth=1,
+            zorder=3,
         )
         ax.add_patch(circle)
 
-        font_size = int(radius * 10)
+        font_size = int(radius * 6)  # Reduced from 10 to 6 for smaller text
 
         possible_positions = [
             (x, y + 2),
@@ -211,30 +229,18 @@ def plot_level(
                 settlement["name"],
                 color="white",
                 fontsize=font_size,
-                rotation=90,
+                rotation=0,
                 bbox={
-                    "facecolor": "black",
-                    "edgecolor": "black",
-                    "alpha": 1,
-                    "pad": 0.5,
+                    "facecolor": "gray",
+                    "edgecolor": "none",
+                    "alpha": 0.7,
+                    "pad": 0.3,
                 },
                 ha="center",
                 va="center",
+                zorder=3,
             )
             existing_texts.append((text_x, text_y))
-
-    # Plot roads
-    for u, v, data in roads_graph.edges(data=True):
-        if "path" in data:
-            path = data["path"]
-            x_coords, y_coords = zip(*path)
-            if data["type"] == "water":
-                ax.plot(
-                    x_coords, y_coords, color="gray", linestyle="dotted", linewidth=2
-                )
-            else:
-                curved_path = apply_curves_to_path(path, elevation_map)
-                ax.plot(*zip(*curved_path), color="gray", linewidth=2)
 
     ax.set_xticks([])
     ax.set_yticks([])

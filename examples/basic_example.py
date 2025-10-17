@@ -33,7 +33,7 @@ def main() -> None:
     fig = generator.plot()
 
     # Save to file (since we can't display in headless environment)
-    fig.savefig("fantasy_map.png", dpi=150, bbox_inches="tight")
+    fig.savefig("fantasy_map.png", dpi=300, bbox_inches="tight", facecolor='white')
     print("Map saved as 'fantasy_map.png'")
 
     # You can also access the raw data:
