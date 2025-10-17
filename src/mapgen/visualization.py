@@ -7,7 +7,7 @@ from matplotlib import patches
 from matplotlib.figure import Figure
 from scipy.interpolate import interp1d
 
-from .level import Level, Position
+from .map import Map, Position
 
 
 def apply_curves_to_path(
@@ -79,11 +79,11 @@ def apply_curves_to_path(
     return curved_path
 
 
-def is_coastal(level: Level, x: int, y: int, max_distance: int = 2) -> bool:
+def is_coastal(map: Map, x: int, y: int, max_distance: int = 2) -> bool:
     """Check if a point is within distance from water.
 
     Args:
-        level (Level): The level grid.
+        map (Map): The map grid.
         x (int): The x coordinate.
         y (int): The y coordinate.
         max_distance (int): Maximum distance to check.
@@ -92,28 +92,28 @@ def is_coastal(level: Level, x: int, y: int, max_distance: int = 2) -> bool:
         bool: True if coastal, False otherwise.
 
     """
-    height = level.height
-    width = level.width
+    height = map.height
+    width = map.width
 
     for dx in range(-max_distance, max_distance + 1):
         for dy in range(-max_distance, max_distance + 1):
             nx, ny = x + dx, y + dy
-            if level.is_valid_position(nx, ny) and level.get_terrain(nx, ny) == "W":
+            if map.is_valid_position(nx, ny) and map.get_terrain(nx, ny) == "W":
                 return True
     return False
 
 
-def plot_level(
-    level: Level,
+def plot_map(
+    map: Map,
     noise_map: np.ndarray,
     settlements: list[dict],
     roads_graph: nx.Graph,
     elevation_map: np.ndarray,
 ) -> Figure:
-    """Plot the level with terrain, settlements, and roads.
+    """Plot the map with terrain, settlements, and roads.
 
     Args:
-        level (List[List[str]]): The level grid.
+        map (Map): The map grid.
         noise_map (np.ndarray): The noise map.
         settlements (List[Dict]): List of settlements.
         roads_graph (nx.Graph): The roads graph.
@@ -123,8 +123,8 @@ def plot_level(
         Figure: The matplotlib figure.
 
     """
-    height = level.height
-    width = level.width
+    height = map.height
+    width = map.width
 
     color_map = {
         "#": (0.2, 0.2, 0.2),  # Wall
@@ -139,7 +139,7 @@ def plot_level(
 
     for y in range(height):
         for x in range(width):
-            terrain_type = level.get_terrain(x, y)
+            terrain_type = map.get_terrain(x, y)
             base_color = color_map.get(terrain_type, (1.0, 1.0, 1.0))
             noise_value = noise_map[y, x]
             shade_factor = (noise_value + 1) / 2

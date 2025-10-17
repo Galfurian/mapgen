@@ -33,11 +33,11 @@ def main() -> None:
     fig = generator.plot()
 
     # Save to file (since we can't display in headless environment)
-    fig.savefig("fantasy_map.png", dpi=300, bbox_inches="tight", facecolor='white')
+    fig.savefig("fantasy_map.png", dpi=300, bbox_inches="tight", facecolor="white")
     print("Map saved as 'fantasy_map.png'")
 
     # You can also access the raw data:
-    # generator.level - 2D list of terrain types
+    # generator.map - Map object with terrain types
     # generator.noise_map - numpy array of noise values
     # generator.elevation_map - numpy array of elevation
     # generator.settlements - list of settlement dicts

@@ -1,11 +1,10 @@
 """Settlement generation module."""
 
 import random
-from typing import TypedDict
 
 import numpy as np
 
-from .level import Level
+from .map import Map
 
 
 def generate_settlement_name() -> str:
@@ -93,7 +92,7 @@ def generate_settlement_name() -> str:
 
 
 def generate_settlements(
-    level: Level,
+    map: Map,
     noise_map: np.ndarray,
     settlement_density: float = 0.002,
     min_radius: float = 0.5,
@@ -102,7 +101,7 @@ def generate_settlements(
     """Generate settlements on suitable terrain.
 
     Args:
-        level (Level): The terrain level grid.
+        map (Map): The terrain map grid.
         noise_map (np.ndarray): The noise map array.
         settlement_density (float): The probability of placing a settlement on suitable terrain.
         min_radius (float): The minimum radius of settlements.
@@ -112,13 +111,13 @@ def generate_settlements(
         List[Settlement]: A list of generated settlements.
 
     """
-    height = level.height
-    width = level.width
+    height = map.height
+    width = map.width
 
     settlements: list[dict[str, int | float | str]] = []
     for y in range(height):
         for x in range(width):
-            if level.get_terrain(x, y) in ("P", "F"):  # Plains or Forest
+            if map.get_terrain(x, y) in ("P", "F"):  # Plains or Forest
                 if random.random() < settlement_density:
                     # Check for overlaps
                     is_overlapping = False

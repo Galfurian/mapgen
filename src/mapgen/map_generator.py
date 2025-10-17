@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib.figure import Figure
 
 from . import roads, settlements, terrain, visualization
-from .level import Level
+from .map import Map
 
 
 class MapGenerator:
@@ -69,7 +69,7 @@ class MapGenerator:
         self.min_settlement_radius = min_settlement_radius
         self.max_settlement_radius = max_settlement_radius
 
-        self.level: Level | None = None
+        self.map: Map | None = None
         self.noise_map: np.ndarray | None = None
         self.elevation_map: np.ndarray | None = None
         self.settlements: list[dict] | None = None
@@ -81,8 +81,8 @@ class MapGenerator:
         This method performs all steps to generate a procedural fantasy map
         including terrain, settlements, and roads.
         """
-        # Initialize level
-        self.level = terrain.initialize_level(self.width, self.height)
+        # Initialize map
+        self.map = terrain.initialize_level(self.width, self.height)
 
         # Initialize character
         character = terrain.initialize_character(
@@ -90,7 +90,7 @@ class MapGenerator:
         )
 
         # Dig
-        terrain.dig(self.level, character)
+        terrain.dig(self.map, character)
 
         # Generate noise
         self.noise_map = terrain.generate_noise_map(
@@ -103,8 +103,8 @@ class MapGenerator:
         )
 
         # Apply terrain features
-        self.level, self.elevation_map = terrain.apply_terrain_features(
-            self.level,
+        self.map, self.elevation_map = terrain.apply_terrain_features(
+            self.map,
             self.noise_map,
             self.sea_level,
             self.mountain_level,
@@ -112,11 +112,11 @@ class MapGenerator:
         )
 
         # Smooth terrain
-        self.level = terrain.smooth_terrain(self.level, self.smoothing_iterations)
+        self.map = terrain.smooth_terrain(self.map, self.smoothing_iterations)
 
         # Generate settlements
         self.settlements = settlements.generate_settlements(
-            self.level,
+            self.map,
             self.noise_map,
             self.settlement_density,
             self.min_settlement_radius,
@@ -125,7 +125,7 @@ class MapGenerator:
 
         # Generate roads
         self.roads_graph = roads.generate_roads(
-            self.settlements, self.level, self.elevation_map
+            self.settlements, self.map, self.elevation_map
         )
 
     def plot(self) -> Figure:
@@ -138,14 +138,14 @@ class MapGenerator:
             ValueError: If the map has not been generated yet.
 
         """
-        if self.level is None:
+        if self.map is None:
             raise ValueError("Map not generated yet. Call generate() first.")
         assert self.noise_map is not None
         assert self.settlements is not None
         assert self.roads_graph is not None
         assert self.elevation_map is not None
-        return visualization.plot_level(
-            self.level,
+        return visualization.plot_map(
+            self.map,
             self.noise_map,
             self.settlements,
             self.roads_graph,

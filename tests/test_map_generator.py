@@ -10,20 +10,20 @@ def test_map_generator_initialization() -> None:
     generator = MapGenerator(width=50, height=50)
     assert generator.width == 50
     assert generator.height == 50
-    assert generator.level is None
+    assert generator.map is None
 
 
 def test_map_generator_generate() -> None:
     """Test map generation."""
     generator = MapGenerator(width=50, height=50, wall_countdown=1000)
     generator.generate()
-    assert generator.level is not None
+    assert generator.map is not None
     assert generator.noise_map is not None
     assert generator.elevation_map is not None
     assert generator.settlements is not None
     assert generator.roads_graph is not None
-    assert generator.level.height == 50
-    assert generator.level.width == 50
+    assert generator.map.height == 50
+    assert generator.map.width == 50
 
 
 def test_map_generator_plot_without_generate() -> None:

@@ -1,7 +1,6 @@
 """Data models for the map generator."""
 
 from dataclasses import dataclass
-from typing import List
 
 
 @dataclass(frozen=True)
@@ -10,12 +9,15 @@ class Position:
 
     This class encapsulates x and y coordinates for positions in the map grid.
     It's immutable (frozen) to ensure coordinate integrity.
+
+    Attributes:
+        x (int): The x-coordinate.
+        y (int): The y-coordinate.
+
     """
 
     x: int
-    """The x-coordinate."""
     y: int
-    """The y-coordinate."""
 
     def __iter__(self):
         """Allow tuple unpacking: x, y = position."""
@@ -30,6 +32,7 @@ class Position:
 
         Returns:
             float: The Euclidean distance.
+
         """
         return ((self.x - other.x) ** 2 + (self.y - other.y) ** 2) ** 0.5
 
@@ -41,29 +44,33 @@ class Position:
 
         Returns:
             int: The Manhattan distance.
+
         """
         return abs(self.x - other.x) + abs(self.y - other.y)
 
 
 @dataclass
-class Level:
-    """Represents a 2D level grid with terrain data.
+class Map:
+    """Represents a 2D map grid with terrain data.
 
-    This class encapsulates the level data and provides convenient methods
+    This class encapsulates the map data and provides convenient methods
     for accessing and manipulating terrain information.
+
+    Attributes:
+        grid (List[List[str]]): The 2D grid of terrain types.
+
     """
 
-    grid: List[List[str]]
-    """The 2D grid of terrain types."""
+    grid: list[list[str]]
 
     @property
     def height(self) -> int:
-        """Get the height of the level."""
+        """Get the height of the map."""
         return len(self.grid)
 
     @property
     def width(self) -> int:
-        """Get the width of the level."""
+        """Get the width of the map."""
         if self.height == 0:
             return 0
         return len(self.grid[0])
@@ -80,6 +87,7 @@ class Level:
 
         Raises:
             IndexError: If coordinates are out of bounds.
+
         """
         return self.grid[y][x]
 
@@ -93,11 +101,12 @@ class Level:
 
         Raises:
             IndexError: If coordinates are out of bounds.
+
         """
         self.grid[y][x] = terrain
 
     def is_valid_position(self, x: int, y: int) -> bool:
-        """Check if the given coordinates are within the level bounds.
+        """Check if the given coordinates are within the map bounds.
 
         Args:
             x (int): The x coordinate.
@@ -105,17 +114,18 @@ class Level:
 
         Returns:
             bool: True if coordinates are valid, False otherwise.
+
         """
         return 0 <= x < self.width and 0 <= y < self.height
 
-    def __getitem__(self, key: int) -> List[str]:
+    def __getitem__(self, key: int) -> list[str]:
         """Get a row from the grid."""
         return self.grid[key]
 
-    def __setitem__(self, key: int, value: List[str]) -> None:
+    def __setitem__(self, key: int, value: list[str]) -> None:
         """Set a row in the grid."""
         self.grid[key] = value
 
     def __len__(self) -> int:
-        """Get the height of the level."""
+        """Get the height of the map."""
         return self.height

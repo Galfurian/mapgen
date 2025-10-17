@@ -5,21 +5,21 @@ import random
 import noise
 import numpy as np
 
-from .level import Level
+from .map import Map
 
 
-def initialize_level(width: int, height: int) -> Level:
-    """Initialize a level grid filled with walls.
+def initialize_level(width: int, height: int) -> Map:
+    """Initialize a map grid filled with walls.
 
     Args:
-        width (int): The width of the level.
-        height (int): The height of the level.
+        width (int): The width of the map.
+        height (int): The height of the map.
 
     Returns:
-        Level: A Level instance representing the level grid filled with walls.
+        Map: A Map instance representing the map grid filled with walls.
 
     """
-    return Level([["#"] * width for _ in range(height)])
+    return Map([["#"] * width for _ in range(height)])
 
 
 def initialize_character(
@@ -28,8 +28,8 @@ def initialize_character(
     """Initialize a digging character.
 
     Args:
-        width (int): The width of the level.
-        height (int): The height of the level.
+        width (int): The width of the map.
+        height (int): The height of the map.
         padding (int): The padding around the edges.
         wall_countdown (int): The number of walls to dig.
 
@@ -45,11 +45,11 @@ def initialize_character(
     }
 
 
-def dig(level: Level, character: dict) -> None:
-    """Simulate character digging through the level.
+def dig(map: Map, character: dict) -> None:
+    """Simulate character digging through the map.
 
     Args:
-        level (Level): The level grid to modify.
+        map (Map): The map grid to modify.
         character (dict): The character state dictionary.
 
     """
@@ -57,19 +57,19 @@ def dig(level: Level, character: dict) -> None:
         x = character["x"]
         y = character["y"]
 
-        if level.get_terrain(x, y) == "#":
-            level.set_terrain(x, y, " ")
+        if map.get_terrain(x, y) == "#":
+            map.set_terrain(x, y, " ")
             character["wallCountdown"] -= 1
 
         traverse = random.randint(1, 4)
 
         if traverse == 1 and x > character["padding"]:
             character["x"] -= 1
-        elif traverse == 2 and x < level.width - 1 - character["padding"]:
+        elif traverse == 2 and x < map.width - 1 - character["padding"]:
             character["x"] += 1
         elif traverse == 3 and y > character["padding"]:
             character["y"] -= 1
-        elif traverse == 4 and y < level.height - 1 - character["padding"]:
+        elif traverse == 4 and y < map.height - 1 - character["padding"]:
             character["y"] += 1
 
 
@@ -116,23 +116,23 @@ def generate_noise_map(
 
 
 def apply_terrain_features(
-    level: Level,
+    map: Map,
     noise_map: np.ndarray,
     sea_level: float = 0.03,
     mountain_level: float = 0.5,
     forest_threshold: float = 0.1,
-) -> tuple[Level, np.ndarray]:
+) -> tuple[Map, np.ndarray]:
     """Apply terrain features based on noise map.
 
     Args:
-        level (Level): The level grid to modify.
+        map (Map): The map grid to modify.
         noise_map (np.ndarray): The noise map.
-        sea_level (float): The threshold for sea level.
-        mountain_level (float): The threshold for mountain level.
+        sea_level (float): The threshold for sea map.
+        mountain_level (float): The threshold for mountain map.
         forest_threshold (float): The threshold for forest.
 
     Returns:
-        Tuple[Level, np.ndarray]: The modified level and elevation map.
+        Tuple[Map, np.ndarray]: The modified map and elevation map.
 
     """
     height, width = noise_map.shape
@@ -143,49 +143,49 @@ def apply_terrain_features(
             noise_value = noise_map[y, x]
 
             if noise_value < sea_level:
-                level.set_terrain(x, y, "W")  # Water
+                map.set_terrain(x, y, "W")  # Water
             elif noise_value < mountain_level:
                 if noise_value > forest_threshold:
-                    level.set_terrain(x, y, "F")  # Forest
+                    map.set_terrain(x, y, "F")  # Forest
                 else:
-                    level.set_terrain(x, y, "P")  # Plains
+                    map.set_terrain(x, y, "P")  # Plains
             else:
-                level.set_terrain(x, y, "M")  # Mountain
+                map.set_terrain(x, y, "M")  # Mountain
 
-    return level, elevation_map
+    return map, elevation_map
 
 
-def smooth_terrain(level: Level, iterations: int = 5) -> Level:
+def smooth_terrain(map: Map, iterations: int = 5) -> Map:
     """Smooth the terrain using cellular automata rules.
 
     Args:
-        level (Level): The level grid to smooth.
+        map (Map): The map grid to smooth.
         iterations (int): The number of smoothing iterations.
 
     Returns:
-        Level: The smoothed level grid.
+        Map: The smoothed map grid.
 
     """
-    height = level.height
-    width = level.width
+    height = map.height
+    width = map.width
 
     for _ in range(iterations):
-        new_grid = [row[:] for row in level.grid]
+        new_grid = [row[:] for row in map.grid]
         for y in range(1, height - 1):
             for x in range(1, width - 1):
-                current_terrain = level.get_terrain(x, y)
+                current_terrain = map.get_terrain(x, y)
                 if current_terrain in ("#", " "):
                     continue
 
                 neighbor_values = [
-                    level.get_terrain(x - 1, y - 1),
-                    level.get_terrain(x, y - 1),
-                    level.get_terrain(x + 1, y - 1),
-                    level.get_terrain(x - 1, y),
-                    level.get_terrain(x + 1, y),
-                    level.get_terrain(x - 1, y + 1),
-                    level.get_terrain(x, y + 1),
-                    level.get_terrain(x + 1, y + 1),
+                    map.get_terrain(x - 1, y - 1),
+                    map.get_terrain(x, y - 1),
+                    map.get_terrain(x + 1, y - 1),
+                    map.get_terrain(x - 1, y),
+                    map.get_terrain(x + 1, y),
+                    map.get_terrain(x - 1, y + 1),
+                    map.get_terrain(x, y + 1),
+                    map.get_terrain(x + 1, y + 1),
                 ]
 
                 if current_terrain != "#" and current_terrain != "W":
@@ -195,6 +195,6 @@ def smooth_terrain(level: Level, iterations: int = 5) -> Level:
                         new_grid[y][x] = "F"
                     elif neighbor_values.count("P") > 6:
                         new_grid[y][x] = "P"
-        level.grid = new_grid
+        map.grid = new_grid
 
-    return level
+    return map
