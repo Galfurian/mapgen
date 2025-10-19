@@ -267,27 +267,19 @@ class Settlement(BaseModel):
         return self.position.distance_to(other.position)
 
 
-@dataclass
-class MapData:
-    """Represents a 2D map grid with terrain data.
+class MapData(BaseModel):
+    """
+    Represents a 2D map grid with terrain data.
 
     This class encapsulates the map data and provides convenient methods
     for accessing and manipulating terrain information.
 
     Attributes:
         grid (list[list[Tile]]): The 2D grid of terrain tiles.
-        noise_map (np.ndarray | None): The noise map used for terrain generation and visualization.
-        elevation_map (np.ndarray | None): The elevation map derived from terrain features.
-        settlements (list[Settlement] | None): List of settlements on the map.
-        roads_graph (nx.Graph | None): The road network connecting settlements.
 
     """
 
     grid: list[list[Tile]]
-    noise_map: np.ndarray | None = None
-    elevation_map: np.ndarray | None = None
-    settlements: list[Settlement] | None = None
-    roads_graph: nx.Graph | None = None
 
     @property
     def height(self) -> int:
@@ -420,114 +412,17 @@ class MapData:
             for pos in self.get_neighbors(x, y, walkable_only, include_diagonals)
         ]
 
-    def to_json(self) -> dict:
-        """Convert this map data to a JSON-serializable dictionary.
+    def __getitem__(self, key: int) -> list[Tile]:
+        """Get a row from the grid."""
+        return self.grid[key]
 
-        Returns:
-            dict: JSON-serializable representation of this map data.
-        """
-        # Collect unique tiles and assign sequential IDs
-        unique_tiles: list[Tile] = []
-        tile_to_id = {}
+    def __setitem__(self, key: int, value: list[Tile]) -> None:
+        """Set a row in the grid."""
+        self.grid[key] = value
 
-        for row in self.grid:
-            for tile in row:
-                if tile not in tile_to_id:
-                    tile_id = len(unique_tiles)
-                    tile_to_id[tile] = tile_id
-                    unique_tiles.append(tile)
-
-        # Create grid as comma-separated string of tile IDs
-        grid_rows = []
-        for row in self.grid:
-            row_ids = [str(tile_to_id[tile]) for tile in row]
-            grid_rows.append(",".join(row_ids))
-
-        result = {
-            "width": self.width,
-            "height": self.height,
-            "tiles": [tile for tile in unique_tiles],
-            "grid": "\n".join(grid_rows),
-        }
-
-        # Add optional fields if they exist
-        if self.noise_map is not None:
-            result["noise_map"] = np.round(self.noise_map, 4).tolist()
-
-        if self.elevation_map is not None:
-            result["elevation_map"] = np.round(self.elevation_map, 4).tolist()
-
-        if self.settlements is not None:
-            result["settlements"] = [settlement for settlement in self.settlements]
-
-        if self.roads_graph is not None:
-            # Convert networkx graph to serializable format
-            edges_data = []
-            for u, v, data in self.roads_graph.edges(data=True):
-                edge_data = {
-                    "u": u,
-                    "v": v,
-                    "data": {
-                        "path": [pos for pos in data["path"]],
-                        "type": data.get("type", RoadType.LAND).value,
-                    },
-                }
-                edges_data.append(edge_data)
-            result["roads_graph"] = edges_data
-
-        return result
-
-    @classmethod
-    def from_json(cls, data: dict) -> "MapData":
-        """Create a MapData instance from a JSON dictionary.
-
-        Args:
-            data: JSON dictionary containing map data.
-
-        Returns:
-            MapData: New MapData instance.
-        """
-        # Reconstruct tiles
-        tiles = [Tile.model_validate_json(tile_data) for tile_data in data["tiles"]]
-
-        # Reconstruct the grid from comma-separated strings
-        grid = []
-        for row_str in data["grid"].split("\n"):
-            if row_str.strip():  # Skip empty lines
-                row_ids = [int(id_str) for id_str in row_str.split(",")]
-                row = [tiles[tile_id] for tile_id in row_ids]
-                grid.append(row)
-
-        # Create the basic MapData
-        map_data = cls(grid=grid)
-
-        # Add optional fields if they exist
-        if "noise_map" in data:
-            map_data.noise_map = np.array(data["noise_map"])
-
-        if "elevation_map" in data:
-            map_data.elevation_map = np.array(data["elevation_map"])
-
-        if "settlements" in data:
-            map_data.settlements = [
-                Settlement.model_validate_json(s_data) for s_data in data["settlements"]
-            ]
-
-        if "roads_graph" in data:
-            # Reconstruct networkx graph
-            graph = nx.Graph()
-            for edge_data in data["roads_graph"]:
-                u = edge_data["u"]
-                v = edge_data["v"]
-                path_data = edge_data["data"]["path"]
-                path = [
-                    Position.model_validate_json(pos_data) for pos_data in path_data
-                ]
-                road_type = RoadType(edge_data["data"]["type"])
-                graph.add_edge(u, v, path=path, type=road_type)
-            map_data.roads_graph = graph
-
-        return map_data
+    def __len__(self) -> int:
+        """Get the height of the map."""
+        return self.height
 
     def save_to_json(self, filepath: str) -> None:
         """Save the map data to a JSON file.
@@ -539,7 +434,7 @@ class MapData:
         logger.info(f"Saving map data to {filepath}")
 
         with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(self.to_json(), f, indent=2, ensure_ascii=False)
+            f.write(self.model_dump_json(indent=2))
             logger.info(f"Map data saved successfully in {filepath}")
 
     @classmethod
@@ -556,16 +451,4 @@ class MapData:
         """
         logger.info(f"Loading map data from {filepath}")
         with open(filepath, "r", encoding="utf-8") as f:
-            return cls.from_json(json.load(f))
-
-    def __getitem__(self, key: int) -> list[Tile]:
-        """Get a row from the grid."""
-        return self.grid[key]
-
-    def __setitem__(self, key: int, value: list[Tile]) -> None:
-        """Set a row in the grid."""
-        self.grid[key] = value
-
-    def __len__(self) -> int:
-        """Get the height of the map."""
-        return self.height
+            return cls.model_validate_json(f.read())

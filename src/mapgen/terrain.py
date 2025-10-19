@@ -8,26 +8,6 @@ import numpy as np
 from . import logger
 from .map_data import MapData, Tile
 
-
-def initialize_map_data(
-    width: int,
-    height: int,
-    tiles: dict[str, Tile],
-) -> MapData:
-    """Initialize a map grid filled with walls.
-
-    Args:
-        width (int): The width of the map.
-        height (int): The height of the map.
-        tiles (dict[str, Tile]): The tile catalog.
-
-    Returns:
-        MapData: A MapData instance representing the map grid filled with walls.
-
-    """
-    return MapData([[tiles["wall"] for _ in range(width)] for _ in range(height)])
-
-
 def dig(
     map_data: MapData,
     tiles: dict[str, Tile],

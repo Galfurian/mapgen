@@ -4,7 +4,7 @@
 import os
 from pathlib import Path
 
-from mapgen import MapGenerator
+from mapgen import MapGenerator, visualization
 from mapgen.map_data import MapData
 
 
@@ -30,22 +30,39 @@ def main() -> None:
         settlement_density=0.0015,
     )
 
-    map_data = generator.generate()
-    print(f"   ✅ Generated {map_data.width}x{map_data.height} map")
-    print(
-        f"   📊 Terrain: {len(set(tile.name for row in map_data.grid for tile in row))} types"
-    )
-    print(
-        f"   🏘️  Settlements: {len(map_data.settlements) if map_data.settlements else 0}"
-    )
-    print(
-        f"   🛣️  Roads: {len(map_data.roads_graph.edges) if map_data.roads_graph else 0}"
-    )
+    generator.generate()
+
+    if generator.map_data is None:
+        print("   ❌ Map generation failed!")
+        return
+    if generator.noise_map is None:
+        print("   ❌ Noise map generation failed!")
+        return
+    if generator.elevation_map is None:
+        print("   ❌ Elevation map generation failed!")
+        return
+    if generator.settlements is None:
+        print("   ❌ Settlement generation failed!")
+        return
+    if generator.roads_graph is None:
+        print("   ❌ Road generation failed!")
+        return
+
+    print(f"   ✅ Generated {generator.width}x{generator.height} map")
+    print(f"   📊 Terrain: {len(generator.tiles)} types")
+    print(f"   🏘️  Settlements: {len(generator.settlements)}")
+    print(f"   🛣️  Roads: {len(generator.roads_graph.edges)}")
 
     # Step 3: Generate PNG from original map
     png_original_path = output_dir / "original_map.png"
     print(f"\n3️⃣  Generating PNG from original map...")
-    fig_original = generator.plot(map_data)
+    fig_original = visualization.plot_map(
+        map_data=generator.map_data,
+        noise_map=generator.noise_map,
+        settlements=generator.settlements,
+        roads_graph=generator.roads_graph,
+        elevation_map=generator.elevation_map,
+    )
     fig_original.savefig(
         png_original_path, dpi=200, bbox_inches="tight", facecolor="white"
     )
