@@ -40,6 +40,7 @@ class MapGenerator:
         settlement_density: float = 0.002,
         min_settlement_radius: float = 0.5,
         max_settlement_radius: float = 1.0,
+        seed: int | None = None,
     ):
         """Initialize the map generator.
 
