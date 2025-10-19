@@ -4,6 +4,9 @@ import json
 from dataclasses import dataclass
 from enum import Enum
 
+import networkx as nx
+import numpy as np
+
 from . import logger
 
 
@@ -334,10 +337,18 @@ class MapData:
 
     Attributes:
         grid (list[list[Tile]]): The 2D grid of terrain tiles.
+        noise_map (np.ndarray | None): The noise map used for terrain generation and visualization.
+        elevation_map (np.ndarray | None): The elevation map derived from terrain features.
+        settlements (list[Settlement] | None): List of settlements on the map.
+        roads_graph (nx.Graph | None): The road network connecting settlements.
 
     """
 
     grid: list[list[Tile]]
+    noise_map: np.ndarray | None = None
+    elevation_map: np.ndarray | None = None
+    settlements: list[Settlement] | None = None
+    roads_graph: nx.Graph | None = None
 
     @property
     def height(self) -> int:
@@ -493,12 +504,39 @@ class MapData:
             row_ids = [str(tile_to_id[tile]) for tile in row]
             grid_rows.append(",".join(row_ids))
         
-        return {
+        result = {
             "width": self.width,
             "height": self.height,
             "tiles": [tile.to_json() for tile in unique_tiles],
             "grid": "\n".join(grid_rows),
         }
+        
+        # Add optional fields if they exist
+        if self.noise_map is not None:
+            result["noise_map"] = np.round(self.noise_map, 4).tolist()
+        
+        if self.elevation_map is not None:
+            result["elevation_map"] = np.round(self.elevation_map, 4).tolist()
+        
+        if self.settlements is not None:
+            result["settlements"] = [settlement.to_json() for settlement in self.settlements]
+        
+        if self.roads_graph is not None:
+            # Convert networkx graph to serializable format
+            edges_data = []
+            for u, v, data in self.roads_graph.edges(data=True):
+                edge_data = {
+                    "u": u,
+                    "v": v,
+                    "data": {
+                        "path": [pos.to_json() for pos in data["path"]],
+                        "type": data.get("type", RoadType.LAND).value,
+                    }
+                }
+                edges_data.append(edge_data)
+            result["roads_graph"] = edges_data
+        
+        return result
 
     @classmethod
     def from_json(cls, data: dict) -> "MapData":
@@ -521,7 +559,32 @@ class MapData:
                 row = [tiles[tile_id] for tile_id in row_ids]
                 grid.append(row)
 
-        return cls(grid=grid)
+        # Create the basic MapData
+        map_data = cls(grid=grid)
+        
+        # Add optional fields if they exist
+        if "noise_map" in data:
+            map_data.noise_map = np.array(data["noise_map"])
+        
+        if "elevation_map" in data:
+            map_data.elevation_map = np.array(data["elevation_map"])
+        
+        if "settlements" in data:
+            map_data.settlements = [Settlement.from_json(s_data) for s_data in data["settlements"]]
+        
+        if "roads_graph" in data:
+            # Reconstruct networkx graph
+            graph = nx.Graph()
+            for edge_data in data["roads_graph"]:
+                u = edge_data["u"]
+                v = edge_data["v"]
+                path_data = edge_data["data"]["path"]
+                path = [Position.from_json(pos_data) for pos_data in path_data]
+                road_type = RoadType(edge_data["data"]["type"])
+                graph.add_edge(u, v, path=path, type=road_type)
+            map_data.roads_graph = graph
+        
+        return map_data
 
     def save_to_json(self, filepath: str) -> None:
         """Save the map data to a JSON file.

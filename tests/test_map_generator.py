@@ -15,27 +15,30 @@ def test_map_generator_initialization() -> None:
     generator = MapGenerator(width=50, height=50)
     assert generator.width == 50
     assert generator.height == 50
-    assert generator.map_data is None
 
 
 def test_map_generator_generate() -> None:
     """Test map generation."""
     generator = MapGenerator(width=50, height=50, wall_countdown=1000)
-    generator.generate()
-    assert generator.map_data is not None
-    assert generator.noise_map is not None
-    assert generator.elevation_map is not None
-    assert generator.settlements is not None
-    assert generator.roads_graph is not None
-    assert generator.map_data.height == 50
-    assert generator.map_data.width == 50
+    map_data = generator.generate()
+    assert map_data is not None
+    assert map_data.noise_map is not None
+    assert map_data.elevation_map is not None
+    assert map_data.settlements is not None
+    assert map_data.roads_graph is not None
+    assert map_data.height == 50
+    assert map_data.width == 50
 
 
 def test_map_generator_plot_without_generate() -> None:
     """Test plotting without generating raises error."""
     generator = MapGenerator()
-    with pytest.raises(ValueError, match="Map not generated yet"):
-        generator.plot()
+    # Create a minimal MapData without required fields
+    from mapgen.map_data import MapData, Tile
+    grid = [[Tile(walkable=True, movement_cost=1.0, blocks_line_of_sight=False, buildable=True, habitability=0.5, road_buildable=True, elevation_penalty=0.0, elevation_influence=0.0, smoothing_weight=1.0, symbol=".", color=(0.5, 0.5, 0.5), name="test", description="test", resources=[])]]
+    map_data = MapData(grid=grid)
+    with pytest.raises(ValueError, match="Map data missing noise_map"):
+        generator.plot(map_data)
 
 
 def test_map_data_save_load() -> None:

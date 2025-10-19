@@ -86,12 +86,6 @@ class MapGenerator:
         # Tile catalog - centralized tile definitions
         self.tiles = self._create_tile_catalog()
 
-        self.map_data: MapData | None = None
-        self.noise_map: np.ndarray | None = None
-        self.elevation_map: np.ndarray | None = None
-        self.settlements: list[Settlement] | None = None
-        self.roads_graph: nx.Graph | None = None
-
     def _create_tile_catalog(self) -> dict[str, Tile]:
         """Create the catalog of tiles used for map generation.
 
@@ -198,17 +192,20 @@ class MapGenerator:
             ),
         }
 
-    def generate(self) -> None:
+    def generate(self) -> MapData:
         """Generate the complete map.
 
         This method performs all steps to generate a procedural fantasy map
         including terrain, settlements, and roads.
+
+        Returns:
+            MapData: The generated map data containing terrain, settlements, and roads.
         """
         logger.info(f"Starting map generation: {self.width}x{self.height}")
         
         # Initialize map
         logger.debug("Initializing map level")
-        self.map_data = terrain.initialize_level(
+        map_data = terrain.initialize_level(
             self.width,
             self.height,
             self.tiles,
@@ -225,11 +222,11 @@ class MapGenerator:
 
         # Dig
         logger.debug("Digging terrain")
-        terrain.dig(self.map_data, character, self.tiles)
+        terrain.dig(map_data, character, self.tiles)
 
         # Generate noise
         logger.debug("Generating noise map")
-        self.noise_map = terrain.generate_noise_map(
+        noise_map = terrain.generate_noise_map(
             self.width,
             self.height,
             self.scale,
@@ -240,9 +237,9 @@ class MapGenerator:
 
         # Apply terrain features
         logger.debug("Applying terrain features")
-        self.map_data, self.elevation_map = terrain.apply_terrain_features(
-            self.map_data,
-            self.noise_map,
+        map_data, elevation_map = terrain.apply_terrain_features(
+            map_data,
+            noise_map,
             self.tiles,
             self.sea_level,
             self.mountain_level,
@@ -251,50 +248,63 @@ class MapGenerator:
 
         # Smooth terrain
         logger.debug("Smoothing terrain")
-        self.map_data = terrain.smooth_terrain(
-            self.map_data, self.tiles, self.smoothing_iterations
+        map_data = terrain.smooth_terrain(
+            map_data, self.tiles, self.smoothing_iterations
         )
 
         # Generate settlements
         logger.debug("Generating settlements")
-        self.settlements = settlements.generate_settlements(
-            self.map_data,
-            self.noise_map,
+        generated_settlements = settlements.generate_settlements(
+            map_data,
+            noise_map,
             self.settlement_density,
             self.min_settlement_radius,
             self.max_settlement_radius,
         )
-        logger.info(f"Generated {len(self.settlements) if self.settlements else 0} settlements")
+        logger.info(f"Generated {len(generated_settlements) if generated_settlements else 0} settlements")
 
         # Generate roads
         logger.debug("Generating road network")
-        self.roads_graph = roads.generate_roads(
-            self.settlements, self.map_data, self.elevation_map
+        roads_graph = roads.generate_roads(
+            generated_settlements, map_data, elevation_map
         )
-        logger.info(f"Generated road network with {len(self.roads_graph.edges) if self.roads_graph else 0} roads")
+        logger.info(f"Generated road network with {len(roads_graph.edges) if roads_graph else 0} roads")
+        
+        # Create complete MapData with all components
+        map_data.noise_map = noise_map
+        map_data.elevation_map = elevation_map
+        map_data.settlements = generated_settlements
+        map_data.roads_graph = roads_graph
         
         logger.info("Map generation completed successfully")
+        return map_data
 
-    def plot(self) -> Figure:
+    def plot(self, map_data: MapData) -> Figure:
         """Plot the generated map.
+
+        Args:
+            map_data: The map data to plot.
 
         Returns:
             Figure: The matplotlib figure of the map.
 
         Raises:
-            ValueError: If the map has not been generated yet.
+            ValueError: If required map data is missing.
 
         """
-        if self.map_data is None:
-            raise ValueError("Map not generated yet. Call generate() first.")
-        assert self.noise_map is not None
-        assert self.settlements is not None
-        assert self.roads_graph is not None
-        assert self.elevation_map is not None
+        if map_data.noise_map is None:
+            raise ValueError("Map data missing noise_map. Generate a complete map first.")
+        if map_data.settlements is None:
+            raise ValueError("Map data missing settlements. Generate a complete map first.")
+        if map_data.roads_graph is None:
+            raise ValueError("Map data missing roads_graph. Generate a complete map first.")
+        if map_data.elevation_map is None:
+            raise ValueError("Map data missing elevation_map. Generate a complete map first.")
+            
         return visualization.plot_map(
-            self.map_data,
-            self.noise_map,
-            self.settlements,
-            self.roads_graph,
-            self.elevation_map,
+            map_data,
+            map_data.noise_map,
+            map_data.settlements,
+            map_data.roads_graph,
+            map_data.elevation_map,
         )
