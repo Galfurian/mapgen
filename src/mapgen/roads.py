@@ -36,7 +36,6 @@ def a_star_search(
     map_data: MapData,
     start: Position,
     goal: Position,
-    elevation_map: np.ndarray,
     high_points: list[Position],
     high_point_penalty: int = 5,
 ) -> list[Position] | None:
@@ -46,7 +45,6 @@ def a_star_search(
         map_data (MapData): The map grid.
         start (Position): The start position.
         goal (Position): The goal position.
-        elevation_map (np.ndarray): The elevation map.
         high_points (List[Position]): List of high points to avoid.
         high_point_penalty (int): Penalty for high points.
 
@@ -175,7 +173,6 @@ def generate_roads(
             map_data,
             settlement1.position,
             settlement2.position,
-            elevation_map,
             high_points=[],
         )
         if path is not None:
@@ -228,7 +225,6 @@ def generate_roads(
                         map_data,
                         settlement1.position,
                         settlement2.position,
-                        elevation_map,
                         high_points,
                     )
                     if path is not None:

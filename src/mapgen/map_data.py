@@ -276,12 +276,23 @@ class MapData(BaseModel):
     accessing and manipulating terrain information.
 
     Attributes:
-        grid (list[list[Tile]]):
-            The 2D grid of terrain tiles.
+        tiles (list[Tile]):
+            List of unique tile types used in the map.
+        grid (list[list[int]]):
+            The 2D grid of tile indices.
 
     """
 
-    grid: list[list[Tile]]
+    tiles: list[Tile]
+    grid: list[list[int]]
+
+    def _get_tile_index(self, tile: Tile) -> int:
+        """Get the index of a tile, adding it if not present."""
+        if tile in self.tiles:
+            return self.tiles.index(tile)
+        else:
+            self.tiles.append(tile)
+            return len(self.tiles) - 1
 
     @property
     def height(self) -> int:
@@ -314,9 +325,9 @@ class MapData(BaseModel):
                 If coordinates are out of bounds.
 
         """
-        return self.grid[y][x]
+        return self.tiles[self.grid[y][x]]
 
-    def set_terrain(self, x: int, y: int, terrain: Tile) -> None:
+    def set_terrain(self, x: int, y: int, terrain: Tile | int) -> None:
         """
         Set the terrain tile at the specified coordinates.
 
@@ -325,15 +336,18 @@ class MapData(BaseModel):
                 The x coordinate.
             y (int):
                 The y coordinate.
-            terrain (Tile):
-                The terrain tile to set.
+            terrain (Tile | int):
+                The terrain tile to set (or its index).
 
         Raises:
             IndexError:
                 If coordinates are out of bounds.
 
         """
-        self.grid[y][x] = terrain
+        if isinstance(terrain, Tile):
+            self.grid[y][x] = self._get_tile_index(terrain)
+        else:
+            self.grid[y][x] = terrain
 
     def is_valid_position(self, x: int, y: int) -> bool:
         """
@@ -444,11 +458,11 @@ class MapData(BaseModel):
 
     def __getitem__(self, key: int) -> list[Tile]:
         """Get a row from the grid."""
-        return self.grid[key]
+        return [self.tiles[i] for i in self.grid[key]]
 
     def __setitem__(self, key: int, value: list[Tile]) -> None:
         """Set a row in the grid."""
-        self.grid[key] = value
+        self.grid[key] = [self._get_tile_index(tile) for tile in value]
 
     def __len__(self) -> int:
         """Get the height of the map."""
@@ -482,3 +496,8 @@ class MapData(BaseModel):
         logger.info(f"Loading map data from {filepath}")
         with open(filepath, encoding="utf-8") as f:
             return cls.model_validate_json(f.read())
+
+    @property
+    def tiles_grid(self) -> list[list[Tile]]:
+        """Get the grid as list of list of tiles."""
+        return [[self.tiles[i] for i in row] for row in self.grid]

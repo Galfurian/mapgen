@@ -117,30 +117,31 @@ def plot_map(
     noise_map: np.ndarray,
     settlements: list[Settlement],
     roads_graph: nx.Graph,
-    elevation_map: np.ndarray,
 ) -> Figure:
-    """Plot the map with terrain, settlements, and roads.
+    """
+    Plot the map with terrain, settlements, and roads.
 
     Args:
-        map_data (MapData): The map grid.
-        noise_map (np.ndarray): The noise map.
-        settlements (list[Settlement]): List of settlements.
-        roads_graph (nx.Graph): The roads graph.
-        elevation_map (np.ndarray): The elevation map.
+        map_data (MapData):
+            The map grid.
+        noise_map (np.ndarray):
+            The noise map.
+        settlements (list[Settlement]):
+            List of settlements.
+        roads_graph (nx.Graph):
+            The roads graph.
 
     Returns:
-        Figure: The matplotlib figure.
+        Figure:
+            The matplotlib figure.
 
     """
-    height = map_data.height
-    width = map_data.width
+    rgb_values = np.zeros((map_data.height, map_data.width, 3))
 
-    rgb_values = np.zeros((height, width, 3))
-
-    for y in range(height):
-        for x in range(width):
+    for y in range(map_data.height):
+        for x in range(map_data.width):
             tile = map_data.get_terrain(x, y)
-            base_color = tile.color  # Uses tile's color property
+            base_color = tile.color
             noise_value = noise_map[y, x]
             shade_factor = (noise_value + 1) / 2
             shaded_color = tuple(c * shade_factor for c in base_color)
@@ -152,7 +153,7 @@ def plot_map(
     # Contour lines
     contour_levels = 10
     contour_colors = "k"
-    X, Y = np.meshgrid(np.arange(width), np.arange(height))
+    X, Y = np.meshgrid(np.arange(map_data.width), np.arange(map_data.height))
     ax.contour(
         X,
         Y,
@@ -178,7 +179,7 @@ def plot_map(
                     zorder=1,
                 )
             else:
-                curved_path = apply_curves_to_path(path, elevation_map)
+                curved_path = apply_curves_to_path(path, noise_map)
                 curved_x = [pos.x for pos in curved_path]
                 curved_y = [pos.y for pos in curved_path]
                 ax.plot(curved_x, curved_y, color="gray", linewidth=2, zorder=1)
@@ -221,8 +222,8 @@ def plot_map(
         for pos in possible_positions:
             if (
                 ((pos[0] - x) ** 2 + (pos[1] - y) ** 2) ** 0.5 > radius
-                and 0 <= pos[0] < width
-                and 0 <= pos[1] < height
+                and 0 <= pos[0] < map_data.width
+                and 0 <= pos[1] < map_data.height
             ):
                 is_overlapping = False
                 for existing_text_x, existing_text_y in existing_texts:

@@ -37,9 +37,6 @@ def main() -> None:
     if generator.noise_map is None:
         print("   ❌ Noise map generation failed!")
         return
-    if generator.elevation_map is None:
-        print("   ❌ Elevation map generation failed!")
-        return
     if generator.settlements is None:
         print("   ❌ Settlement generation failed!")
         return
@@ -48,7 +45,7 @@ def main() -> None:
         return
 
     print(f"   ✅ Generated {generator.width}x{generator.height} map")
-    print(f"   📊 Terrain: {len(generator.tiles)} types")
+    print(f"   📊 Terrain: {len(generator.map_data.tiles)} types")
     print(f"   🏘️  Settlements: {len(generator.settlements)}")
     print(f"   🛣️  Roads: {len(generator.roads_graph.edges)}")
 
@@ -60,7 +57,6 @@ def main() -> None:
         noise_map=generator.noise_map,
         settlements=generator.settlements,
         roads_graph=generator.roads_graph,
-        elevation_map=generator.elevation_map,
     )
     fig_original.savefig(
         map_path_original,
@@ -86,7 +82,7 @@ def main() -> None:
         loaded_map_data = MapData.load_from_json(str(map_json_path))
         print(f"   ✅ Loaded {loaded_map_data.width}x{loaded_map_data.height} map")
         print(
-            f"   📊 Terrain types preserved: {len(set(tile.name for row in loaded_map_data.grid for tile in row))}"
+            f"   📊 Terrain types preserved: {len(set(tile.name for row in loaded_map_data.tiles_grid for tile in row))}"
         )
         print(
             f"   🏘️  Settlements loaded: {len(loaded_map_data.settlements) if loaded_map_data.settlements else 0}"

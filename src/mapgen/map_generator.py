@@ -42,7 +42,6 @@ class MapGenerator:
     # Generated data placeholders.
     map_data: MapData | None
     noise_map: np.ndarray | None
-    elevation_map: np.ndarray | None
     settlements: list[Settlement] | None
     roads_graph: nx.Graph | None
 
@@ -97,9 +96,6 @@ class MapGenerator:
         self.settlement_density = settlement_density
         self.min_settlement_radius = min_settlement_radius
         self.max_settlement_radius = max_settlement_radius
-        # Tiles information.
-        self.tiles = None
-        self.default_tile = None
         # Generated data placeholders.
         self.map_data = None
         self.noise_map = None
@@ -116,20 +112,14 @@ class MapGenerator:
         """
         logger.info(f"Starting map generation: {self.width}x{self.height}")
 
-        if self.tiles is None or self.default_tile is None:
-            logger.debug("Initializing tile catalog")
-            self._initialize_tiles()
-        if self.tiles is None:
-            raise ValueError("Tile catalog not initialized properly.")
-        if self.default_tile is None:
-            raise ValueError("Default tile not initialized properly.")
+        tiles, default_index = self._get_default_tiles()
 
-        # Initialize map
+        # Initialize map.
         logger.debug("Initializing map level")
         self.map_data = MapData(
+            tiles=tiles,
             grid=[
-                [self.default_tile for _ in range(self.width)]
-                for _ in range(self.height)
+                [default_index for _ in range(self.width)] for _ in range(self.height)
             ],
         )
 
@@ -137,7 +127,6 @@ class MapGenerator:
         logger.debug("Digging terrain")
         terrain.dig(
             map_data=self.map_data,
-            tiles=self.tiles,
             padding=self.padding,
             initial_x=self.width // 2,
             initial_y=self.height // 2,
@@ -156,10 +145,9 @@ class MapGenerator:
 
         # Apply terrain features
         logger.debug("Applying terrain features")
-        self.map_data, self.elevation_map = terrain.apply_terrain_features(
+        terrain.apply_terrain_features(
             self.map_data,
             self.noise_map,
-            self.tiles,
             self.sea_level,
             self.mountain_level,
             self.forest_threshold,
@@ -167,9 +155,8 @@ class MapGenerator:
 
         # Smooth terrain
         logger.debug("Smoothing terrain")
-        self.map_data = terrain.smooth_terrain(
+        terrain.smooth_terrain(
             self.map_data,
-            self.tiles,
             self.smoothing_iterations,
         )
 
@@ -189,20 +176,22 @@ class MapGenerator:
         self.roads_graph = roads.generate_roads(
             self.settlements,
             self.map_data,
-            self.elevation_map,
+            self.noise_map,
         )
         logger.info(f"Generated road network with {len(self.roads_graph.edges)} roads")
         logger.info("Map generation completed successfully")
 
-    def _initialize_tiles(self):
-        """Create the catalog of tiles used for map generation.
+    def _get_default_tiles(self) -> tuple[list[Tile], int]:
+        """
+        Create the catalog of tiles used for map generation.
 
         Returns:
             dict[str, Tile]: Dictionary mapping tile names to Tile instances.
+            str: The name of the default tile.
 
         """
-        self.tiles = {
-            "wall": Tile(
+        tiles = [
+            Tile(
                 name="wall",
                 description="Impassable wall",
                 walkable=False,
@@ -218,7 +207,7 @@ class MapGenerator:
                 color=(0.0, 0.0, 0.0),
                 resources=[],
             ),
-            "floor": Tile(
+            Tile(
                 name="floor",
                 description="Open floor space",
                 walkable=True,
@@ -234,7 +223,7 @@ class MapGenerator:
                 color=(0.9, 0.9, 0.9),
                 resources=[],
             ),
-            "water": Tile(
+            Tile(
                 name="water",
                 description="Water terrain",
                 walkable=True,
@@ -250,7 +239,7 @@ class MapGenerator:
                 color=(0.2, 0.5, 1.0),
                 resources=[],
             ),
-            "forest": Tile(
+            Tile(
                 name="forest",
                 description="Forest terrain",
                 walkable=True,
@@ -266,7 +255,7 @@ class MapGenerator:
                 color=(0.2, 0.6, 0.2),
                 resources=["wood", "game"],
             ),
-            "plains": Tile(
+            Tile(
                 name="plains",
                 description="Open plains",
                 walkable=True,
@@ -282,7 +271,7 @@ class MapGenerator:
                 color=(0.8, 0.9, 0.6),
                 resources=["grain", "herbs"],
             ),
-            "mountain": Tile(
+            Tile(
                 name="mountain",
                 description="Mountain terrain",
                 walkable=False,
@@ -298,5 +287,5 @@ class MapGenerator:
                 color=(0.5, 0.4, 0.3),
                 resources=["stone", "ore"],
             ),
-        }
-        self.default_tile = self.tiles["wall"]
+        ]
+        return tiles, 0  # Default tile is "wall"

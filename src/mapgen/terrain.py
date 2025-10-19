@@ -11,32 +11,37 @@ from .map_data import MapData, Tile
 
 def dig(
     map_data: MapData,
-    tiles: dict[str, Tile],
     padding: int,
     initial_x: int,
     initial_y: int,
 ) -> None:
-    """Simulate character digging through the map.
+    """
+    Simulate character digging through the map.
 
     Args:
-        map_data (MapData): The map grid to modify.
-        tiles (dict[str, Tile]): The tile catalog.
-        padding (int): The padding around the edges.
-        initial_x (int): The starting x-coordinate of the character.
-        initial_y (int): The starting y-coordinate of the character.
+        map_data (MapData):
+            The map grid to modify.
+        padding (int):
+            The padding around the edges.
+        initial_x (int):
+            The starting x-coordinate of the character.
+        initial_y (int):
+            The starting y-coordinate of the character.
 
     """
     max_countdown = max(100, (map_data.width * map_data.height) // 3)
-    countdown = 0
+
     logger.debug(f"Starting terrain digging: {max_countdown} walls to dig")
 
+    countdown = 0
     x = initial_x
     y = initial_y
+    floor = map_data.tiles.index(next(t for t in map_data.tiles if t.name == "floor"))
 
     while countdown < max_countdown:
         current_tile = map_data.get_terrain(x, y)
         if not current_tile.walkable:
-            map_data.set_terrain(x, y, tiles["floor"])
+            map_data.set_terrain(x, y, floor)
             countdown += 1
 
             # Log progress every 10% completion
@@ -106,68 +111,72 @@ def generate_noise_map(
 def apply_terrain_features(
     map_data: MapData,
     noise_map: np.ndarray,
-    tiles: dict[str, Tile],
     sea_level: float = 0.03,
     mountain_level: float = 0.5,
     forest_threshold: float = 0.1,
-) -> tuple[MapData, np.ndarray]:
-    """Apply terrain features based on noise map.
+) -> None:
+    """
+    Apply terrain features based on noise map.
 
     Args:
-        map_data (MapData): The map grid to modify.
-        noise_map (np.ndarray): The noise map.
-        tiles (dict[str, Tile]): The tile catalog.
-        sea_level (float): The threshold for sea map.
-        mountain_level (float): The threshold for mountain map.
-        forest_threshold (float): The threshold for forest.
-
-    Returns:
-        Tuple[MapData, np.ndarray]: The modified map and elevation map.
+        map_data (MapData):
+            The map grid to modify.
+        noise_map (np.ndarray):
+            The noise map.
+        sea_level (float):
+            The threshold for sea map.
+        mountain_level (float):
+            The threshold for mountain map.
+        forest_threshold (float):
+            The threshold for forest.
 
     """
-    height, width = noise_map.shape
-    elevation_map = noise_map.copy()
+    water = map_data.tiles.index(next(t for t in map_data.tiles if t.name == "water"))
+    plains = map_data.tiles.index(next(t for t in map_data.tiles if t.name == "plains"))
+    forest = map_data.tiles.index(next(t for t in map_data.tiles if t.name == "forest"))
+    mountain = map_data.tiles.index(
+        next(t for t in map_data.tiles if t.name == "mountain")
+    )
 
-    for y in range(height):
-        for x in range(width):
+    for y in range(map_data.height):
+        for x in range(map_data.width):
             noise_value = noise_map[y, x]
-
             if noise_value < sea_level:
-                map_data.set_terrain(x, y, tiles["water"])  # Water
+                map_data.set_terrain(x, y, water)
             elif noise_value < mountain_level:
                 if noise_value > forest_threshold:
-                    map_data.set_terrain(x, y, tiles["forest"])  # Forest
+                    map_data.set_terrain(x, y, forest)
                 else:
-                    map_data.set_terrain(x, y, tiles["plains"])  # Plains
+                    map_data.set_terrain(x, y, plains)
             else:
-                map_data.set_terrain(x, y, tiles["mountain"])  # Mountain
-
-    return map_data, elevation_map
+                map_data.set_terrain(x, y, mountain)
 
 
 def smooth_terrain(
     map_data: MapData,
-    tiles: dict[str, Tile],
     iterations: int = 5,
-) -> MapData:
-    """Smooth the terrain using cellular automata rules.
+) -> None:
+    """
+    Smooth the terrain using cellular automata rules.
 
     Args:
-        map_data (MapData): The map grid to smooth.
-        tiles (dict[str, Tile]): The tile catalog.
-        iterations (int): The number of smoothing iterations.
-
-    Returns:
-        MapData: The smoothed map grid.
+        map_data (MapData):
+            The map grid to smooth.
+        iterations (int):
+            The number of smoothing iterations.
 
     """
-    height = map_data.height
-    width = map_data.width
+    wall = map_data.tiles.index(next(t for t in map_data.tiles if t.name == "wall"))
+    water = map_data.tiles.index(next(t for t in map_data.tiles if t.name == "water"))
+    forest = map_data.tiles.index(next(t for t in map_data.tiles if t.name == "forest"))
+    mountain = map_data.tiles.index(
+        next(t for t in map_data.tiles if t.name == "mountain")
+    )
 
     for _ in range(iterations):
-        new_grid = [row[:] for row in map_data.grid]
-        for y in range(1, height - 1):
-            for x in range(1, width - 1):
+        new_grid_indices = [row[:] for row in map_data.grid]
+        for y in range(1, map_data.height - 1):
+            for x in range(1, map_data.width - 1):
                 current_tile = map_data.get_terrain(x, y)
 
                 # Skip obstacles (non-walkable tiles)
@@ -193,13 +202,11 @@ def smooth_terrain(
 
                 # Apply smoothing rules based on neighbor majority
                 if obstacle_count > 4:
-                    new_grid[y][x] = tiles["wall"]
+                    new_grid_indices[y][x] = wall
                 elif liquid_count > 3:
-                    new_grid[y][x] = tiles["water"]
+                    new_grid_indices[y][x] = water
                 elif elevated_count > 3:
-                    new_grid[y][x] = tiles["mountain"]
+                    new_grid_indices[y][x] = mountain
                 elif difficult_count > 4:
-                    new_grid[y][x] = tiles["forest"]
-        map_data.grid = new_grid
-
-    return map_data
+                    new_grid_indices[y][x] = forest
+        map_data.grid = new_grid_indices
