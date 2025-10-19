@@ -166,7 +166,7 @@ def find_suitable_settlement_positions(
 
     for y in range(map_data.height):
         for x in range(map_data.width):
-            position = Position(x, y)
+            position = Position(x=x, y=y)
             if is_position_suitable_for_settlement(map_data, position):
                 suitable_positions.append(position)
 

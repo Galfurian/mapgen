@@ -9,7 +9,7 @@ from . import logger
 from .map_data import MapData, Tile
 
 
-def initialize_level(
+def initialize_map_data(
     width: int,
     height: int,
     tiles: dict[str, Tile],

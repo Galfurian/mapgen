@@ -197,7 +197,7 @@ class MapGenerator:
 
         # Initialize map
         logger.debug("Initializing map level")
-        map_data = terrain.initialize_level(
+        map_data = terrain.initialize_map_data(
             self.width,
             self.height,
             self.tiles,

@@ -80,7 +80,7 @@ def apply_curves_to_path(
     new_x = f_x(new_path_distances)
     new_y = f_y(new_path_distances)
     curved_path = [
-        Position(round(x), round(y)) for x, y in zip(new_x, new_y, strict=True)
+        Position(x=round(x), y=round(y)) for x, y in zip(new_x, new_y, strict=True)
     ]
     return curved_path
 

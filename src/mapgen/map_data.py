@@ -31,30 +31,47 @@ class RoadType(Enum):
 
 class Tile(BaseModel):
     """
-    Represents a single tile in the map with all properties needed for generation.
+    Represents a single tile in the map with all properties needed for
+    generation.
 
-    This class encapsulates all the properties that drive map generation algorithms:
-    settlement placement, pathfinding, road building, visualization, etc.
+    This class encapsulates all the properties that drive map generation
+    algorithms: settlement placement, pathfinding, road building, visualization,
+    etc.
 
-    Tiles are designed to be generic - the specific terrain semantics are defined
-    by the properties, not hardcoded types. This allows the generator to work with
-    any tile-based world: fantasy maps, dungeons, space, urban areas, etc.
+    Tiles are designed to be generic - the specific terrain semantics are
+    defined by the properties, not hardcoded types. This allows the generator to
+    work with any tile-based world: fantasy maps, dungeons, space, urban areas,
+    etc.
 
     Attributes:
-        walkable (bool): Whether units can move through this tile.
-        movement_cost (float): Base cost for pathfinding algorithms (higher = harder to traverse).
-        blocks_line_of_sight (bool): Whether this tile blocks line of sight for visibility calculations.
-        buildable (bool): Whether settlements and buildings can be constructed on this tile.
-        habitability (float): How suitable this tile is for settlements (0.0 to 1.0).
-        road_buildable (bool): Whether roads can be built on or through this tile.
-        elevation_penalty (float): Additional pathfinding cost due to elevation changes.
-        elevation_influence (float): How much this tile affects terrain elevation during generation.
-        smoothing_weight (float): How much this tile participates in terrain smoothing algorithms.
-        symbol (str): Character symbol used for text-based map representation.
-        color (tuple[float, float, float]): RGB color tuple for visualization (0.0 to 1.0).
-        name (str): Human-readable name for this tile type.
-        description (str): Detailed description of this tile type.
-        resources (list[str]): list of resources available on this tile type.
+        name (str):
+            Human-readable name for this tile type.
+        description (str):
+            Detailed description of this tile type.
+        walkable (bool):
+            Whether units can move through this tile.
+        movement_cost (float):
+            Base cost for pathfinding algorithms (higher = harder to traverse).
+        blocks_line_of_sight (bool):
+            Whether this tile blocks line of sight for visibility calculations.
+        buildable (bool):
+            Whether settlements and buildings can be constructed on this tile.
+        habitability (float):
+            How suitable this tile is for settlements (0.0 to 1.0).
+        road_buildable (bool):
+            Whether roads can be built on or through this tile.
+        elevation_penalty (float):
+            Additional pathfinding cost due to elevation changes.
+        elevation_influence (float):
+            How much this tile affects terrain elevation during generation.
+        smoothing_weight (float):
+            How much this tile participates in terrain smoothing algorithms.
+        symbol (str):
+            Character symbol used for text-based map representation.
+        color (tuple[float, float, float]):
+            RGB color tuple for visualization (0.0 to 1.0).
+        resources (list[str]):
+            list of resources available on this tile type.
 
     """
 
@@ -152,26 +169,27 @@ class Tile(BaseModel):
         return self.movement_cost + self.elevation_penalty
 
 
-@dataclass(frozen=True)
-class Position:
-    """Represents a 2D coordinate position.
+class Position(BaseModel):
+    """
+    Represents a 2D coordinate position.
 
     This class encapsulates x and y coordinates for positions in the map grid.
     It's immutable (frozen) to ensure coordinate integrity.
 
     Attributes:
-        x (int): The x-coordinate.
-        y (int): The y-coordinate.
+        x (int):
+            The x-coordinate.
+        y (int):
+            The y-coordinate.
 
     """
 
-    x: int
-    y: int
-
-    def __iter__(self):
-        """Allow tuple unpacking: x, y = position."""
-        yield self.x
-        yield self.y
+    x: int = Field(
+        description="The x-coordinate.",
+    )
+    y: int = Field(
+        description="The y-coordinate.",
+    )
 
     def distance_to(self, other) -> float:
         """Calculate Euclidean distance to another position.
@@ -196,32 +214,6 @@ class Position:
 
         """
         return abs(self.x - other.x) + abs(self.y - other.y)
-
-    def to_json(self) -> dict:
-        """Convert this position to a JSON-serializable dictionary.
-
-        Returns:
-            dict: JSON-serializable representation of this position.
-        """
-        return {
-            "x": self.x,
-            "y": self.y,
-        }
-
-    @classmethod
-    def from_json(cls, data: dict) -> "Position":
-        """Create a Position instance from a JSON dictionary.
-
-        Args:
-            data: JSON dictionary containing position coordinates.
-
-        Returns:
-            Position: New Position instance.
-        """
-        return cls(
-            x=data["x"],
-            y=data["y"],
-        )
 
 
 @dataclass
@@ -250,7 +242,7 @@ class Settlement:
     @property
     def position(self) -> Position:
         """Get the settlement position as a Position object."""
-        return Position(self.x, self.y)
+        return Position(x=self.x, y=self.y)
 
     def to_json(self) -> dict:
         """Convert this settlement to a JSON-serializable dictionary.
@@ -383,20 +375,20 @@ class MapData:
         """
         # Cardinal directions (4-way)
         neighbors = [
-            Position(x - 1, y),  # left
-            Position(x + 1, y),  # right
-            Position(x, y - 1),  # up
-            Position(x, y + 1),  # down
+            Position(x=x - 1, y=y),  # left
+            Position(x=x + 1, y=y),  # right
+            Position(x=x, y=y - 1),  # up
+            Position(x=x, y=y + 1),  # down
         ]
 
         # Add diagonal directions if requested (8-way)
         if include_diagonals:
             neighbors.extend(
                 [
-                    Position(x - 1, y - 1),  # top-left
-                    Position(x + 1, y - 1),  # top-right
-                    Position(x - 1, y + 1),  # bottom-left
-                    Position(x + 1, y + 1),  # bottom-right
+                    Position(x=x - 1, y=y - 1),  # top-left
+                    Position(x=x + 1, y=y - 1),  # top-right
+                    Position(x=x - 1, y=y + 1),  # bottom-left
+                    Position(x=x + 1, y=y + 1),  # bottom-right
                 ]
             )
 
@@ -540,7 +532,9 @@ class MapData:
                 u = edge_data["u"]
                 v = edge_data["v"]
                 path_data = edge_data["data"]["path"]
-                path = [Position.from_json(pos_data) for pos_data in path_data]
+                path = [
+                    Position.model_validate_json(pos_data) for pos_data in path_data
+                ]
                 road_type = RoadType(edge_data["data"]["type"])
                 graph.add_edge(u, v, path=path, type=road_type)
             map_data.roads_graph = graph

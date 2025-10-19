@@ -132,7 +132,7 @@ def find_enclosed_points(
             x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
 
             if (elevation_map[y1, x1] > level) != (elevation_map[y2, x2] > level):
-                enclosed_points.append(Position(x1, y1))
+                enclosed_points.append(Position(x=x1, y=y1))
     return enclosed_points
 
 
