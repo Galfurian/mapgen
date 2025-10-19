@@ -36,9 +36,6 @@ class MapGenerator:
     settlement_density: float
     min_settlement_radius: float
     max_settlement_radius: float
-    # Tiles information.
-    tiles: dict[str, Tile] | None
-    default_tile: Tile | None
     # Generated data placeholders.
     map_data: MapData | None
     noise_map: np.ndarray | None
