@@ -39,7 +39,6 @@ class MapGenerator:
     # Generated data placeholders.
     map_data: MapData | None
     noise_map: np.ndarray | None
-    settlements: list[Settlement] | None
     roads_graph: nx.Graph | None
 
     def __init__(
@@ -97,7 +96,6 @@ class MapGenerator:
         self.map_data = None
         self.noise_map = None
         self.elevation_map = None
-        self.settlements = None
         self.roads_graph = None
 
     def generate(self) -> None:
@@ -159,19 +157,18 @@ class MapGenerator:
 
         # Generate settlements
         logger.debug("Generating settlements")
-        self.settlements = settlements.generate_settlements(
+        settlements.generate_settlements(
             self.map_data,
             self.noise_map,
             self.settlement_density,
             self.min_settlement_radius,
             self.max_settlement_radius,
         )
-        logger.info(f"Generated {len(self.settlements)} settlements")
+        logger.info(f"Generated {len(self.map_data.settlements)} settlements")
 
         # Generate roads
         logger.debug("Generating road network")
         self.roads_graph = roads.generate_roads(
-            self.settlements,
             self.map_data,
             self.noise_map,
         )

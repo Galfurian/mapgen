@@ -81,34 +81,40 @@ def should_place_settlement(settlement_density: float) -> bool:
 
 
 def settlement_overlaps(
+    map_data: MapData,
     position: Position,
-    radius: float,
-    existing_settlements: list[Settlement],
+    min_radius: float,
     max_radius: float,
 ) -> bool:
-    """Check if a potential settlement overlaps with existing settlements.
+    """
+    Check if a potential settlement overlaps with existing settlements.
 
     Args:
-        position: The position of the potential settlement.
-        radius: The radius of the potential settlement.
-        existing_settlements: List of existing settlements.
-        max_radius: The maximum possible radius for settlements.
+        map_data:
+            The terrain map grid.
+        position:
+            The position of the potential settlement.
+        min_radius:
+            The radius of the potential settlement.
+        max_radius:
+            The maximum possible radius for settlements.
 
     Returns:
-        bool: True if there is an overlap, False otherwise.
+        bool:
+            True if there is an overlap, False otherwise.
 
     Raises:
-        ValueError: If radius or max_radius are negative.
+        ValueError:
+            If radius or max_radius are negative.
 
     """
-    if radius < 0:
-        raise ValueError(f"Settlement radius must be non-negative, got {radius}")
+    if min_radius < 0:
+        raise ValueError(f"Settlement radius must be non-negative, got {min_radius}")
     if max_radius < 0:
         raise ValueError(f"Maximum radius must be non-negative, got {max_radius}")
-
-    for existing in existing_settlements:
+    for existing in map_data.settlements:
         distance = position.distance_to(existing.position)
-        if distance < radius + max_radius:
+        if distance < min_radius + max_radius:
             return True
     return False
 
@@ -177,34 +183,40 @@ def find_suitable_settlement_positions(
 
 
 def place_settlements_at_positions(
+    map_data: MapData,
     positions: list[Position],
     settlement_density: float,
     min_radius: float,
     max_radius: float,
-) -> list[Settlement]:
-    """Place settlements at suitable positions with given constraints.
+) -> None:
+    """
+    Place settlements at suitable positions with given constraints.
 
     Args:
-        positions: List of positions to consider for settlement placement.
-        settlement_density: The probability of placing a settlement at each position.
-        min_radius: The minimum radius for settlements.
-        max_radius: The maximum radius for settlements.
-
-    Returns:
-        List[Settlement]: List of placed settlements.
+        map_data:
+            The terrain map grid.
+        positions:
+            List of positions to consider for settlement placement.
+        settlement_density:
+            The probability of placing a settlement at each position.
+        min_radius:
+            The minimum radius for settlements.
+        max_radius:
+            The maximum radius for settlements.
 
     """
-    settlements = []
-
     for position in positions:
         if not should_place_settlement(settlement_density):
             continue
-        if settlement_overlaps(position, min_radius, settlements, max_radius):
+        if settlement_overlaps(map_data, position, min_radius, max_radius):
             continue
-        settlement = create_settlement(position, min_radius, max_radius)
-        settlements.append(settlement)
-
-    return settlements
+        map_data.settlements.append(
+            create_settlement(
+                position,
+                min_radius,
+                max_radius,
+            )
+        )
 
 
 def generate_settlements(
@@ -213,18 +225,21 @@ def generate_settlements(
     settlement_density: float = 0.002,
     min_radius: float = 0.5,
     max_radius: float = 1.0,
-) -> list[Settlement]:
-    """Generate settlements on suitable terrain.
+) -> None:
+    """
+    Generate settlements on suitable terrain.
 
     Args:
-        map_data (MapData): The terrain map grid.
-        noise_map (np.ndarray): The noise map array.
-        settlement_density (float): The probability of placing a settlement on suitable terrain.
-        min_radius (float): The minimum radius of settlements.
-        max_radius (float): The maximum radius of settlements.
-
-    Returns:
-        List[Settlement]: A list of generated settlements.
+        map_data (MapData):
+            The terrain map grid.
+        noise_map (np.ndarray):
+            The noise map array.
+        settlement_density (float):
+            The probability of placing a settlement on suitable terrain.
+        min_radius (float):
+            The minimum radius of settlements.
+        max_radius (float):
+            The maximum radius of settlements.
 
     Raises:
         ValueError: If map_data dimensions don't match noise_map dimensions.
@@ -243,12 +258,12 @@ def generate_settlements(
 
     # Place settlements at suitable positions
     settlements = place_settlements_at_positions(
+        map_data,
         suitable_positions,
         settlement_density,
         min_radius,
         max_radius,
     )
-
-    settlement_names = [s.name for s in settlements]
+    settlement_names = [s.name for s in map_data.settlements]
     logger.debug(f"Generated settlements: {settlement_names}")
     return settlements

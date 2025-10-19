@@ -283,8 +283,18 @@ class MapData(BaseModel):
 
     """
 
-    tiles: list[Tile]
-    grid: list[list[int]]
+    tiles: list[Tile] = Field(
+        default_factory=list,
+        description="List of unique tile types used in the map.",
+    )
+    grid: list[list[int]] = Field(
+        default_factory=list,
+        description="The 2D grid of tile indices.",
+    )
+    settlements: list[Settlement] = Field(
+        default_factory=list,
+        description="List of settlements on the map.",
+    )
 
     def _get_tile_index(self, tile: Tile) -> int:
         """Get the index of a tile, adding it if not present."""

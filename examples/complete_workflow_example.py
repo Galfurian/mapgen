@@ -37,16 +37,13 @@ def main() -> None:
     if generator.noise_map is None:
         print("   ❌ Noise map generation failed!")
         return
-    if generator.settlements is None:
-        print("   ❌ Settlement generation failed!")
-        return
     if generator.roads_graph is None:
         print("   ❌ Road generation failed!")
         return
 
     print(f"   ✅ Generated {generator.width}x{generator.height} map")
     print(f"   📊 Terrain: {len(generator.map_data.tiles)} types")
-    print(f"   🏘️  Settlements: {len(generator.settlements)}")
+    print(f"   🏘️  Settlements: {len(generator.map_data.settlements)}")
     print(f"   🛣️  Roads: {len(generator.roads_graph.edges)}")
 
     # Generate PNG from original map.
@@ -55,7 +52,7 @@ def main() -> None:
     fig_original = visualization.plot_map(
         map_data=generator.map_data,
         noise_map=generator.noise_map,
-        settlements=generator.settlements,
+        settlements=generator.map_data.settlements,
         roads_graph=generator.roads_graph,
     )
     fig_original.savefig(

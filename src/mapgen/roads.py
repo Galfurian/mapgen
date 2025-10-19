@@ -108,14 +108,14 @@ def a_star_search(
 def find_enclosed_points(
     contour_data: Any,
     level: float,
-    elevation_map: np.ndarray,
+    noise_map: np.ndarray,
 ) -> list[Position]:
     """Find points enclosed within a contour line.
 
     Args:
         contour_data: The contour data from matplotlib.
         level (float): The elevation map_data value.
-        elevation_map (np.ndarray): The elevation map_data.
+        noise_map (np.ndarray): The elevation map_data.
 
     Returns:
         List[Position]: List of enclosed points.
@@ -129,35 +129,38 @@ def find_enclosed_points(
             x2, y2 = path[i + 1]
             x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
 
-            if (elevation_map[y1, x1] > level) != (elevation_map[y2, x2] > level):
+            if (noise_map[y1, x1] > level) != (noise_map[y2, x2] > level):
                 enclosed_points.append(Position(x=x1, y=y1))
     return enclosed_points
 
 
 def generate_roads(
-    settlements: list[Settlement],
     map_data: MapData,
-    elevation_map: np.ndarray,
+    noise_map: np.ndarray,
 ) -> nx.Graph:
     """Generate road network connecting settlements.
 
     Args:
         settlements (list[Settlement]): List of settlements.
         map_data (MapData): The map grid.
-        elevation_map (np.ndarray): The elevation map.
+        noise_map (np.ndarray): The elevation map.
 
     Returns:
         nx.Graph: The road network graph.
 
     """
     graph: nx.Graph = nx.Graph()
+    
+    settlements = map_data.settlements if map_data.settlements else []
+
+    if not map_data.settlements:
+        return graph
+
     for settlement in settlements:
         graph.add_node(
-            settlement.name, pos=(settlement.position.x, settlement.position.y)
+            settlement.name,
+            pos=(settlement.position.x, settlement.position.y),
         )
-
-    if not settlements:
-        return graph
 
     # 1. Connect settlements using Minimum Spanning Tree (MST)
     positions = np.array([(s.position.x, s.position.y) for s in settlements])
@@ -176,7 +179,8 @@ def generate_roads(
             high_points=[],
         )
         if path is not None:
-            # Determine road type: if any tile in path cannot have roads built, it's a water crossing
+            # Determine road type: if any tile in path cannot have roads built,
+            # it's a water crossing
             has_water_tiles = any(
                 not map_data.get_terrain(pos.x, pos.y).can_build_road for pos in path
             )
@@ -187,17 +191,17 @@ def generate_roads(
 
     # 2. Identify High Points
     high_points = []
-    for level_value in np.linspace(elevation_map.min(), elevation_map.max(), num=10):
+    for level_value in np.linspace(noise_map.min(), noise_map.max(), num=10):
         import matplotlib.pyplot as plt
 
         contour_data = plt.contourf(
-            elevation_map,
+            noise_map,
             levels=[level_value - 0.01, level_value + 0.01],
         )
         enclosed_points = find_enclosed_points(
             contour_data,
             level_value,
-            elevation_map,
+            noise_map,
         )
         high_points.extend(enclosed_points)
         plt.clf()
