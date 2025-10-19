@@ -10,6 +10,9 @@ import numpy as np
 from . import logger
 
 
+from pydantic import BaseModel, Field
+
+
 class RoadType(Enum):
     """Enumeration of different road types for visualization and gameplay.
 
@@ -26,9 +29,9 @@ class RoadType(Enum):
     WATER = "water"
 
 
-@dataclass(frozen=True)
-class Tile:
-    """Represents a single tile in the map with all properties needed for generation.
+class Tile(BaseModel):
+    """
+    Represents a single tile in the map with all properties needed for generation.
 
     This class encapsulates all the properties that drive map generation algorithms:
     settlement placement, pathfinding, road building, visualization, etc.
@@ -54,73 +57,77 @@ class Tile:
         resources (list[str]): list of resources available on this tile type.
 
     """
-    
-    # Core properties that drive all algorithms
-    walkable: bool
-    movement_cost: float
-    blocks_line_of_sight: bool
-
-    # Settlement and building
-    buildable: bool
-    habitability: float
-
-    # Road generation
-    road_buildable: bool
-    elevation_penalty: float
-
-    # Terrain generation
-    elevation_influence: float
-    smoothing_weight: float
-
-    # Visualization (optional - can be computed from other properties)
-    symbol: str
-    color: tuple[float, float, float]
 
     # Metadata
-    name: str
-    description: str
-
-    # Resources and features
-    resources: list[str]
+    name: str = Field(
+        description="Human-readable name for this tile type.",
+    )
+    description: str = Field(
+        description="Detailed description of this tile type.",
+    )
+    # Core properties that drive all algorithms
+    walkable: bool = Field(
+        description="Whether units can move through this tile.",
+    )
+    movement_cost: float = Field(
+        description="Base cost for pathfinding algorithms (higher = harder to traverse).",
+    )
+    blocks_line_of_sight: bool = Field(
+        description="Whether this tile blocks line of sight for visibility calculations.",
+    )
+    # Settlement and building
+    buildable: bool = Field(
+        description="Whether settlements and buildings can be constructed on this tile.",
+    )
+    habitability: float = Field(
+        description="How suitable this tile is for settlements (0.0 to 1.0).",
+    )
+    # Road generation
+    road_buildable: bool = Field(
+        description="Whether roads can be built on or through this tile.",
+    )
+    elevation_penalty: float = Field(
+        description="Additional pathfinding cost due to elevation changes.",
+    )
+    # Terrain generation
+    elevation_influence: float = Field(
+        description="How much this tile affects terrain elevation during generation.",
+    )
+    smoothing_weight: float = Field(
+        description="How much this tile participates in terrain smoothing algorithms.",
+    )
+    # Visualization (optional - can be computed from other properties)
+    symbol: str = Field(
+        description="Character symbol used for text-based map representation.",
+    )
+    color: tuple[float, float, float] = Field(
+        description="RGB color tuple for visualization (0.0 to 1.0).",
+    )
+    # Resources and features.
+    resources: list[str] = Field(
+        default_factory=list,
+        description="List of resources available on this tile type.",
+    )
 
     def __hash__(self) -> int:
         """Return hash based on all tile properties."""
-        return hash((
-            self.walkable,
-            self.movement_cost,
-            self.blocks_line_of_sight,
-            self.buildable,
-            self.habitability,
-            self.road_buildable,
-            self.elevation_penalty,
-            self.elevation_influence,
-            self.smoothing_weight,
-            self.symbol,
-            self.color,
-            self.name,
-            self.description,
-            tuple(self.resources),
-        ))
-
-    def __eq__(self, other) -> bool:
-        """Check equality based on all tile properties."""
-        if not isinstance(other, Tile):
-            return False
-        return (
-            self.walkable == other.walkable
-            and self.movement_cost == other.movement_cost
-            and self.blocks_line_of_sight == other.blocks_line_of_sight
-            and self.buildable == other.buildable
-            and self.habitability == other.habitability
-            and self.road_buildable == other.road_buildable
-            and self.elevation_penalty == other.elevation_penalty
-            and self.elevation_influence == other.elevation_influence
-            and self.smoothing_weight == other.smoothing_weight
-            and self.symbol == other.symbol
-            and self.color == other.color
-            and self.name == other.name
-            and self.description == other.description
-            and self.resources == other.resources
+        return hash(
+            (
+                self.walkable,
+                self.movement_cost,
+                self.blocks_line_of_sight,
+                self.buildable,
+                self.habitability,
+                self.road_buildable,
+                self.elevation_penalty,
+                self.elevation_influence,
+                self.smoothing_weight,
+                self.symbol,
+                self.color,
+                self.name,
+                self.description,
+                tuple(self.resources),
+            )
         )
 
     # Computed properties
@@ -143,56 +150,6 @@ class Tile:
     def pathfinding_cost(self) -> float:
         """Get the total cost for pathfinding algorithms."""
         return self.movement_cost + self.elevation_penalty
-
-    def to_json(self) -> dict:
-        """Convert this tile to a JSON-serializable dictionary.
-
-        Returns:
-            dict: JSON-serializable representation of this tile.
-        """
-        return {
-            "walkable": self.walkable,
-            "movement_cost": self.movement_cost,
-            "blocks_line_of_sight": self.blocks_line_of_sight,
-            "buildable": self.buildable,
-            "habitability": self.habitability,
-            "road_buildable": self.road_buildable,
-            "elevation_penalty": self.elevation_penalty,
-            "elevation_influence": self.elevation_influence,
-            "smoothing_weight": self.smoothing_weight,
-            "symbol": self.symbol,
-            "color": list(self.color),
-            "name": self.name,
-            "description": self.description,
-            "resources": self.resources,
-        }
-
-    @classmethod
-    def from_json(cls, data: dict) -> "Tile":
-        """Create a Tile instance from a JSON dictionary.
-
-        Args:
-            data: JSON dictionary containing tile properties.
-
-        Returns:
-            Tile: New Tile instance.
-        """
-        return cls(
-            walkable=data["walkable"],
-            movement_cost=data["movement_cost"],
-            blocks_line_of_sight=data["blocks_line_of_sight"],
-            buildable=data["buildable"],
-            habitability=data["habitability"],
-            road_buildable=data["road_buildable"],
-            elevation_penalty=data["elevation_penalty"],
-            elevation_influence=data["elevation_influence"],
-            smoothing_weight=data["smoothing_weight"],
-            symbol=data["symbol"],
-            color=tuple(data["color"]),
-            name=data["name"],
-            description=data["description"],
-            resources=data["resources"],
-        )
 
 
 @dataclass(frozen=True)
@@ -488,39 +445,41 @@ class MapData:
             dict: JSON-serializable representation of this map data.
         """
         # Collect unique tiles and assign sequential IDs
-        unique_tiles = []
+        unique_tiles: list[Tile] = []
         tile_to_id = {}
-        
+
         for row in self.grid:
             for tile in row:
                 if tile not in tile_to_id:
                     tile_id = len(unique_tiles)
                     tile_to_id[tile] = tile_id
                     unique_tiles.append(tile)
-        
+
         # Create grid as comma-separated string of tile IDs
         grid_rows = []
         for row in self.grid:
             row_ids = [str(tile_to_id[tile]) for tile in row]
             grid_rows.append(",".join(row_ids))
-        
+
         result = {
             "width": self.width,
             "height": self.height,
-            "tiles": [tile.to_json() for tile in unique_tiles],
+            "tiles": [tile.model_dump_json() for tile in unique_tiles],
             "grid": "\n".join(grid_rows),
         }
-        
+
         # Add optional fields if they exist
         if self.noise_map is not None:
             result["noise_map"] = np.round(self.noise_map, 4).tolist()
-        
+
         if self.elevation_map is not None:
             result["elevation_map"] = np.round(self.elevation_map, 4).tolist()
-        
+
         if self.settlements is not None:
-            result["settlements"] = [settlement.to_json() for settlement in self.settlements]
-        
+            result["settlements"] = [
+                settlement.to_json() for settlement in self.settlements
+            ]
+
         if self.roads_graph is not None:
             # Convert networkx graph to serializable format
             edges_data = []
@@ -531,11 +490,11 @@ class MapData:
                     "data": {
                         "path": [pos.to_json() for pos in data["path"]],
                         "type": data.get("type", RoadType.LAND).value,
-                    }
+                    },
                 }
                 edges_data.append(edge_data)
             result["roads_graph"] = edges_data
-        
+
         return result
 
     @classmethod
@@ -549,8 +508,8 @@ class MapData:
             MapData: New MapData instance.
         """
         # Reconstruct tiles
-        tiles = [Tile.from_json(tile_data) for tile_data in data["tiles"]]
-        
+        tiles = [Tile.model_validate_json(tile_data) for tile_data in data["tiles"]]
+
         # Reconstruct the grid from comma-separated strings
         grid = []
         for row_str in data["grid"].split("\n"):
@@ -561,17 +520,19 @@ class MapData:
 
         # Create the basic MapData
         map_data = cls(grid=grid)
-        
+
         # Add optional fields if they exist
         if "noise_map" in data:
             map_data.noise_map = np.array(data["noise_map"])
-        
+
         if "elevation_map" in data:
             map_data.elevation_map = np.array(data["elevation_map"])
-        
+
         if "settlements" in data:
-            map_data.settlements = [Settlement.from_json(s_data) for s_data in data["settlements"]]
-        
+            map_data.settlements = [
+                Settlement.from_json(s_data) for s_data in data["settlements"]
+            ]
+
         if "roads_graph" in data:
             # Reconstruct networkx graph
             graph = nx.Graph()
@@ -583,7 +544,7 @@ class MapData:
                 road_type = RoadType(edge_data["data"]["type"])
                 graph.add_edge(u, v, path=path, type=road_type)
             map_data.roads_graph = graph
-        
+
         return map_data
 
     def save_to_json(self, filepath: str) -> None:

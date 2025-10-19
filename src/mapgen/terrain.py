@@ -28,74 +28,55 @@ def initialize_level(
     return MapData([[tiles["wall"] for _ in range(width)] for _ in range(height)])
 
 
-def initialize_character(
-    width: int,
-    height: int,
-    padding: int,
-    wall_countdown: int,
-) -> dict:
-    """Initialize a digging character.
-
-    Args:
-        width (int): The width of the map.
-        height (int): The height of the map.
-        padding (int): The padding around the edges.
-        wall_countdown (int): The number of walls to dig.
-
-    Returns:
-        dict: A dictionary representing the character state.
-
-    """
-    return {
-        "wallCountdown": wall_countdown,
-        "padding": padding,
-        "x": width // 2,
-        "y": height // 2,
-    }
-
-
 def dig(
     map_data: MapData,
-    character: dict,
     tiles: dict[str, Tile],
+    padding: int,
+    initial_x: int,
+    initial_y: int,
 ) -> None:
     """Simulate character digging through the map.
 
     Args:
         map_data (MapData): The map grid to modify.
-        character (dict): The character state dictionary.
         tiles (dict[str, Tile]): The tile catalog.
+        padding (int): The padding around the edges.
+        initial_x (int): The starting x-coordinate of the character.
+        initial_y (int): The starting y-coordinate of the character.
 
     """
-    initial_countdown = character["wallCountdown"]
-    logger.debug(f"Starting terrain digging: {initial_countdown} walls to dig")
-    
-    while character["wallCountdown"] > 0:
-        x = character["x"]
-        y = character["y"]
+    max_countdown = max(100, (map_data.width * map_data.height) // 3)
+    countdown = 0
+    logger.debug(f"Starting terrain digging: {max_countdown} walls to dig")
 
+    x = initial_x
+    y = initial_y
+
+    while countdown < max_countdown:
         current_tile = map_data.get_terrain(x, y)
         if not current_tile.walkable:
             map_data.set_terrain(x, y, tiles["floor"])
-            character["wallCountdown"] -= 1
-            
+            countdown += 1
+
             # Log progress every 10% completion
-            remaining = character["wallCountdown"]
-            progress = (initial_countdown - remaining) / initial_countdown
-            if progress % 0.1 < 0.01:  # Log roughly every 10%
-                logger.debug(f"Digging progress: {progress:.1%} complete ({remaining} walls remaining)")
+            progress = countdown / max_countdown
+            remaining = max_countdown - countdown
+            if progress % 0.1 < 0.01:
+                logger.debug(
+                    f"Digging progress: {progress:.1%} complete ({remaining} walls remaining)"
+                )
 
         traverse = random.randint(1, 4)
 
-        if traverse == 1 and x > character["padding"]:
-            character["x"] -= 1
-        elif traverse == 2 and x < map_data.width - 1 - character["padding"]:
-            character["x"] += 1
-        elif traverse == 3 and y > character["padding"]:
-            character["y"] -= 1
-        elif traverse == 4 and y < map_data.height - 1 - character["padding"]:
-            character["y"] += 1
-    
+        if traverse == 1 and x > padding:
+            x -= 1
+        elif traverse == 2 and x < map_data.width - 1 - padding:
+            x += 1
+        elif traverse == 3 and y > padding:
+            y -= 1
+        elif traverse == 4 and y < map_data.height - 1 - padding:
+            y += 1
+
     logger.debug("Terrain digging completed")
 
 

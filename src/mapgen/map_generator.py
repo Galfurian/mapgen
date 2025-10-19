@@ -27,7 +27,6 @@ class MapGenerator:
         self,
         width: int = 150,
         height: int = 100,
-        wall_countdown: int | None = None,
         padding: int = 2,
         scale: float = 50.0,
         octaves: int = 6,
@@ -47,7 +46,6 @@ class MapGenerator:
         Args:
             width (int): The width of the map.
             height (int): The height of the map.
-            wall_countdown (int | None): Number of walls to dig. If None, scales with map size.
             padding (int): Padding around edges.
             scale (float): Noise scale.
             octaves (int): Number of noise octaves.
@@ -64,13 +62,6 @@ class MapGenerator:
         """
         self.width = width
         self.height = height
-        
-        # Scale wall_countdown with map size if not specified
-        if wall_countdown is None:
-            # Use a reasonable ratio: about 1/3 of map area for digging
-            wall_countdown = max(100, (width * height) // 3)
-        self.wall_countdown = wall_countdown
-        
         self.padding = padding
         self.scale = scale
         self.octaves = octaves
@@ -96,6 +87,8 @@ class MapGenerator:
         """
         return {
             "wall": Tile(
+                name="wall",
+                description="Impassable wall",
                 walkable=False,
                 movement_cost=1.0,
                 blocks_line_of_sight=True,
@@ -107,11 +100,11 @@ class MapGenerator:
                 smoothing_weight=1.0,
                 symbol="#",
                 color=(0.0, 0.0, 0.0),
-                name="wall",
-                description="Impassable wall",
                 resources=[],
             ),
             "floor": Tile(
+                name="floor",
+                description="Open floor space",
                 walkable=True,
                 movement_cost=1.0,
                 blocks_line_of_sight=False,
@@ -123,11 +116,11 @@ class MapGenerator:
                 smoothing_weight=1.0,
                 symbol=".",
                 color=(0.9, 0.9, 0.9),
-                name="floor",
-                description="Open floor space",
                 resources=[],
             ),
             "water": Tile(
+                name="water",
+                description="Water terrain",
                 walkable=True,
                 movement_cost=2.0,
                 blocks_line_of_sight=False,
@@ -139,11 +132,11 @@ class MapGenerator:
                 smoothing_weight=1.0,
                 symbol="~",
                 color=(0.2, 0.5, 1.0),
-                name="water",
-                description="Water terrain",
                 resources=[],
             ),
             "forest": Tile(
+                name="forest",
+                description="Forest terrain",
                 walkable=True,
                 movement_cost=1.2,
                 blocks_line_of_sight=False,
@@ -155,11 +148,11 @@ class MapGenerator:
                 smoothing_weight=1.0,
                 symbol="F",
                 color=(0.2, 0.6, 0.2),
-                name="forest",
-                description="Forest terrain",
                 resources=["wood", "game"],
             ),
             "plains": Tile(
+                name="plains",
+                description="Open plains",
                 walkable=True,
                 movement_cost=1.0,
                 blocks_line_of_sight=False,
@@ -171,11 +164,11 @@ class MapGenerator:
                 smoothing_weight=1.0,
                 symbol=".",
                 color=(0.8, 0.9, 0.6),
-                name="plains",
-                description="Open plains",
                 resources=["grain", "herbs"],
             ),
             "mountain": Tile(
+                name="mountain",
+                description="Mountain terrain",
                 walkable=False,
                 movement_cost=1.0,
                 blocks_line_of_sight=True,
@@ -187,8 +180,6 @@ class MapGenerator:
                 smoothing_weight=1.0,
                 symbol="^",
                 color=(0.5, 0.4, 0.3),
-                name="mountain",
-                description="Mountain terrain",
                 resources=["stone", "ore"],
             ),
         }
@@ -203,7 +194,7 @@ class MapGenerator:
             MapData: The generated map data containing terrain, settlements, and roads.
         """
         logger.info(f"Starting map generation: {self.width}x{self.height}")
-        
+
         # Initialize map
         logger.debug("Initializing map level")
         map_data = terrain.initialize_level(
@@ -212,18 +203,15 @@ class MapGenerator:
             self.tiles,
         )
 
-        # Initialize character
-        logger.debug("Initializing character for digging")
-        character = terrain.initialize_character(
-            self.width,
-            self.height,
-            self.padding,
-            self.wall_countdown,
-        )
-
         # Dig
         logger.debug("Digging terrain")
-        terrain.dig(map_data, character, self.tiles)
+        terrain.dig(
+            map_data=map_data,
+            tiles=self.tiles,
+            padding=self.padding,
+            initial_x=self.width // 2,
+            initial_y=self.height // 2,
+        )
 
         # Generate noise
         logger.debug("Generating noise map")
@@ -262,21 +250,25 @@ class MapGenerator:
             self.min_settlement_radius,
             self.max_settlement_radius,
         )
-        logger.info(f"Generated {len(generated_settlements) if generated_settlements else 0} settlements")
+        logger.info(
+            f"Generated {len(generated_settlements) if generated_settlements else 0} settlements"
+        )
 
         # Generate roads
         logger.debug("Generating road network")
         roads_graph = roads.generate_roads(
             generated_settlements, map_data, elevation_map
         )
-        logger.info(f"Generated road network with {len(roads_graph.edges) if roads_graph else 0} roads")
-        
+        logger.info(
+            f"Generated road network with {len(roads_graph.edges) if roads_graph else 0} roads"
+        )
+
         # Create complete MapData with all components
         map_data.noise_map = noise_map
         map_data.elevation_map = elevation_map
         map_data.settlements = generated_settlements
         map_data.roads_graph = roads_graph
-        
+
         logger.info("Map generation completed successfully")
         return map_data
 
@@ -294,14 +286,22 @@ class MapGenerator:
 
         """
         if map_data.noise_map is None:
-            raise ValueError("Map data missing noise_map. Generate a complete map first.")
+            raise ValueError(
+                "Map data missing noise_map. Generate a complete map first."
+            )
         if map_data.settlements is None:
-            raise ValueError("Map data missing settlements. Generate a complete map first.")
+            raise ValueError(
+                "Map data missing settlements. Generate a complete map first."
+            )
         if map_data.roads_graph is None:
-            raise ValueError("Map data missing roads_graph. Generate a complete map first.")
+            raise ValueError(
+                "Map data missing roads_graph. Generate a complete map first."
+            )
         if map_data.elevation_map is None:
-            raise ValueError("Map data missing elevation_map. Generate a complete map first.")
-            
+            raise ValueError(
+                "Map data missing elevation_map. Generate a complete map first."
+            )
+
         return visualization.plot_map(
             map_data,
             map_data.noise_map,

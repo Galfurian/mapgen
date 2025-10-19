@@ -47,6 +47,7 @@ dev = [
     "flake8>=4.0.0",
     "mypy>=0.950",
     "ruff>=0.14.0",
+    "pydantic>=2.0.0",
 ]
 docs = ["sphinx>=4.0.0", "sphinx-rtd-theme>=1.0.0"]
 
