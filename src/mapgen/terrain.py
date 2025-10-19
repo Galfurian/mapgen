@@ -8,6 +8,7 @@ import numpy as np
 from . import logger
 from .map_data import MapData, Tile
 
+
 def dig(
     map_data: MapData,
     tiles: dict[str, Tile],

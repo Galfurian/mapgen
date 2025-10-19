@@ -12,13 +12,13 @@ logger.setLevel(logging.INFO)
 if not logger.handlers:
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
-    
+
     # Create formatter
     formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     console_handler.setFormatter(formatter)
-    
+
     # Add handler to logger
     logger.addHandler(console_handler)
 
@@ -27,10 +27,10 @@ from .map_generator import MapGenerator
 
 __all__ = [
     "MapData",
+    "MapGenerator",
     "Position",
     "Settlement",
     "Tile",
-    "MapGenerator",
     "logger",
 ]
 

@@ -11,14 +11,13 @@ from mapgen.map_data import MapData
 def main() -> None:
     """Demonstrate the complete MapGen workflow."""
     print("🗺️  MapGen Complete Workflow Example")
-    print("=" * 50)
 
     # Create output directory
     output_dir = Path("output")
     output_dir.mkdir(exist_ok=True)
 
     # Step 1: Generate a map
-    print("\n1️⃣  Generating fantasy map...")
+    print("Generating fantasy map...")
     generator = MapGenerator(
         width=100,
         height=80,
@@ -53,9 +52,9 @@ def main() -> None:
     print(f"   🏘️  Settlements: {len(generator.settlements)}")
     print(f"   🛣️  Roads: {len(generator.roads_graph.edges)}")
 
-    # Step 3: Generate PNG from original map
-    png_original_path = output_dir / "original_map.png"
-    print(f"\n3️⃣  Generating PNG from original map...")
+    # Generate PNG from original map.
+    print("Generating PNG from original map...")
+    map_path_original = output_dir / "original_map.png"
     fig_original = visualization.plot_map(
         map_data=generator.map_data,
         noise_map=generator.noise_map,
@@ -64,23 +63,27 @@ def main() -> None:
         elevation_map=generator.elevation_map,
     )
     fig_original.savefig(
-        png_original_path, dpi=200, bbox_inches="tight", facecolor="white"
+        map_path_original,
+        dpi=200,
+        bbox_inches="tight",
+        facecolor="white",
     )
     fig_original.get_figure().clear()  # Free memory
-    png_original_size = os.path.getsize(png_original_path)
+    png_original_size = os.path.getsize(map_path_original)
     print(f"   🖼️  Original PNG size: {png_original_size:,} bytes")
 
+    # Save the map to JSON
+    map_json_path = output_dir / "complete_workflow_map.json"
+    print(f"Saving to JSON: {map_json_path}")
+    generator.map_data.save_to_json(str(map_json_path))
+    json_size = os.path.getsize(map_json_path)
+    print(f"   💾 JSON size: {json_size:,} bytes")
+
     if False:
-        # Step 2: Save to JSON
-        json_path = output_dir / "complete_workflow_map.json"
-        print(f"\n2️⃣  Saving to JSON: {json_path}")
-        map_data.save_to_json(str(json_path))
-        json_size = os.path.getsize(json_path)
-        print(f"   💾 JSON size: {json_size:,} bytes")
 
         # Step 4: Load map from JSON
-        print(f"\n4️⃣  Loading map from JSON...")
-        loaded_map_data = MapData.load_from_json(str(json_path))
+        print("\n4️⃣  Loading map from JSON...")
+        loaded_map_data = MapData.load_from_json(str(map_json_path))
         print(f"   ✅ Loaded {loaded_map_data.width}x{loaded_map_data.height} map")
         print(
             f"   📊 Terrain types preserved: {len(set(tile.name for row in loaded_map_data.grid for tile in row))}"
@@ -94,7 +97,7 @@ def main() -> None:
 
         # Step 5: Generate PNG from loaded map
         png_loaded_path = output_dir / "loaded_map.png"
-        print(f"\n5️⃣  Generating PNG from loaded map...")
+        print("\n5️⃣  Generating PNG from loaded map...")
         fig_loaded = generator.plot(loaded_map_data)
         fig_loaded.savefig(
             png_loaded_path, dpi=200, bbox_inches="tight", facecolor="white"
@@ -104,7 +107,7 @@ def main() -> None:
         print(f"   🖼️  Loaded PNG size: {png_loaded_size:,} bytes")
 
         # Step 6: Verify data integrity
-        print(f"\n6️⃣  Verifying data integrity...")
+        print("\n6️⃣  Verifying data integrity...")
         integrity_ok = True
 
         # Check dimensions
@@ -147,22 +150,22 @@ def main() -> None:
             print("   ⚠️  Some data integrity issues detected")
 
         # Step 7: Summary
-        print(f"\n🎉 Workflow completed successfully!")
-        print(f"   📁 Files created:")
-        print(f"      JSON: {json_path} ({json_size:,} bytes)")
-        print(f"      Original PNG: {png_original_path} ({png_original_size:,} bytes)")
+        print("\n🎉 Workflow completed successfully!")
+        print("   📁 Files created:")
+        print(f"      JSON: {map_json_path} ({json_size:,} bytes)")
+        print(f"      Original PNG: {map_path_original} ({png_original_size:,} bytes)")
         print(f"      Loaded PNG: {png_loaded_path} ({png_loaded_size:,} bytes)")
-        print(f"\n💡 The JSON file contains the complete map data:")
+        print("\n💡 The JSON file contains the complete map data:")
         print(f"   - Terrain grid ({map_data.width}x{map_data.height})")
-        print(f"   - Noise map for visual shading")
-        print(f"   - Elevation map for road generation")
+        print("   - Noise map for visual shading")
+        print("   - Elevation map for road generation")
         print(
             f"   - {len(map_data.settlements) if map_data.settlements else 0} settlements with names and positions"
         )
         print(
             f"   - Road network with {len(map_data.roads_graph.edges) if map_data.roads_graph else 0} connections"
         )
-        print(f"\n🚀 You can now load any .json file and generate visualizations!")
+        print("\n🚀 You can now load any .json file and generate visualizations!")
 
 
 if __name__ == "__main__":

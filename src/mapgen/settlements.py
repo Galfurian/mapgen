@@ -1,7 +1,6 @@
 """Settlement generation module."""
 
 import random
-from typing import List, Tuple
 
 import numpy as np
 from onymancer import generate
@@ -51,6 +50,7 @@ def is_position_suitable_for_settlement(
 
     Returns:
         bool: True if the position can have a settlement, False otherwise.
+
     """
     if not map_data.is_valid_position(position.x, position.y):
         raise ValueError(f"Position {position} is out of bounds")
@@ -70,6 +70,7 @@ def should_place_settlement(settlement_density: float) -> bool:
 
     Raises:
         ValueError: If settlement_density is not between 0.0 and 1.0.
+
     """
     if not (0.0 <= settlement_density <= 1.0):
         raise ValueError(
@@ -82,7 +83,7 @@ def should_place_settlement(settlement_density: float) -> bool:
 def settlement_overlaps(
     position: Position,
     radius: float,
-    existing_settlements: List[Settlement],
+    existing_settlements: list[Settlement],
     max_radius: float,
 ) -> bool:
     """Check if a potential settlement overlaps with existing settlements.
@@ -98,6 +99,7 @@ def settlement_overlaps(
 
     Raises:
         ValueError: If radius or max_radius are negative.
+
     """
     if radius < 0:
         raise ValueError(f"Settlement radius must be non-negative, got {radius}")
@@ -128,6 +130,7 @@ def create_settlement(
 
     Raises:
         ValueError: If min_radius > max_radius or if radii are negative.
+
     """
     if min_radius < 0 or max_radius < 0:
         raise ValueError(
@@ -152,7 +155,7 @@ def create_settlement(
 
 def find_suitable_settlement_positions(
     map_data: MapData,
-) -> List[Position]:
+) -> list[Position]:
     """Find all positions on the map that are suitable for settlement placement.
 
     Args:
@@ -160,6 +163,7 @@ def find_suitable_settlement_positions(
 
     Returns:
         List[Position]: List of positions suitable for settlements.
+
     """
     suitable_positions = []
 
@@ -173,11 +177,11 @@ def find_suitable_settlement_positions(
 
 
 def place_settlements_at_positions(
-    positions: List[Position],
+    positions: list[Position],
     settlement_density: float,
     min_radius: float,
     max_radius: float,
-) -> List[Settlement]:
+) -> list[Settlement]:
     """Place settlements at suitable positions with given constraints.
 
     Args:
@@ -188,6 +192,7 @@ def place_settlements_at_positions(
 
     Returns:
         List[Settlement]: List of placed settlements.
+
     """
     settlements = []
 
@@ -223,6 +228,7 @@ def generate_settlements(
 
     Raises:
         ValueError: If map_data dimensions don't match noise_map dimensions.
+
     """
     if map_data.height != noise_map.shape[0] or map_data.width != noise_map.shape[1]:
         raise ValueError(

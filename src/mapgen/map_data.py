@@ -2,17 +2,11 @@
 
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass
 from enum import Enum
 
-import networkx as nx
-import numpy as np
+from pydantic import BaseModel, Field
 
 from . import logger
-
-
-from pydantic import BaseModel, Field
 
 
 class RoadType(Enum):
@@ -197,22 +191,27 @@ class Position(BaseModel):
         """Calculate Euclidean distance to another position.
 
         Args:
-            other (Position): The other position.
+            other (Position):
+                The other position.
 
         Returns:
-            float: The Euclidean distance.
+            float:
+                The Euclidean distance.
 
         """
         return ((self.x - other.x) ** 2 + (self.y - other.y) ** 2) ** 0.5
 
     def manhattan_distance_to(self, other: Position) -> int:
-        """Calculate Manhattan distance to another position.
+        """
+        Calculate Manhattan distance to another position.
 
         Args:
-            other (Position): The other position.
+            other (Position):
+                The other position.
 
         Returns:
-            int: The Manhattan distance.
+            int:
+                The Manhattan distance.
 
         """
         return abs(self.x - other.x) + abs(self.y - other.y)
@@ -258,10 +257,12 @@ class Settlement(BaseModel):
         """Calculate Euclidean distance to another position.
 
         Args:
-            other (Position): The other position.
+            other (Position):
+                The other position.
 
         Returns:
-            float: The Euclidean distance.
+            float:
+                The Euclidean distance.
 
         """
         return self.position.distance_to(other.position)
@@ -271,11 +272,12 @@ class MapData(BaseModel):
     """
     Represents a 2D map grid with terrain data.
 
-    This class encapsulates the map data and provides convenient methods
-    for accessing and manipulating terrain information.
+    This class encapsulates the map data and provides convenient methods for
+    accessing and manipulating terrain information.
 
     Attributes:
-        grid (list[list[Tile]]): The 2D grid of terrain tiles.
+        grid (list[list[Tile]]):
+            The 2D grid of terrain tiles.
 
     """
 
@@ -294,44 +296,58 @@ class MapData(BaseModel):
         return len(self.grid[0])
 
     def get_terrain(self, x: int, y: int) -> Tile:
-        """Get the terrain tile at the specified coordinates.
+        """
+        Get the terrain tile at the specified coordinates.
 
         Args:
-            x (int): The x coordinate.
-            y (int): The y coordinate.
+            x (int):
+                The x coordinate.
+            y (int):
+                The y coordinate.
 
         Returns:
-            Tile: The terrain tile at the coordinates.
+            Tile:
+                The terrain tile at the coordinates.
 
         Raises:
-            IndexError: If coordinates are out of bounds.
+            IndexError:
+                If coordinates are out of bounds.
 
         """
         return self.grid[y][x]
 
     def set_terrain(self, x: int, y: int, terrain: Tile) -> None:
-        """Set the terrain tile at the specified coordinates.
+        """
+        Set the terrain tile at the specified coordinates.
 
         Args:
-            x (int): The x coordinate.
-            y (int): The y coordinate.
-            terrain (Tile): The terrain tile to set.
+            x (int):
+                The x coordinate.
+            y (int):
+                The y coordinate.
+            terrain (Tile):
+                The terrain tile to set.
 
         Raises:
-            IndexError: If coordinates are out of bounds.
+            IndexError:
+                If coordinates are out of bounds.
 
         """
         self.grid[y][x] = terrain
 
     def is_valid_position(self, x: int, y: int) -> bool:
-        """Check if the given coordinates are within the map bounds.
+        """
+        Check if the given coordinates are within the map bounds.
 
         Args:
-            x (int): The x coordinate.
-            y (int): The y coordinate.
+            x (int):
+                The x coordinate.
+            y (int):
+                The y coordinate.
 
         Returns:
-            bool: True if coordinates are valid, False otherwise.
+            bool:
+                True if coordinates are valid, False otherwise.
 
         """
         return 0 <= x < self.width and 0 <= y < self.height
@@ -343,16 +359,23 @@ class MapData(BaseModel):
         walkable_only: bool = True,
         include_diagonals: bool = False,
     ) -> list[Position]:
-        """Get neighboring positions within map boundaries.
+        """
+        Get neighboring positions within map boundaries.
 
         Args:
-            x: The x coordinate.
-            y: The y coordinate.
-            walkable_only: If True, only return walkable neighbors.
-            include_diagonals: If True, include diagonal neighbors (8 directions), otherwise only cardinal directions (4 directions).
+            x:
+                The x coordinate.
+            y:
+                The y coordinate.
+            walkable_only:
+                If True, only return walkable neighbors.
+            include_diagonals:
+                If True, include diagonal neighbors (8 directions), otherwise
+                only cardinal directions (4 directions).
 
         Returns:
-            list[Position]: List of valid neighboring positions.
+            list[Position]:
+                List of valid neighboring positions.
 
         """
         # Cardinal directions (4-way)
@@ -395,16 +418,23 @@ class MapData(BaseModel):
         walkable_only: bool = True,
         include_diagonals: bool = False,
     ) -> list[Tile]:
-        """Get neighboring tiles within map boundaries.
+        """
+        Get neighboring tiles within map boundaries.
 
         Args:
-            x: The x coordinate.
-            y: The y coordinate.
-            walkable_only: If True, only return walkable neighbors.
-            include_diagonals: If True, include diagonal neighbors (8 directions), otherwise only cardinal directions (4 directions).
+            x:
+                The x coordinate.
+            y:
+                The y coordinate.
+            walkable_only:
+                If True, only return walkable neighbors.
+            include_diagonals:
+                If True, include diagonal neighbors (8 directions), otherwise
+                only cardinal directions (4 directions).
 
         Returns:
-            list[Tile]: List of valid neighboring tiles.
+            list[Tile]:
+                List of valid neighboring tiles.
 
         """
         return [
@@ -438,7 +468,7 @@ class MapData(BaseModel):
             logger.info(f"Map data saved successfully in {filepath}")
 
     @classmethod
-    def load_from_json(cls, filepath: str) -> "MapData":
+    def load_from_json(cls, filepath: str) -> MapData:
         """
         Load map data from a JSON file.
 
@@ -450,5 +480,5 @@ class MapData(BaseModel):
 
         """
         logger.info(f"Loading map data from {filepath}")
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             return cls.model_validate_json(f.read())
