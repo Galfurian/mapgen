@@ -5,6 +5,7 @@ import random
 import noise
 import numpy as np
 
+from . import logger
 from .map_data import MapData, Tile
 
 
@@ -66,6 +67,9 @@ def dig(
         tiles (dict[str, Tile]): The tile catalog.
 
     """
+    initial_countdown = character["wallCountdown"]
+    logger.debug(f"Starting terrain digging: {initial_countdown} walls to dig")
+    
     while character["wallCountdown"] > 0:
         x = character["x"]
         y = character["y"]
@@ -74,6 +78,12 @@ def dig(
         if not current_tile.walkable:
             map_data.set_terrain(x, y, tiles["floor"])
             character["wallCountdown"] -= 1
+            
+            # Log progress every 10% completion
+            remaining = character["wallCountdown"]
+            progress = (initial_countdown - remaining) / initial_countdown
+            if progress % 0.1 < 0.01:  # Log roughly every 10%
+                logger.debug(f"Digging progress: {progress:.1%} complete ({remaining} walls remaining)")
 
         traverse = random.randint(1, 4)
 
@@ -85,6 +95,8 @@ def dig(
             character["y"] -= 1
         elif traverse == 4 and y < map_data.height - 1 - character["padding"]:
             character["y"] += 1
+    
+    logger.debug("Terrain digging completed")
 
 
 def generate_noise_map(

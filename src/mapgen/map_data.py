@@ -1,7 +1,10 @@
 """Data models for the map generator."""
 
-from dataclasses import dataclass
+import json
+from dataclasses import asdict, dataclass
 from enum import Enum
+
+from . import logger
 
 
 class RoadType(Enum):
@@ -318,6 +321,66 @@ class MapData:
             self.get_terrain(pos.x, pos.y)
             for pos in self.get_neighbors(x, y, walkable_only, include_diagonals)
         ]
+
+    def save_to_json(self, filepath: str) -> None:
+        """Save the map data to a JSON file in a lossless format.
+
+        Args:
+            filepath (str): Path to the file where the map will be saved.
+
+        """
+        logger.info(f"Saving map data to {filepath}")
+        # Convert the grid to a serializable format
+        serializable_grid = []
+        for row in self.grid:
+            serializable_row = []
+            for tile in row:
+                tile_dict = asdict(tile)
+                # Convert tuple color to list for JSON serialization
+                tile_dict['color'] = list(tile_dict['color'])
+                serializable_row.append(tile_dict)
+            serializable_grid.append(serializable_row)
+
+        data = {
+            'width': self.width,
+            'height': self.height,
+            'grid': serializable_grid
+        }
+
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        
+        logger.info(f"Map data saved successfully ({self.width}x{self.height})")
+
+    @classmethod
+    def load_from_json(cls, filepath: str) -> 'MapData':
+        """Load map data from a JSON file.
+
+        Args:
+            filepath (str): Path to the JSON file to load from.
+
+        Returns:
+            MapData: The loaded map data.
+
+        """
+        logger.info(f"Loading map data from {filepath}")
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        # Reconstruct the grid
+        grid = []
+        for row_data in data['grid']:
+            row = []
+            for tile_data in row_data:
+                # Convert color list back to tuple
+                tile_data['color'] = tuple(tile_data['color'])
+                tile = Tile(**tile_data)
+                row.append(tile)
+            grid.append(row)
+
+        map_data = cls(grid=grid)
+        logger.info(f"Map data loaded successfully ({map_data.width}x{map_data.height})")
+        return map_data
 
     def __getitem__(self, key: int) -> list[Tile]:
         """Get a row from the grid."""

@@ -5,6 +5,7 @@ import numpy as np
 from matplotlib.figure import Figure
 
 from . import (
+    logger,
     roads,
     settlements,
     terrain,
@@ -26,7 +27,7 @@ class MapGenerator:
         self,
         width: int = 150,
         height: int = 100,
-        wall_countdown: int = 8000,
+        wall_countdown: int | None = None,
         padding: int = 2,
         scale: float = 50.0,
         octaves: int = 6,
@@ -45,7 +46,7 @@ class MapGenerator:
         Args:
             width (int): The width of the map.
             height (int): The height of the map.
-            wall_countdown (int): Number of walls to dig.
+            wall_countdown (int | None): Number of walls to dig. If None, scales with map size.
             padding (int): Padding around edges.
             scale (float): Noise scale.
             octaves (int): Number of noise octaves.
@@ -62,7 +63,13 @@ class MapGenerator:
         """
         self.width = width
         self.height = height
+        
+        # Scale wall_countdown with map size if not specified
+        if wall_countdown is None:
+            # Use a reasonable ratio: about 1/3 of map area for digging
+            wall_countdown = max(100, (width * height) // 3)
         self.wall_countdown = wall_countdown
+        
         self.padding = padding
         self.scale = scale
         self.octaves = octaves
@@ -197,7 +204,10 @@ class MapGenerator:
         This method performs all steps to generate a procedural fantasy map
         including terrain, settlements, and roads.
         """
+        logger.info(f"Starting map generation: {self.width}x{self.height}")
+        
         # Initialize map
+        logger.debug("Initializing map level")
         self.map_data = terrain.initialize_level(
             self.width,
             self.height,
@@ -205,6 +215,7 @@ class MapGenerator:
         )
 
         # Initialize character
+        logger.debug("Initializing character for digging")
         character = terrain.initialize_character(
             self.width,
             self.height,
@@ -213,9 +224,11 @@ class MapGenerator:
         )
 
         # Dig
+        logger.debug("Digging terrain")
         terrain.dig(self.map_data, character, self.tiles)
 
         # Generate noise
+        logger.debug("Generating noise map")
         self.noise_map = terrain.generate_noise_map(
             self.width,
             self.height,
@@ -226,6 +239,7 @@ class MapGenerator:
         )
 
         # Apply terrain features
+        logger.debug("Applying terrain features")
         self.map_data, self.elevation_map = terrain.apply_terrain_features(
             self.map_data,
             self.noise_map,
@@ -236,11 +250,13 @@ class MapGenerator:
         )
 
         # Smooth terrain
+        logger.debug("Smoothing terrain")
         self.map_data = terrain.smooth_terrain(
             self.map_data, self.tiles, self.smoothing_iterations
         )
 
         # Generate settlements
+        logger.debug("Generating settlements")
         self.settlements = settlements.generate_settlements(
             self.map_data,
             self.noise_map,
@@ -248,11 +264,16 @@ class MapGenerator:
             self.min_settlement_radius,
             self.max_settlement_radius,
         )
+        logger.info(f"Generated {len(self.settlements) if self.settlements else 0} settlements")
 
         # Generate roads
+        logger.debug("Generating road network")
         self.roads_graph = roads.generate_roads(
             self.settlements, self.map_data, self.elevation_map
         )
+        logger.info(f"Generated road network with {len(self.roads_graph.edges) if self.roads_graph else 0} roads")
+        
+        logger.info("Map generation completed successfully")
 
     def plot(self) -> Figure:
         """Plot the generated map.

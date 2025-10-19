@@ -5,6 +5,7 @@ import random
 import numpy as np
 from onymancer import generate
 
+from . import logger
 from .map_data import MapData, Settlement
 
 
@@ -57,6 +58,7 @@ def generate_settlements(
         List[Settlement]: A list of generated settlements.
 
     """
+    logger.debug(f"Generating settlements with density {settlement_density}")
     height = map_data.height
     width = map_data.width
 
@@ -89,4 +91,7 @@ def generate_settlements(
                                 connectivity=int(radius * 5),
                             )
                         )
+    
+    settlement_names = [s.name for s in settlements]
+    logger.debug(f"Generated settlements: {settlement_names}")
     return settlements
