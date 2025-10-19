@@ -1,7 +1,7 @@
 """Data models for the map generator."""
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from enum import Enum
 
 from . import logger
@@ -23,7 +23,7 @@ class RoadType(Enum):
     WATER = "water"
 
 
-@dataclass
+@dataclass(frozen=True)
 class Tile:
     """Represents a single tile in the map with all properties needed for generation.
 
@@ -51,7 +51,7 @@ class Tile:
         resources (list[str]): list of resources available on this tile type.
 
     """
-
+    
     # Core properties that drive all algorithms
     walkable: bool
     movement_cost: float
@@ -80,6 +80,46 @@ class Tile:
     # Resources and features
     resources: list[str]
 
+    def __hash__(self) -> int:
+        """Return hash based on all tile properties."""
+        return hash((
+            self.walkable,
+            self.movement_cost,
+            self.blocks_line_of_sight,
+            self.buildable,
+            self.habitability,
+            self.road_buildable,
+            self.elevation_penalty,
+            self.elevation_influence,
+            self.smoothing_weight,
+            self.symbol,
+            self.color,
+            self.name,
+            self.description,
+            tuple(self.resources),
+        ))
+
+    def __eq__(self, other) -> bool:
+        """Check equality based on all tile properties."""
+        if not isinstance(other, Tile):
+            return False
+        return (
+            self.walkable == other.walkable
+            and self.movement_cost == other.movement_cost
+            and self.blocks_line_of_sight == other.blocks_line_of_sight
+            and self.buildable == other.buildable
+            and self.habitability == other.habitability
+            and self.road_buildable == other.road_buildable
+            and self.elevation_penalty == other.elevation_penalty
+            and self.elevation_influence == other.elevation_influence
+            and self.smoothing_weight == other.smoothing_weight
+            and self.symbol == other.symbol
+            and self.color == other.color
+            and self.name == other.name
+            and self.description == other.description
+            and self.resources == other.resources
+        )
+
     # Computed properties
     @property
     def is_walkable(self) -> bool:
@@ -100,6 +140,56 @@ class Tile:
     def pathfinding_cost(self) -> float:
         """Get the total cost for pathfinding algorithms."""
         return self.movement_cost + self.elevation_penalty
+
+    def to_json(self) -> dict:
+        """Convert this tile to a JSON-serializable dictionary.
+
+        Returns:
+            dict: JSON-serializable representation of this tile.
+        """
+        return {
+            "walkable": self.walkable,
+            "movement_cost": self.movement_cost,
+            "blocks_line_of_sight": self.blocks_line_of_sight,
+            "buildable": self.buildable,
+            "habitability": self.habitability,
+            "road_buildable": self.road_buildable,
+            "elevation_penalty": self.elevation_penalty,
+            "elevation_influence": self.elevation_influence,
+            "smoothing_weight": self.smoothing_weight,
+            "symbol": self.symbol,
+            "color": list(self.color),
+            "name": self.name,
+            "description": self.description,
+            "resources": self.resources,
+        }
+
+    @classmethod
+    def from_json(cls, data: dict) -> "Tile":
+        """Create a Tile instance from a JSON dictionary.
+
+        Args:
+            data: JSON dictionary containing tile properties.
+
+        Returns:
+            Tile: New Tile instance.
+        """
+        return cls(
+            walkable=data["walkable"],
+            movement_cost=data["movement_cost"],
+            blocks_line_of_sight=data["blocks_line_of_sight"],
+            buildable=data["buildable"],
+            habitability=data["habitability"],
+            road_buildable=data["road_buildable"],
+            elevation_penalty=data["elevation_penalty"],
+            elevation_influence=data["elevation_influence"],
+            smoothing_weight=data["smoothing_weight"],
+            symbol=data["symbol"],
+            color=tuple(data["color"]),
+            name=data["name"],
+            description=data["description"],
+            resources=data["resources"],
+        )
 
 
 @dataclass(frozen=True)
@@ -147,6 +237,32 @@ class Position:
         """
         return abs(self.x - other.x) + abs(self.y - other.y)
 
+    def to_json(self) -> dict:
+        """Convert this position to a JSON-serializable dictionary.
+
+        Returns:
+            dict: JSON-serializable representation of this position.
+        """
+        return {
+            "x": self.x,
+            "y": self.y,
+        }
+
+    @classmethod
+    def from_json(cls, data: dict) -> "Position":
+        """Create a Position instance from a JSON dictionary.
+
+        Args:
+            data: JSON dictionary containing position coordinates.
+
+        Returns:
+            Position: New Position instance.
+        """
+        return cls(
+            x=data["x"],
+            y=data["y"],
+        )
+
 
 @dataclass
 class Settlement:
@@ -175,6 +291,38 @@ class Settlement:
     def position(self) -> Position:
         """Get the settlement position as a Position object."""
         return Position(self.x, self.y)
+
+    def to_json(self) -> dict:
+        """Convert this settlement to a JSON-serializable dictionary.
+
+        Returns:
+            dict: JSON-serializable representation of this settlement.
+        """
+        return {
+            "x": self.x,
+            "y": self.y,
+            "radius": self.radius,
+            "name": self.name,
+            "connectivity": self.connectivity,
+        }
+
+    @classmethod
+    def from_json(cls, data: dict) -> "Settlement":
+        """Create a Settlement instance from a JSON dictionary.
+
+        Args:
+            data: JSON dictionary containing settlement properties.
+
+        Returns:
+            Settlement: New Settlement instance.
+        """
+        return cls(
+            x=data["x"],
+            y=data["y"],
+            radius=data["radius"],
+            name=data["name"],
+            connectivity=data["connectivity"],
+        )
 
 
 @dataclass
@@ -322,39 +470,76 @@ class MapData:
             for pos in self.get_neighbors(x, y, walkable_only, include_diagonals)
         ]
 
+    def to_json(self) -> dict:
+        """Convert this map data to a JSON-serializable dictionary.
+
+        Returns:
+            dict: JSON-serializable representation of this map data.
+        """
+        # Collect unique tiles and assign sequential IDs
+        unique_tiles = []
+        tile_to_id = {}
+        
+        for row in self.grid:
+            for tile in row:
+                if tile not in tile_to_id:
+                    tile_id = len(unique_tiles)
+                    tile_to_id[tile] = tile_id
+                    unique_tiles.append(tile)
+        
+        # Create grid as comma-separated string of tile IDs
+        grid_rows = []
+        for row in self.grid:
+            row_ids = [str(tile_to_id[tile]) for tile in row]
+            grid_rows.append(",".join(row_ids))
+        
+        return {
+            "width": self.width,
+            "height": self.height,
+            "tiles": [tile.to_json() for tile in unique_tiles],
+            "grid": "\n".join(grid_rows),
+        }
+
+    @classmethod
+    def from_json(cls, data: dict) -> "MapData":
+        """Create a MapData instance from a JSON dictionary.
+
+        Args:
+            data: JSON dictionary containing map data.
+
+        Returns:
+            MapData: New MapData instance.
+        """
+        # Reconstruct tiles
+        tiles = [Tile.from_json(tile_data) for tile_data in data["tiles"]]
+        
+        # Reconstruct the grid from comma-separated strings
+        grid = []
+        for row_str in data["grid"].split("\n"):
+            if row_str.strip():  # Skip empty lines
+                row_ids = [int(id_str) for id_str in row_str.split(",")]
+                row = [tiles[tile_id] for tile_id in row_ids]
+                grid.append(row)
+
+        return cls(grid=grid)
+
     def save_to_json(self, filepath: str) -> None:
-        """Save the map data to a JSON file in a lossless format.
+        """Save the map data to a JSON file.
 
         Args:
             filepath (str): Path to the file where the map will be saved.
 
         """
         logger.info(f"Saving map data to {filepath}")
-        # Convert the grid to a serializable format
-        serializable_grid = []
-        for row in self.grid:
-            serializable_row = []
-            for tile in row:
-                tile_dict = asdict(tile)
-                # Convert tuple color to list for JSON serialization
-                tile_dict['color'] = list(tile_dict['color'])
-                serializable_row.append(tile_dict)
-            serializable_grid.append(serializable_row)
 
-        data = {
-            'width': self.width,
-            'height': self.height,
-            'grid': serializable_grid
-        }
-
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        
-        logger.info(f"Map data saved successfully ({self.width}x{self.height})")
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(self.to_json(), f, indent=2, ensure_ascii=False)
+            logger.info(f"Map data saved successfully in {filepath}")
 
     @classmethod
-    def load_from_json(cls, filepath: str) -> 'MapData':
-        """Load map data from a JSON file.
+    def load_from_json(cls, filepath: str) -> "MapData":
+        """
+        Load map data from a JSON file.
 
         Args:
             filepath (str): Path to the JSON file to load from.
@@ -364,23 +549,8 @@ class MapData:
 
         """
         logger.info(f"Loading map data from {filepath}")
-        with open(filepath, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-
-        # Reconstruct the grid
-        grid = []
-        for row_data in data['grid']:
-            row = []
-            for tile_data in row_data:
-                # Convert color list back to tuple
-                tile_data['color'] = tuple(tile_data['color'])
-                tile = Tile(**tile_data)
-                row.append(tile)
-            grid.append(row)
-
-        map_data = cls(grid=grid)
-        logger.info(f"Map data loaded successfully ({map_data.width}x{map_data.height})")
-        return map_data
+        with open(filepath, "r", encoding="utf-8") as f:
+            return cls.from_json(json.load(f))
 
     def __getitem__(self, key: int) -> list[Tile]:
         """Get a row from the grid."""

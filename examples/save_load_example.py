@@ -5,10 +5,11 @@ import os
 from pathlib import Path
 
 from mapgen import MapGenerator
+from mapgen.map_data import MapData
 
 
 def main() -> None:
-    """Demonstrate saving and loading maps in lossless JSON format."""
+    """Demonstrate saving and loading maps in compact JSON format."""
     print("MapGen JSON Save/Load Example")
     print("=" * 40)
 
@@ -25,7 +26,7 @@ def main() -> None:
     print(f"Generated map: {generator.map_data.width}x{generator.map_data.height}")
     print(f"Settlements: {len(generator.settlements) if generator.settlements else 0}")
 
-    # Save the map to JSON
+    # Save the map to JSON in compact format
     json_path = output_dir / "example_map.json"
     print(f"\nSaving map to: {json_path}")
     generator.map_data.save_to_json(str(json_path))
@@ -36,7 +37,6 @@ def main() -> None:
 
     # Load the map back
     print("\nLoading map from JSON...")
-    from mapgen.map_data import MapData
     loaded_map = MapData.load_from_json(str(json_path))
 
     print(f"Loaded map: {loaded_map.width}x{loaded_map.height}")
@@ -52,7 +52,8 @@ def main() -> None:
             # Compare key properties
             if (orig_tile.name != load_tile.name or
                 orig_tile.walkable != load_tile.walkable or
-                orig_tile.symbol != load_tile.symbol):
+                orig_tile.symbol != load_tile.symbol or
+                orig_tile.color != load_tile.color):
                 mismatches += 1
 
     if mismatches == 0:
@@ -66,11 +67,11 @@ def main() -> None:
         lines = f.readlines()[:20]  # First 20 lines
         for i, line in enumerate(lines, 1):
             print(f"{i:2d}: {line.rstrip()}")
-            if i >= 50:  # Show first 10 lines, then ellipsis
+            if i >= 20:
                 print("    ...")
                 break
 
-    print(f"\nFull JSON saved to: {json_path}")
+    print(f"\nCompact JSON saved to: {json_path}")
     print("You can open this file in any text editor or JSON viewer!")
 
 
