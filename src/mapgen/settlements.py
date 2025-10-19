@@ -143,10 +143,9 @@ def create_settlement(
     connectivity = int(radius * 5)
 
     return Settlement(
-        x=position.x,
-        y=position.y,
-        radius=radius,
         name=name,
+        position=position,
+        radius=radius,
         connectivity=connectivity,
     )
 

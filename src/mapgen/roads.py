@@ -154,13 +154,15 @@ def generate_roads(
     """
     graph: nx.Graph = nx.Graph()
     for settlement in settlements:
-        graph.add_node(settlement.name, pos=(settlement.x, settlement.y))
+        graph.add_node(
+            settlement.name, pos=(settlement.position.x, settlement.position.y)
+        )
 
     if not settlements:
         return graph
 
     # 1. Connect settlements using Minimum Spanning Tree (MST)
-    positions = np.array([(s.x, s.y) for s in settlements])
+    positions = np.array([(s.position.x, s.position.y) for s in settlements])
     distances = np.linalg.norm(
         positions[:, np.newaxis, :] - positions[np.newaxis, :, :], axis=2
     )
@@ -205,20 +207,17 @@ def generate_roads(
         plt.close()
 
     # 3. Add Additional Connections (Avoiding High Points)
-    settlement_positions = np.array([(s.x, s.y) for s in settlements])
+    settlement_positions = np.array([(s.position.x, s.position.y) for s in settlements])
     kdtree = SKLearnKDTree(settlement_positions)
 
     for i, settlement1 in enumerate(settlements):
-        neighbor_indices = kdtree.query_radius([(settlement1.x, settlement1.y)], r=40)[
-            0
-        ]
+        neighbor_indices = kdtree.query_radius(
+            [(settlement1.position.x, settlement1.position.y)], r=40
+        )[0]
         for j in neighbor_indices:
             settlement2 = settlements[j]
             if i != j and not graph.has_edge(settlement1.name, settlement2.name):
-                distance = (
-                    (settlement1.x - settlement2.x) ** 2
-                    + (settlement1.y - settlement2.y) ** 2
-                ) ** 0.5
+                distance = settlement1.distance_to(settlement2)
 
                 connection_probability = (
                     settlement1.connectivity * settlement2.connectivity

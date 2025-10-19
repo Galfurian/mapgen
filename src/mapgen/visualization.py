@@ -186,8 +186,8 @@ def plot_map(
     # Plot settlements
     existing_texts: list[tuple[int, int]] = []
     for settlement in settlements:
-        x = settlement.x
-        y = settlement.y
+        x = settlement.position.x
+        y = settlement.position.y
         radius = settlement.radius
 
         circle = patches.Circle(

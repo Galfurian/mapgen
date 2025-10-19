@@ -1,5 +1,7 @@
 """Data models for the map generator."""
 
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass
 from enum import Enum
@@ -191,7 +193,7 @@ class Position(BaseModel):
         description="The y-coordinate.",
     )
 
-    def distance_to(self, other) -> float:
+    def distance_to(self, other: Position) -> float:
         """Calculate Euclidean distance to another position.
 
         Args:
@@ -203,7 +205,7 @@ class Position(BaseModel):
         """
         return ((self.x - other.x) ** 2 + (self.y - other.y) ** 2) ** 0.5
 
-    def manhattan_distance_to(self, other) -> int:
+    def manhattan_distance_to(self, other: Position) -> int:
         """Calculate Manhattan distance to another position.
 
         Args:
@@ -215,66 +217,54 @@ class Position(BaseModel):
         """
         return abs(self.x - other.x) + abs(self.y - other.y)
 
+    def __hash__(self) -> int:
+        return hash((self.x, self.y))
 
-@dataclass
-class Settlement:
-    """Represents a settlement on the map.
 
-    Settlements are population centers that can be connected by roads.
-    They have a position, size, and connectivity properties that affect
-    road generation and map visualization.
+class Settlement(BaseModel):
+    """
+    Represents a settlement on the map.
+
+    Settlements are population centers that can be connected by roads. They have
+    a position, size, and connectivity properties that affect road generation
+    and map visualization.
 
     Attributes:
-        x (int): X coordinate of the settlement center.
-        y (int): Y coordinate of the settlement center.
-        radius (float): Radius of the settlement (affects size and connectivity).
-        name (str): Human-readable name of the settlement.
-        connectivity (int): Road connectivity factor (higher = more likely to have roads).
+        name (str):
+            Human-readable name of the settlement.
+        position (Position):
+            The (x, y) coordinates of the settlement center.
+        radius (float):
+            Radius of the settlement (affects size and connectivity).
+        connectivity (int):
+            Road connectivity factor (higher = more likely to have roads).
 
     """
 
-    x: int
-    y: int
-    radius: float
-    name: str
-    connectivity: int
+    name: str = Field(
+        description="Human-readable name of the settlement.",
+    )
+    position: Position = Field(
+        description="The (x, y) coordinates of the settlement center.",
+    )
+    radius: float = Field(
+        description="Radius of the settlement (affects size and connectivity).",
+    )
+    connectivity: int = Field(
+        description="Road connectivity factor (higher = more likely to have roads).",
+    )
 
-    @property
-    def position(self) -> Position:
-        """Get the settlement position as a Position object."""
-        return Position(x=self.x, y=self.y)
-
-    def to_json(self) -> dict:
-        """Convert this settlement to a JSON-serializable dictionary.
-
-        Returns:
-            dict: JSON-serializable representation of this settlement.
-        """
-        return {
-            "x": self.x,
-            "y": self.y,
-            "radius": self.radius,
-            "name": self.name,
-            "connectivity": self.connectivity,
-        }
-
-    @classmethod
-    def from_json(cls, data: dict) -> "Settlement":
-        """Create a Settlement instance from a JSON dictionary.
+    def distance_to(self, other: Settlement) -> float:
+        """Calculate Euclidean distance to another position.
 
         Args:
-            data: JSON dictionary containing settlement properties.
+            other (Position): The other position.
 
         Returns:
-            Settlement: New Settlement instance.
+            float: The Euclidean distance.
+
         """
-        return cls(
-            x=data["x"],
-            y=data["y"],
-            radius=data["radius"],
-            name=data["name"],
-            connectivity=data["connectivity"],
-        )
+        return self.position.distance_to(other.position)
 
 
 @dataclass
@@ -456,7 +446,7 @@ class MapData:
         result = {
             "width": self.width,
             "height": self.height,
-            "tiles": [tile.model_dump_json() for tile in unique_tiles],
+            "tiles": [tile for tile in unique_tiles],
             "grid": "\n".join(grid_rows),
         }
 
@@ -468,9 +458,7 @@ class MapData:
             result["elevation_map"] = np.round(self.elevation_map, 4).tolist()
 
         if self.settlements is not None:
-            result["settlements"] = [
-                settlement.to_json() for settlement in self.settlements
-            ]
+            result["settlements"] = [settlement for settlement in self.settlements]
 
         if self.roads_graph is not None:
             # Convert networkx graph to serializable format
@@ -480,7 +468,7 @@ class MapData:
                     "u": u,
                     "v": v,
                     "data": {
-                        "path": [pos.to_json() for pos in data["path"]],
+                        "path": [pos for pos in data["path"]],
                         "type": data.get("type", RoadType.LAND).value,
                     },
                 }
@@ -522,7 +510,7 @@ class MapData:
 
         if "settlements" in data:
             map_data.settlements = [
-                Settlement.from_json(s_data) for s_data in data["settlements"]
+                Settlement.model_validate_json(s_data) for s_data in data["settlements"]
             ]
 
         if "roads_graph" in data:
