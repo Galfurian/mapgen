@@ -20,46 +20,25 @@ def main() -> None:
         "--output",
         type=str,
         default="generated_map.json",
-        help="Output filename for the generated map (default: generated_map.json)",
+        help="Output filename (extension determines format: .json for data, .png for image)",
     )
     parser.add_argument(
-        "--enable-smoothing",
+        "-dsm",
+        "--disable-smoothing",
         action="store_true",
-        default=True,
-        help="Enable terrain smoothing (default: enabled)",
+        help="Disable terrain smoothing",
     )
     parser.add_argument(
-        "--disable-smoothing", action="store_true", help="Disable terrain smoothing"
-    )
-    parser.add_argument(
-        "--enable-settlements",
-        action="store_true",
-        default=True,
-        help="Enable settlement generation (default: enabled)",
-    )
-    parser.add_argument(
+        "-dst",
         "--disable-settlements",
         action="store_true",
         help="Disable settlement generation",
     )
     parser.add_argument(
-        "--enable-roads",
+        "-drd",
+        "--disable-roads",
         action="store_true",
-        default=True,
-        help="Enable road generation (default: enabled)",
-    )
-    parser.add_argument(
-        "--disable-roads", action="store_true", help="Disable road generation"
-    )
-    parser.add_argument(
-        "--generate-json",
-        action="store_true",
-        help="Generate the json file of the map",
-    )
-    parser.add_argument(
-        "--generate-png",
-        action="store_true",
-        help="Generate a PNG visualization of the map",
+        help="Disable road generation",
     )
     parser.add_argument(
         "--seed",
@@ -68,15 +47,19 @@ def main() -> None:
         help="Random seed for map generation (default: 42)",
     )
     parser.add_argument(
-        "--png-dpi", type=int, default=200, help="DPI for PNG output (default: 200)"
+        "-si",
+        "--smoothing-iterations",
+        type=int,
+        default=3,
+        help="Number of smoothing iterations (default: 3)",
     )
 
     args = parser.parse_args()
 
     # Resolve enable/disable flags
-    enable_smoothing = args.enable_smoothing and not args.disable_smoothing
-    enable_settlements = args.enable_settlements and not args.disable_settlements
-    enable_roads = args.enable_roads and not args.disable_roads
+    enable_smoothing = not args.disable_smoothing
+    enable_settlements = not args.disable_settlements
+    enable_roads = not args.disable_roads
 
     print("🗺️  Generating fantasy map...")
     print(f"   Smoothing: {'enabled' if enable_smoothing else 'disabled'}")
@@ -89,6 +72,7 @@ def main() -> None:
         enable_settlements=enable_settlements,
         enable_roads=enable_roads,
         seed=args.seed,
+        smoothing_iterations=args.smoothing_iterations,
     )
 
     if map_data is None:
@@ -107,23 +91,34 @@ def main() -> None:
         print(f"   🛣️  Roads: {len(map_data.roads)}")
 
     output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_extension = output_path.suffix.lower()
 
-    # Save to JSON
-    if args.generate_json:
-        json_path = output_path.with_suffix(".json")
+    # Determine what to generate based on file extension
+    generate_json = output_extension == ".json"
+    generate_png = output_extension == ".png"
+
+    # If no extension or unknown extension, default to JSON
+    if not output_extension or (not generate_json and not generate_png):
+        generate_json = True
+        output_path = output_path.with_suffix(".json")
+
+    # Save to JSON if requested
+    if generate_json:
+        json_path = output_path if generate_json else output_path.with_suffix(".json")
         print(f"Saving to JSON: {json_path}")
         map_data.save_to_json(str(json_path))
         json_size = os.path.getsize(json_path)
         print(f"   💾 JSON size: {json_size:,} bytes")
 
     # Generate PNG if requested
-    if args.generate_png:
-        png_path = output_path.with_suffix(".png")
+    if generate_png:
+        png_path = output_path if generate_png else output_path.with_suffix(".png")
         print(f"Generating PNG: {png_path}")
         fig = visualization.plot_map(map_data)
         fig.savefig(
             png_path,
-            dpi=args.png_dpi,
+            dpi=300,
             bbox_inches="tight",
             facecolor="white",
         )
@@ -139,6 +134,7 @@ def _generate_map(
     enable_settlements: bool = True,
     enable_roads: bool = True,
     seed: int = 42,
+    smoothing_iterations: int = 3,
 ) -> MapData:
 
     width: int = 150
@@ -148,7 +144,6 @@ def _generate_map(
     octaves: int = 6
     persistence: float = 0.5
     lacunarity: float = 2.0
-    smoothing_iterations: int = 5
     settlement_density: float = 0.002
     min_settlement_radius: float = 0.5
     max_settlement_radius: float = 1.0

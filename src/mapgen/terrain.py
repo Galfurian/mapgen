@@ -138,29 +138,29 @@ def _get_smoothed_tile_index(
         x, y, walkable_only=False, include_diagonals=True
     )
 
-    # Count different neighbor types based on properties
-    obstacle_count = sum(1 for n in neighbors if not n.walkable)
-    liquid_count = sum(1 for n in neighbors if n.elevation_influence < 0)
-    difficult_count = sum(1 for n in neighbors if n.movement_cost > 1.0)
-    elevated_count = sum(1 for n in neighbors if n.elevation_influence > 0.5)
+    # Count different neighbor types
+    nw_count = sum(1 for n in neighbors if not n.walkable)
+    mod_cost_count = sum(1 for n in neighbors if n.movement_cost > 1.0)
+    neg_elev_count = sum(1 for n in neighbors if n.elevation_influence < 0.0)
+    pos_elev_count = sum(1 for n in neighbors if n.elevation_influence > 0.5)
 
-    # Apply smoothing rules based on neighbor majority
-    if obstacle_count > 4:
+    # Apply smoothing rules
+    if nw_count > 4:
         candidates = [t for t in map_data.tiles if not t.walkable]
         if candidates:
             tile = max(candidates, key=lambda t: t.smoothing_priority)
             return map_data.tiles.index(tile)
-    elif liquid_count > 3:
+    elif neg_elev_count > 4:
         candidates = [t for t in map_data.tiles if t.elevation_influence < 0]
         if candidates:
             tile = max(candidates, key=lambda t: t.smoothing_priority)
             return map_data.tiles.index(tile)
-    elif elevated_count > 3:
+    elif pos_elev_count > 3:
         candidates = [t for t in map_data.tiles if t.elevation_influence > 0.5]
         if candidates:
             tile = max(candidates, key=lambda t: t.smoothing_priority)
             return map_data.tiles.index(tile)
-    elif difficult_count > 4:
+    elif mod_cost_count > 4:
         candidates = [t for t in map_data.tiles if 1.0 < t.movement_cost < 2.0]
         if candidates:
             tile = max(candidates, key=lambda t: t.smoothing_priority)
