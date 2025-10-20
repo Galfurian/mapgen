@@ -16,16 +16,22 @@ def _apply_curves_to_path(
     num_control_points: int = 5,
     smoothing_factor: float = 0.5,
 ) -> list[Position]:
-    """Apply curves to a path based on elevation.
+    """
+    Apply curves to a path based on elevation.
 
     Args:
-        path (List[Position]): The path to curve.
-        elevation_map (np.ndarray): The elevation map.
-        num_control_points (int): Number of control points.
-        smoothing_factor (float): Smoothing factor.
+        path (List[Position]):
+            The path to curve.
+        elevation_map (np.ndarray):
+            The elevation map.
+        num_control_points (int):
+            Number of control points.
+        smoothing_factor (float):
+            Smoothing factor.
 
     Returns:
-        List[Position]: The curved path.
+        List[Position]:
+            The curved path.
 
     """
     if len(path) <= 2:
@@ -90,8 +96,10 @@ def plot_base_terrain(ax: Axes, map_data: MapData) -> None:
     Plot the base terrain layer with elevation-based shading.
 
     Args:
-        ax (plt.Axes): The matplotlib axes to plot on.
-        map_data (MapData): The map data containing terrain and elevation.
+        ax (plt.Axes):
+            The matplotlib axes to plot on.
+        map_data (MapData):
+            The map data containing terrain and elevation.
 
     """
     rgb_values = np.zeros((map_data.height, map_data.width, 3))
@@ -158,11 +166,16 @@ def plot_roads(
     Plot roads on the map.
 
     Args:
-        ax (plt.Axes): The matplotlib axes to plot on.
-        map_data (MapData): The map data containing roads.
-        color (str): Color of the roads.
-        linewidth (float): Width of the road lines.
-        zorder (int): Z-order for layering.
+        ax (plt.Axes):
+            The matplotlib axes to plot on.
+        map_data (MapData):
+            The map data containing roads.
+        color (str):
+            Color of the roads.
+        linewidth (float):
+            Width of the road lines.
+        zorder (int):
+            Z-order for layering.
 
     """
     elevation_map = np.array(map_data.elevation_map)
@@ -179,9 +192,12 @@ def plot_settlements(ax: Axes, map_data: MapData, zorder: int = 3) -> None:
     Plot settlements with circles and labels on the map.
 
     Args:
-        ax (plt.Axes): The matplotlib axes to plot on.
-        map_data (MapData): The map data containing settlements.
-        zorder (int): Z-order for layering.
+        ax (plt.Axes):
+            The matplotlib axes to plot on.
+        map_data (MapData):
+            The map data containing settlements.
+        zorder (int):
+            Z-order for layering.
 
     """
     existing_texts: list[tuple[int, int]] = []
@@ -265,13 +281,16 @@ def plot_map(
     enable_settlements: bool = True,
 ) -> Figure:
     """
-    Plot the complete map with all layers: terrain, contours, roads, and settlements.
+    Plot the complete map with all layers: terrain, contours, roads, and
+    settlements.
 
     Args:
-        map_data (MapData): The map data to visualize.
+        map_data (MapData):
+            The map data to visualize.
 
     Returns:
-        Figure: The matplotlib figure containing the complete map.
+        Figure:
+            The matplotlib figure containing the complete map.
 
     """
     fig, ax = plt.subplots()
@@ -297,10 +316,12 @@ def get_ascii_map(map_data: MapData) -> str:
     Generate an ASCII representation of the map.
 
     Args:
-        map_data (MapData): The map data to visualize.
+        map_data (MapData):
+            The map data to visualize.
 
     Returns:
-        str: The ASCII map as a string.
+        str:
+            The ASCII map as a string.
 
     """
     lines = []

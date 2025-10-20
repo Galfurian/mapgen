@@ -57,7 +57,8 @@ def _generate_settlement_name() -> str:
     """Generate a random fantasy settlement name.
 
     Returns:
-        str: A randomly generated settlement name.
+        str:
+            A randomly generated settlement name.
 
     """
     # Define various patterns for different name styles
@@ -93,7 +94,8 @@ def _is_position_suitable_for_settlement(
         position: The position to check.
 
     Returns:
-        bool: True if the position can have a settlement, False otherwise.
+        bool:
+            True if the position can have a settlement, False otherwise.
 
     Raises:
         ValueError: If position is out of bounds.
@@ -113,7 +115,8 @@ def _should_place_settlement(settlement_density: float) -> bool:
         settlement_density: The probability of placing a settlement (0.0 to 1.0).
 
     Returns:
-        bool: True if a settlement should be placed.
+        bool:
+            True if a settlement should be placed.
 
     Raises:
         ValueError: If settlement_density is not between 0.0 and 1.0.
@@ -179,7 +182,8 @@ def _create_settlement(
         max_radius: The maximum radius for the settlement.
 
     Returns:
-        Settlement: The created settlement.
+        Settlement:
+            The created settlement.
 
     Raises:
         ValueError: If min_radius > max_radius or if radii are negative.
@@ -215,7 +219,8 @@ def _find_suitable_settlement_positions(
         map_data: The terrain map grid.
 
     Returns:
-        List[Position]: List of positions suitable for settlements.
+        List[Position]:
+            List of positions suitable for settlements.
 
     """
     suitable_positions = []

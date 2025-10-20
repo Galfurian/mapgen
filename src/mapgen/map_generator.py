@@ -53,18 +53,30 @@ class MapGenerator:
         """Initialize the map generator.
 
         Args:
-            width (int): The width of the map.
-            height (int): The height of the map.
-            padding (int): Padding around edges.
-            scale (float): Noise scale.
-            octaves (int): Number of noise octaves.
-            persistence (float): Noise persistence.
-            lacunarity (float): Noise lacunarity.
-            smoothing_iterations (int): Number of smoothing iterations.
-            settlement_density (float): Density of settlements.
-            min_settlement_radius (float): Minimum settlement radius.
-            max_settlement_radius (float): Maximum settlement radius.
-            seed (int): Random seed for reproducible generation.
+            width (int):
+                The width of the map.
+            height (int):
+                The height of the map.
+            padding (int):
+                Padding around edges.
+            scale (float):
+                Noise scale.
+            octaves (int):
+                Number of noise octaves.
+            persistence (float):
+                Noise persistence.
+            lacunarity (float):
+                Noise lacunarity.
+            smoothing_iterations (int):
+                Number of smoothing iterations.
+            settlement_density (float):
+                Density of settlements.
+            min_settlement_radius (float):
+                Minimum settlement radius.
+            max_settlement_radius (float):
+                Maximum settlement radius.
+            seed (int):
+                Random seed for reproducible generation.
 
         Raises:
             ValueError: If any parameter has an invalid value.

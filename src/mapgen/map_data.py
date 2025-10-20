@@ -547,7 +547,8 @@ class MapData(BaseModel):
             key (int): The row index.
 
         Returns:
-            list[Tile]: The row of tiles.
+            list[Tile]:
+                The row of tiles.
 
         Raises:
             IndexError: If key is out of bounds.
@@ -591,7 +592,8 @@ class MapData(BaseModel):
             filepath (str): Path to the JSON file to load from.
 
         Returns:
-            MapData: The loaded map data.
+            MapData:
+                The loaded map data.
 
         """
         with open(filepath, encoding="utf-8") as f:
