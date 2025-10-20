@@ -1,5 +1,6 @@
 """Road generation module."""
 
+import heapq
 import random
 
 import numpy as np
@@ -32,8 +33,8 @@ def generate_roads(
     )
 
     for settlement in shuffled_settlements:
-        # Find nearest settlement not already connected
-        nearest = _find_nearest_settlement_not_connected(
+        # Find nearest settlement worth connecting
+        nearest = _find_nearest_settlement_worth_connecting(
             settlement,
             map_data.settlements,
             map_data,
@@ -178,13 +179,56 @@ def _settlements_are_connected(
     return False
 
 
-def _find_nearest_settlement_not_connected(
+def _shortest_path_distance(
+    map_data: MapData,
+    start_name: str,
+    end_name: str,
+) -> float | None:
+    """
+    Compute the shortest path distance between two settlements via existing roads.
+
+    Args:
+        map_data: The map data.
+        start_name: Name of starting settlement.
+        end_name: Name of ending settlement.
+
+    Returns:
+        The shortest distance, or None if no path exists.
+    """
+    settlements = {s.name: s for s in map_data.settlements}
+    dist = {name: float("inf") for name in settlements}
+    dist[start_name] = 0.0
+    pq = [(0.0, start_name)]
+
+    while pq:
+        d, u = heapq.heappop(pq)
+        if d > dist[u]:
+            continue
+        for road in map_data.roads:
+            v = None
+            if road.start_settlement == u:
+                v = road.end_settlement
+            elif road.end_settlement == u:
+                v = road.start_settlement
+            if v is None:
+                continue
+            alt = d + settlements[u].distance_to(settlements[v])
+            if alt < dist[v]:
+                dist[v] = alt
+                heapq.heappush(pq, (alt, v))
+
+    if dist[end_name] == float("inf"):
+        return None
+    return dist[end_name]
+
+
+def _find_nearest_settlement_worth_connecting(
     settlement: Settlement,
     settlements: list[Settlement],
     map_data: MapData,
 ) -> Settlement | None:
     """
-    Find the nearest settlement not already connected to the given settlement.
+    Find the nearest settlement where direct connection is better than existing paths.
 
     Args:
         settlement: The settlement to connect from.
@@ -192,17 +236,17 @@ def _find_nearest_settlement_not_connected(
         map_data: The map data containing existing roads.
 
     Returns:
-        The nearest unconnected settlement, or None.
+        The nearest settlement worth connecting to, or None.
     """
     nearest = None
     min_dist = float("inf")
     for other in settlements:
         if other.name == settlement.name:
             continue
-        if _settlements_are_connected(map_data, settlement.name, other.name):
-            continue
-        dist = settlement.distance_to(other)
-        if dist < min_dist:
-            min_dist = dist
-            nearest = other
+        direct_dist = settlement.distance_to(other)
+        path_dist = _shortest_path_distance(map_data, settlement.name, other.name)
+        if path_dist is None or path_dist > direct_dist:
+            if direct_dist < min_dist:
+                min_dist = direct_dist
+                nearest = other
     return nearest
