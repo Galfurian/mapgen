@@ -372,6 +372,27 @@ class MapData(BaseModel):
             return 0
         return len(self.grid[0])
 
+    def get_elevation(self, x: int, y: int) -> float:
+        """
+        Get the elevation at the specified coordinates.
+
+        Args:
+            x (int):
+                The x coordinate.
+            y (int):
+                The y coordinate.
+
+        Returns:
+            float:
+                The elevation at the coordinates.
+
+        Raises:
+            IndexError:
+                If coordinates are out of bounds.
+
+        """
+        return self.elevation_map[y][x]
+
     def get_terrain(self, x: int, y: int) -> Tile:
         """
         Get the terrain tile at the specified coordinates.

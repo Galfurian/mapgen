@@ -20,7 +20,70 @@ def main() -> None:
         "--output",
         type=str,
         default="generated_map.json",
-        help="Output filename (extension determines format: .json for data, .png for image)",
+        help="Output filename (extension determines format: .json for data, .png for image, .txt for ASCII)",
+    )
+    parser.add_argument(
+        "-W",
+        "--width",
+        type=int,
+        default=150,
+        help="Map width (default: 150)",
+    )
+    parser.add_argument(
+        "-H",
+        "--height",
+        type=int,
+        default=100,
+        help="Map height (default: 100)",
+    )
+    parser.add_argument(
+        "-N",
+        "--scale",
+        type=float,
+        default=50.0,
+        help="Noise scale (default: 50.0)",
+    )
+    parser.add_argument(
+        "-O",
+        "--octaves",
+        type=int,
+        default=6,
+        help="Noise octaves (default: 6)",
+    )
+    parser.add_argument(
+        "-P",
+        "--persistence",
+        type=float,
+        default=0.5,
+        help="Noise persistence (default: 0.5)",
+    )
+    parser.add_argument(
+        "-L",
+        "--lacunarity",
+        type=float,
+        default=2.0,
+        help="Noise lacunarity (default: 2.0)",
+    )
+    parser.add_argument(
+        "-sd",
+        "--settlement-density",
+        type=float,
+        default=0.002,
+        help="Settlement density (default: 0.002)",
+    )
+    parser.add_argument(
+        "-msr",
+        "--min-settlement-radius",
+        type=float,
+        default=0.5,
+        help="Minimum settlement radius (default: 0.5)",
+    )
+    parser.add_argument(
+        "-mxsr",
+        "--max-settlement-radius",
+        type=float,
+        default=1.0,
+        help="Maximum settlement radius (default: 1.0)",
     )
     parser.add_argument(
         "-dsm",
@@ -68,6 +131,15 @@ def main() -> None:
 
     # Generate the map
     map_data = _generate_map(
+        width=args.width,
+        height=args.height,
+        scale=args.scale,
+        octaves=args.octaves,
+        persistence=args.persistence,
+        lacunarity=args.lacunarity,
+        settlement_density=args.settlement_density,
+        min_settlement_radius=args.min_settlement_radius,
+        max_settlement_radius=args.max_settlement_radius,
         enable_smoothing=enable_smoothing,
         enable_settlements=enable_settlements,
         enable_roads=enable_roads,
@@ -143,23 +215,21 @@ def main() -> None:
 
 
 def _generate_map(
+    width: int = 150,
+    height: int = 100,
+    scale: float = 50.0,
+    octaves: int = 6,
+    persistence: float = 0.5,
+    lacunarity: float = 2.0,
+    settlement_density: float = 0.002,
+    min_settlement_radius: float = 0.5,
+    max_settlement_radius: float = 1.0,
     enable_smoothing: bool = True,
     enable_settlements: bool = True,
     enable_roads: bool = True,
     seed: int = 42,
     smoothing_iterations: int = 3,
 ) -> MapData:
-
-    width: int = 150
-    height: int = 100
-    padding: int = 2
-    scale: float = 50.0
-    octaves: int = 6
-    persistence: float = 0.5
-    lacunarity: float = 2.0
-    settlement_density: float = 0.002
-    min_settlement_radius: float = 0.5
-    max_settlement_radius: float = 1.0
 
     logger.info(f"Starting map generation: {width}*{height}")
 

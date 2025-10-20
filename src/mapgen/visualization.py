@@ -94,16 +94,16 @@ def plot_base_terrain(ax: Axes, map_data: MapData) -> None:
         map_data (MapData): The map data containing terrain and elevation.
 
     """
-    elevation_map = np.array(map_data.elevation_map)
     rgb_values = np.zeros((map_data.height, map_data.width, 3))
 
     for y in range(map_data.height):
         for x in range(map_data.width):
             tile = map_data.get_terrain(x, y)
-            base_color = tile.color
-            elevation = elevation_map[y, x]
-            shade_factor = (elevation + 1) / 2
-            shaded_color = tuple(c * shade_factor for c in base_color)
+            # Compute shade factor based on elevation.
+            shade_factor = 0.5 + 0.5 * map_data.get_elevation(x, y)
+            # Generate shaded color.
+            shaded_color = tuple(c * shade_factor for c in tile.color)
+            # Replace with shaded color.
             rgb_values[y, x, :] = shaded_color
 
     ax.imshow(rgb_values)
@@ -120,16 +120,31 @@ def plot_contour_lines(
     Plot elevation contour lines on the map.
 
     Args:
-        ax (plt.Axes): The matplotlib axes to plot on.
-        map_data (MapData): The map data containing elevation.
-        levels (int): Number of contour levels.
-        colors (str): Color of the contour lines.
-        linewidths (float): Width of the contour lines.
+        ax (plt.Axes):
+            The matplotlib axes to plot on.
+        map_data (MapData):
+            The map data containing elevation.
+        levels (int):
+            Number of contour levels.
+        colors (str):
+            Color of the contour lines.
+        linewidths (float):
+            Width of the contour lines.
 
     """
-    elevation_map = np.array(map_data.elevation_map)
-    X, Y = np.meshgrid(np.arange(map_data.width), np.arange(map_data.height))
-    ax.contour(X, Y, elevation_map, levels=levels, colors=colors, linewidths=linewidths)
+    X, Y = np.meshgrid(
+        np.arange(map_data.width),
+        np.arange(map_data.height),
+    )
+    Z = np.array(map_data.elevation_map)
+    ax.contour(
+        X,
+        Y,
+        Z,
+        levels=levels,
+        colors=colors,
+        linewidths=linewidths,
+    )
 
 
 def plot_roads(
