@@ -275,3 +275,24 @@ def plot_map(
     ax.set_yticks([])
     plt.tight_layout(pad=0)
     return fig
+
+
+def get_ascii_map(map_data: MapData) -> str:
+    """
+    Generate an ASCII representation of the map.
+
+    Args:
+        map_data (MapData): The map data to visualize.
+
+    Returns:
+        str: The ASCII map as a string.
+
+    """
+    lines = []
+    for y in range(map_data.height):
+        line = ""
+        for x in range(map_data.width):
+            tile = map_data.get_terrain(x, y)
+            line += tile.symbol
+        lines.append(line)
+    return "\n".join(lines)

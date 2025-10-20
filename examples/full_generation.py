@@ -10,7 +10,7 @@ import numpy as np
 
 from mapgen import roads, settlements, terrain, visualization
 from mapgen.map_data import MapData, Tile
-from mapgen.map_generator import logger
+from mapgen.map_generator import MapGenerator, logger
 
 
 def main() -> None:
@@ -97,9 +97,12 @@ def main() -> None:
     # Determine what to generate based on file extension
     generate_json = output_extension == ".json"
     generate_png = output_extension == ".png"
+    generate_txt = output_extension == ".txt"
 
     # If no extension or unknown extension, default to JSON
-    if not output_extension or (not generate_json and not generate_png):
+    if not output_extension or (
+        not generate_json and not generate_png and not generate_txt
+    ):
         generate_json = True
         output_path = output_path.with_suffix(".json")
 
@@ -125,6 +128,16 @@ def main() -> None:
         fig.get_figure().clear()  # Free memory
         png_size = os.path.getsize(png_path)
         print(f"   🖼️  PNG size: {png_size:,} bytes")
+
+    # Generate TXT (ASCII map) if requested
+    if generate_txt:
+        txt_path = output_path if generate_txt else output_path.with_suffix(".txt")
+        print(f"Saving ASCII map to: {txt_path}")
+        ascii_map = visualization.get_ascii_map(map_data)
+        with open(txt_path, "w") as f:
+            f.write(ascii_map)
+        txt_size = os.path.getsize(txt_path)
+        print(f"   📄 TXT size: {txt_size:,} bytes")
 
     print("🎉 Map generation completed successfully!")
 
@@ -155,7 +168,7 @@ def _generate_map(
     np.random.seed(seed)
     logger.debug(f"Using random seed: {seed}")
 
-    tiles = _get_default_tiles()
+    tiles = MapGenerator.get_default_tiles()
 
     logger.debug("Initializing map level")
     map_data = MapData(
@@ -206,141 +219,6 @@ def _generate_map(
     logger.info("Map generation completed successfully")
 
     return map_data
-
-
-def _get_default_tiles() -> list[Tile]:
-    """
-    Create the catalog of tiles used for map generation.
-
-    Returns:
-        list[Tile]:
-            List of Tile instances used in the map.
-
-    """
-    tiles = [
-        Tile(
-            name="wall",
-            description="Impassable wall",
-            walkable=False,
-            movement_cost=1.0,
-            blocks_line_of_sight=True,
-            buildable=False,
-            habitability=0.0,
-            road_buildable=False,
-            elevation_penalty=0.0,
-            elevation_influence=0.0,
-            smoothing_weight=1.0,
-            elevation_min=0.0,
-            elevation_max=0.0,
-            terrain_priority=0,
-            smoothing_priority=1,
-            symbol="#",
-            color=(0.0, 0.0, 0.0),
-            resources=[],
-        ),
-        Tile(
-            name="floor",
-            description="Open floor space",
-            walkable=True,
-            movement_cost=1.0,
-            blocks_line_of_sight=False,
-            buildable=True,
-            habitability=0.3,
-            road_buildable=True,
-            elevation_penalty=0.0,
-            elevation_influence=0.0,
-            smoothing_weight=1.0,
-            elevation_min=0.0,
-            elevation_max=0.0,
-            terrain_priority=0,
-            smoothing_priority=0,
-            diggable=True,
-            symbol=".",
-            color=(0.9, 0.9, 0.9),
-            resources=[],
-        ),
-        Tile(
-            name="water",
-            description="Water terrain",
-            walkable=True,
-            movement_cost=2.0,
-            blocks_line_of_sight=False,
-            buildable=False,
-            habitability=0.0,
-            road_buildable=False,
-            elevation_penalty=0.0,
-            elevation_influence=-0.5,
-            smoothing_weight=1.0,
-            elevation_min=-1.0,
-            elevation_max=0.03,
-            terrain_priority=1,
-            smoothing_priority=2,
-            symbol="~",
-            color=(0.2, 0.5, 1.0),
-            resources=[],
-        ),
-        Tile(
-            name="forest",
-            description="Forest terrain",
-            walkable=True,
-            movement_cost=1.2,
-            blocks_line_of_sight=False,
-            buildable=True,
-            habitability=0.7,
-            road_buildable=True,
-            elevation_penalty=0.0,
-            elevation_influence=0.0,
-            smoothing_weight=1.0,
-            elevation_min=0.1,
-            elevation_max=0.5,
-            terrain_priority=3,
-            smoothing_priority=4,
-            symbol="F",
-            color=(0.2, 0.6, 0.2),
-            resources=["wood", "game"],
-        ),
-        Tile(
-            name="plains",
-            description="Open plains",
-            walkable=True,
-            movement_cost=1.0,
-            blocks_line_of_sight=False,
-            buildable=True,
-            habitability=0.9,
-            road_buildable=True,
-            elevation_penalty=0.0,
-            elevation_influence=0.0,
-            smoothing_weight=1.0,
-            elevation_min=0.03,
-            elevation_max=0.1,
-            terrain_priority=2,
-            smoothing_priority=0,
-            symbol=".",
-            color=(0.8, 0.9, 0.6),
-            resources=["grain", "herbs"],
-        ),
-        Tile(
-            name="mountain",
-            description="Mountain terrain",
-            walkable=False,
-            movement_cost=1.0,
-            blocks_line_of_sight=True,
-            buildable=False,
-            habitability=0.1,
-            road_buildable=False,
-            elevation_penalty=0.0,
-            elevation_influence=1.0,
-            smoothing_weight=1.0,
-            elevation_min=0.5,
-            elevation_max=1.0,
-            terrain_priority=4,
-            smoothing_priority=3,
-            symbol="^",
-            color=(0.5, 0.4, 0.3),
-            resources=["stone", "ore"],
-        ),
-    ]
-    return tiles
 
 
 if __name__ == "__main__":

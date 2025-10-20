@@ -43,19 +43,26 @@ def generate_noise_map(
 
     for y in range(height):
         for x in range(width):
-            noise_map[y, x] = round(
-                number=noise.pnoise2(
-                    (x / scale) + offset_x,
-                    (y / scale) + offset_y,
-                    octaves=octaves,
-                    persistence=persistence,
-                    lacunarity=lacunarity,
-                    repeatx=width,
-                    repeaty=height,
-                    base=0,
-                ),
-                ndigits=4,
+            noise_map[y, x] = noise.pnoise2(
+                (x / scale) + offset_x,
+                (y / scale) + offset_y,
+                octaves=octaves,
+                persistence=persistence,
+                lacunarity=lacunarity,
+                repeatx=width,
+                repeaty=height,
+                base=0,
             )
+    
+    # Normalize to full -1 to 1 range
+    min_val = np.min(noise_map)
+    max_val = np.max(noise_map)
+    if max_val > min_val:
+        noise_map = (noise_map - min_val) / (max_val - min_val) * 2 - 1
+    
+    # Round to 4 decimal places
+    noise_map = np.round(noise_map, decimals=4)
+    
     map_data.elevation_map = noise_map.tolist()
 
 

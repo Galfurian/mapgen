@@ -100,7 +100,7 @@ class MapGenerator:
         np.random.seed(self.seed)
         logger.debug(f"Using random seed: {self.seed}")
 
-        tiles = self._get_default_tiles()
+        tiles = self.get_default_tiles()
 
         logger.debug("Initializing map level")
         map_data = MapData(
@@ -149,7 +149,8 @@ class MapGenerator:
 
         return map_data
 
-    def _get_default_tiles(self) -> list[Tile]:
+    @staticmethod
+    def get_default_tiles() -> list[Tile]:
         """
         Create the catalog of tiles used for map generation.
 
@@ -221,26 +222,6 @@ class MapGenerator:
                 resources=[],
             ),
             Tile(
-                name="forest",
-                description="Forest terrain",
-                walkable=True,
-                movement_cost=1.2,
-                blocks_line_of_sight=False,
-                buildable=True,
-                habitability=0.7,
-                road_buildable=True,
-                elevation_penalty=0.0,
-                elevation_influence=0.0,
-                smoothing_weight=1.0,
-                elevation_min=0.1,
-                elevation_max=0.5,
-                terrain_priority=3,
-                smoothing_priority=4,
-                symbol="F",
-                color=(0.2, 0.6, 0.2),
-                resources=["wood", "game"],
-            ),
-            Tile(
                 name="plains",
                 description="Open plains",
                 walkable=True,
@@ -253,12 +234,32 @@ class MapGenerator:
                 elevation_influence=0.0,
                 smoothing_weight=1.0,
                 elevation_min=0.03,
-                elevation_max=0.1,
+                elevation_max=0.2,
                 terrain_priority=2,
                 smoothing_priority=0,
                 symbol=".",
                 color=(0.8, 0.9, 0.6),
                 resources=["grain", "herbs"],
+            ),
+            Tile(
+                name="forest",
+                description="Forest terrain",
+                walkable=True,
+                movement_cost=1.2,
+                blocks_line_of_sight=False,
+                buildable=True,
+                habitability=0.7,
+                road_buildable=True,
+                elevation_penalty=0.0,
+                elevation_influence=0.0,
+                smoothing_weight=1.0,
+                elevation_min=0.2,
+                elevation_max=0.5,
+                terrain_priority=3,
+                smoothing_priority=4,
+                symbol="F",
+                color=(0.2, 0.6, 0.2),
+                resources=["wood", "game"],
             ),
             Tile(
                 name="mountain",
