@@ -25,7 +25,7 @@
 - [ ] Remove unused imports (e.g., `defaultdict` in roads.py)
 - [x] Clean up unused variables and parameters
 - [ ] Implement proper error handling with custom exceptions
-- [ ] Add input validation for all public functions
+- [x] Add input validation for all public functions
 - [ ] Use dataclasses or attrs for simpler data structures where appropriate
 - [ ] Implement `__slots__` for performance-critical classes
 

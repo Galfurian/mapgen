@@ -66,7 +66,36 @@ class MapGenerator:
             max_settlement_radius (float): Maximum settlement radius.
             seed (int): Random seed for reproducible generation.
 
+        Raises:
+            ValueError: If any parameter has an invalid value.
+
         """
+        # Validate input parameters
+        if width <= 0:
+            raise ValueError(f"Width must be positive, got {width}")
+        if height <= 0:
+            raise ValueError(f"Height must be positive, got {height}")
+        if padding < 0:
+            raise ValueError(f"Padding must be non-negative, got {padding}")
+        if scale <= 0:
+            raise ValueError(f"Scale must be positive, got {scale}")
+        if octaves < 1:
+            raise ValueError(f"Octaves must be at least 1, got {octaves}")
+        if not (0.0 < persistence < 1.0):
+            raise ValueError(f"Persistence must be between 0 and 1, got {persistence}")
+        if lacunarity <= 1.0:
+            raise ValueError(f"Lacunarity must be greater than 1, got {lacunarity}")
+        if smoothing_iterations < 0:
+            raise ValueError(f"Smoothing iterations must be non-negative, got {smoothing_iterations}")
+        if not (0.0 <= settlement_density <= 1.0):
+            raise ValueError(f"Settlement density must be between 0 and 1, got {settlement_density}")
+        if min_settlement_radius <= 0:
+            raise ValueError(f"Minimum settlement radius must be positive, got {min_settlement_radius}")
+        if max_settlement_radius <= 0:
+            raise ValueError(f"Maximum settlement radius must be positive, got {max_settlement_radius}")
+        if min_settlement_radius > max_settlement_radius:
+            raise ValueError(f"Minimum settlement radius ({min_settlement_radius}) cannot be greater than maximum ({max_settlement_radius})")
+
         # Map generation parameters.
         self.width = width
         self.height = height

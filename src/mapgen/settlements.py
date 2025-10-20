@@ -28,6 +28,16 @@ def generate_settlements(
             The maximum radius of settlements.
 
     """
+    # Validate input parameters
+    if not (0.0 <= settlement_density <= 1.0):
+        raise ValueError(f"Settlement density must be between 0.0 and 1.0, got {settlement_density}")
+    if min_radius <= 0:
+        raise ValueError(f"Minimum radius must be positive, got {min_radius}")
+    if max_radius <= 0:
+        raise ValueError(f"Maximum radius must be positive, got {max_radius}")
+    if min_radius > max_radius:
+        raise ValueError(f"Minimum radius ({min_radius}) cannot be greater than maximum radius ({max_radius})")
+
     logger.debug(f"Generating settlements with density {settlement_density}")
 
     # Find all suitable positions
