@@ -8,6 +8,7 @@ from .visualization import (
     plot_base_terrain,
     plot_contour_lines,
     plot_map,
+    plot_3d_map,
     plot_roads,
     plot_settlements,
 )
@@ -39,6 +40,7 @@ __all__ = [
     "plot_base_terrain",
     "plot_contour_lines",
     "plot_map",
+    "plot_3d_map",
     "plot_roads",
     "plot_settlements",
 ]

@@ -5,6 +5,7 @@ import numpy as np
 from matplotlib import patches
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from mpl_toolkits.mplot3d import Axes3D
 from scipy.interpolate import interp1d
 
 from .map_data import MapData, Position
@@ -308,6 +309,150 @@ def plot_map(
     ax.set_xticks([])
     ax.set_yticks([])
     plt.tight_layout(pad=0)
+    return fig
+
+
+def plot_3d_map(
+    map_data: MapData,
+    enable_settlements: bool = True,
+    enable_roads: bool = True,
+    enable_legend: bool = False,
+    colormap: str = "terrain",
+    elevation_scale: float = 1.0,
+) -> Figure:
+    """
+    Create a stunning 3D visualization of the map with elevation.
+
+    This function generates an interactive 3D terrain map showing elevation,
+    settlements as markers, and roads as lines in 3D space.
+
+    Args:
+        map_data (MapData):
+            The map data to visualize.
+        enable_settlements (bool):
+            Whether to show settlements as 3D markers.
+        enable_roads (bool):
+            Whether to show roads as 3D lines.
+        enable_legend (bool):
+            Whether to show the legend (default: False for cleaner 3D view).
+        colormap (str):
+            Matplotlib colormap for terrain coloring (e.g., 'terrain', 'viridis').
+        elevation_scale (float):
+            Scale factor for elevation exaggeration (1.0 = realistic).
+
+    Returns:
+        Figure:
+            The matplotlib figure containing the 3D map.
+
+    """
+    # Create 3D figure
+    fig = plt.figure(figsize=(12, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Convert elevation map to numpy array
+    if not map_data.elevation_map:
+        raise ValueError("Map data missing elevation_map - cannot create 3D visualization")
+
+    elevation_array = np.array(map_data.elevation_map)
+    height, width = elevation_array.shape
+
+    # Create coordinate grids
+    x_coords, y_coords = np.meshgrid(np.arange(width), np.arange(height))
+
+    # Scale elevation for better visualization
+    scaled_elevation = elevation_array * elevation_scale
+    
+    # Calculate maximum elevation for positioning settlements above terrain
+    max_elevation = np.max(scaled_elevation)
+    settlement_height = max_elevation + (elevation_scale * 0.5)  # Position settlements well above terrain
+    label_height = max_elevation + (elevation_scale * 0.7)       # Position labels even higher
+
+    # Plot the 3D terrain surface
+    surf = ax.plot_surface(
+        x_coords, y_coords, scaled_elevation,
+        cmap=colormap,
+        linewidth=0,
+        antialiased=True,
+        alpha=0.8
+    )
+
+    # Add settlements as 3D markers
+    if enable_settlements and map_data.settlements:
+        settlement_x = [s.position.x for s in map_data.settlements]
+        settlement_y = [s.position.y for s in map_data.settlements]
+        settlement_z = [settlement_height] * len(map_data.settlements)  # Fixed height above terrain
+        settlement_sizes = [s.radius * 20 for s in map_data.settlements]  # Scale for visibility
+
+        # Add vertical lines from terrain to settlements for better visibility
+        for settlement in map_data.settlements:
+            terrain_z = scaled_elevation[settlement.position.y, settlement.position.x]
+            ax.plot(
+                [settlement.position.x, settlement.position.x],
+                [settlement.position.y, settlement.position.y], 
+                [terrain_z, settlement_height],
+                color='red', linewidth=1, alpha=0.5, linestyle='--'
+            )
+
+        ax.scatter(
+            settlement_x, settlement_y, settlement_z,
+            c='red', s=settlement_sizes, alpha=0.9, edgecolors='darkred', linewidth=1,
+            label='Settlements'
+        )
+
+        # Add settlement labels at fixed height above settlements
+        for settlement in map_data.settlements:
+            ax.text(
+                settlement.position.x, settlement.position.y, label_height,
+                settlement.name, fontsize=9, ha='center', va='bottom',
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8, edgecolor="gray")
+            )
+
+    # Add roads as 3D lines
+    if enable_roads and map_data.roads:
+        for road in map_data.roads:
+            if len(road.path) > 1:
+                road_x = [pos.x for pos in road.path]
+                road_y = [pos.y for pos in road.path]
+                road_z = [scaled_elevation[pos.y, pos.x] + 0.05 for pos in road.path]  # Slightly above terrain
+
+                ax.plot(
+                    road_x, road_y, road_z,
+                    color='brown', linewidth=2, alpha=0.7,
+                    label='Roads' if road == map_data.roads[0] else ""  # Only label first road
+                )
+
+    # Add roads as 3D lines
+    if enable_roads and map_data.roads:
+        for road in map_data.roads:
+            if len(road.path) > 1:
+                road_x = [pos.x for pos in road.path]
+                road_y = [pos.y for pos in road.path]
+                road_z = [scaled_elevation[pos.y, pos.x] + 0.05 for pos in road.path]  # Slightly above terrain
+
+                ax.plot(
+                    road_x, road_y, road_z,
+                    color='brown', linewidth=2, alpha=0.7,
+                    label='Roads' if road == map_data.roads[0] else ""  # Only label first road
+                )
+
+    # Configure the 3D view
+    ax.set_xlabel('X Coordinate')
+    ax.set_ylabel('Y Coordinate')
+    ax.set_zlabel('Elevation')
+    ax.set_title('3D Fantasy Map Visualization')
+
+    # Set equal aspect ratio and nice viewing angle
+    ax.set_box_aspect([width/height, 1, 0.3])  # Compress Z axis for better viewing
+    ax.view_init(elev=30, azim=45)  # Nice isometric view
+
+    # Add colorbar
+    fig.colorbar(surf, ax=ax, shrink=0.5, aspect=10, label='Elevation')
+
+    # Add legend if we have elements and legend is enabled
+    if enable_legend and ((enable_settlements and map_data.settlements) or (enable_roads and map_data.roads)):
+        ax.legend()
+
+    plt.tight_layout()
     return fig
 
 
