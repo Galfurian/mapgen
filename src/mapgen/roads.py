@@ -1,13 +1,12 @@
 """Road generation module."""
 
 import random
-from typing import Any
 
-import networkx as nx
 import numpy as np
 from sklearn.neighbors import KDTree as SKLearnKDTree
 
-from .map_data import MapData, Position, RoadType, Settlement
+from .map_data import MapData, Position, Road, RoadType
+from . import logger
 
 
 def reconstruct_path(
@@ -105,111 +104,80 @@ def a_star_search(
     return None
 
 
-def find_enclosed_points(
-    contour_data: Any,
-    level: float,
-    noise_map: np.ndarray,
-) -> list[Position]:
-    """Find points enclosed within a contour line.
-
-    Args:
-        contour_data: The contour data from matplotlib.
-        level (float): The elevation map_data value.
-        noise_map (np.ndarray): The elevation map_data.
-
-    Returns:
-        List[Position]: List of enclosed points.
-
-    """
-    paths = contour_data.allsegs[0]
-    enclosed_points = []
-    for path in paths:
-        for i in range(len(path) - 1):
-            x1, y1 = path[i]
-            x2, y2 = path[i + 1]
-            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-
-            if (noise_map[y1, x1] > level) != (noise_map[y2, x2] > level):
-                enclosed_points.append(Position(x=x1, y=y1))
-    return enclosed_points
-
-
 def generate_roads(
     map_data: MapData,
     noise_map: np.ndarray,
-) -> nx.Graph:
-    """Generate road network connecting settlements.
+) -> None:
+    """
+    Generate road network connecting settlements.
 
     Args:
-        settlements (list[Settlement]): List of settlements.
-        map_data (MapData): The map grid.
-        noise_map (np.ndarray): The elevation map.
-
-    Returns:
-        nx.Graph: The road network graph.
+        map_data (MapData):
+            The map grid.
+        noise_map (np.ndarray):
+            The elevation map.
 
     """
-    graph: nx.Graph = nx.Graph()
-    
-    settlements = map_data.settlements if map_data.settlements else []
 
     if not map_data.settlements:
-        return graph
+        logger.info("No settlements to connect; skipping road generation.")
+        return
 
+    roads = map_data.roads
+    settlements = map_data.settlements
+
+    # 1. Connect settlements using a simple nearest neighbor approach
+    # (instead of full MST to avoid NetworkX)
+    connected = set()
     for settlement in settlements:
-        graph.add_node(
-            settlement.name,
-            pos=(settlement.position.x, settlement.position.y),
-        )
-
-    # 1. Connect settlements using Minimum Spanning Tree (MST)
-    positions = np.array([(s.position.x, s.position.y) for s in settlements])
-    distances = np.linalg.norm(
-        positions[:, np.newaxis, :] - positions[np.newaxis, :, :], axis=2
-    )
-    mst = nx.minimum_spanning_tree(nx.Graph(distances))
-
-    for i, j in mst.edges():
-        settlement1 = settlements[i]
-        settlement2 = settlements[j]
-        path = a_star_search(
-            map_data,
-            settlement1.position,
-            settlement2.position,
-            high_points=[],
-        )
-        if path is not None:
-            # Determine road type: if any tile in path cannot have roads built,
-            # it's a water crossing
-            has_water_tiles = any(
-                not map_data.get_terrain(pos.x, pos.y).can_build_road for pos in path
+        if settlement.name in connected:
+            continue
+        # Find nearest unconnected settlement
+        nearest = None
+        min_dist = float('inf')
+        for other in settlements:
+            if other.name != settlement.name and other.name not in connected:
+                dist = settlement.distance_to(other)
+                if dist < min_dist:
+                    min_dist = dist
+                    nearest = other
+        if nearest:
+            path = a_star_search(
+                map_data,
+                settlement.position,
+                nearest.position,
+                high_points=[],
             )
-            road_type = RoadType.WATER if has_water_tiles else RoadType.LAND
-            graph.add_edge(
-                settlement1.name, settlement2.name, type=road_type, path=path
-            )
+            if path is not None:
+                # Determine road type
+                has_water_tiles = any(
+                    not map_data.get_terrain(pos.x, pos.y).can_build_road for pos in path
+                )
+                road_type = RoadType.WATER if has_water_tiles else RoadType.LAND
+                roads.append(Road(
+                    start_settlement=settlement.name,
+                    end_settlement=nearest.name,
+                    type=road_type,
+                    path=path,
+                ))
+                connected.add(settlement.name)
+                connected.add(nearest.name)
 
-    # 2. Identify High Points
+    # 2. Identify High Points (simplified, without matplotlib contours)
     high_points = []
-    for level_value in np.linspace(noise_map.min(), noise_map.max(), num=10):
-        import matplotlib.pyplot as plt
-
-        contour_data = plt.contourf(
-            noise_map,
-            levels=[level_value - 0.01, level_value + 0.01],
-        )
-        enclosed_points = find_enclosed_points(
-            contour_data,
-            level_value,
-            noise_map,
-        )
-        high_points.extend(enclosed_points)
-        plt.clf()
-        plt.close()
+    # For simplicity, consider points above a threshold as high points
+    threshold = np.percentile(noise_map, 80)
+    for y in range(noise_map.shape[0]):
+        for x in range(noise_map.shape[1]):
+            if noise_map[y, x] > threshold:
+                high_points.append(Position(x=x, y=y))
 
     # 3. Add Additional Connections (Avoiding High Points)
     settlement_positions = np.array([(s.position.x, s.position.y) for s in settlements])
     kdtree = SKLearnKDTree(settlement_positions)
+
+    existing_connections = {(r.start_settlement, r.end_settlement) for r in roads}
+    existing_connections.update({(r.end_settlement, r.start_settlement) for r in roads})
 
     for i, settlement1 in enumerate(settlements):
         neighbor_indices = kdtree.query_radius(
@@ -217,7 +185,7 @@ def generate_roads(
         )[0]
         for j in neighbor_indices:
             settlement2 = settlements[j]
-            if i != j and not graph.has_edge(settlement1.name, settlement2.name):
+            if i != j and (settlement1.name, settlement2.name) not in existing_connections:
                 distance = settlement1.distance_to(settlement2)
 
                 connection_probability = (
@@ -232,18 +200,17 @@ def generate_roads(
                         high_points,
                     )
                     if path is not None:
-                        # Determine road type: if any tile in path cannot have
-                        # roads built, it's a water crossing.
+                        # Determine road type
                         has_water_tiles = any(
                             not map_data.get_terrain(pos.x, pos.y).can_build_road
                             for pos in path
                         )
                         road_type = RoadType.WATER if has_water_tiles else RoadType.LAND
-                        graph.add_edge(
-                            settlement1.name,
-                            settlement2.name,
+                        roads.append(Road(
+                            start_settlement=settlement1.name,
+                            end_settlement=settlement2.name,
                             type=road_type,
                             path=path,
-                        )
-
-    return graph
+                        ))
+                        existing_connections.add((settlement1.name, settlement2.name))
+                        existing_connections.add((settlement2.name, settlement1.name))

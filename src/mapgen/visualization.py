@@ -1,13 +1,12 @@
 """Visualization module for maps."""
 
 import matplotlib.pyplot as plt
-import networkx as nx
 import numpy as np
 from matplotlib import patches
 from matplotlib.figure import Figure
 from scipy.interpolate import interp1d
 
-from .map_data import MapData, Position, RoadType, Settlement
+from .map_data import MapData, Position, Road, RoadType, Settlement
 
 
 def apply_curves_to_path(
@@ -116,7 +115,7 @@ def plot_map(
     map_data: MapData,
     noise_map: np.ndarray,
     settlements: list[Settlement],
-    roads_graph: nx.Graph,
+    roads: list[Road],
 ) -> Figure:
     """
     Plot the map with terrain, settlements, and roads.
@@ -164,25 +163,24 @@ def plot_map(
     )
 
     # Plot roads first (so settlements appear on top)
-    for _, _, data in roads_graph.edges(data=True):
-        if "path" in data:
-            path = data["path"]
-            x_coords = [pos.x for pos in path]
-            y_coords = [pos.y for pos in path]
-            if data.get("type") == RoadType.WATER:
-                ax.plot(
-                    x_coords,
-                    y_coords,
-                    color="gray",
-                    linestyle="dotted",
-                    linewidth=2,
-                    zorder=1,
-                )
-            else:
-                curved_path = apply_curves_to_path(path, noise_map)
-                curved_x = [pos.x for pos in curved_path]
-                curved_y = [pos.y for pos in curved_path]
-                ax.plot(curved_x, curved_y, color="gray", linewidth=2, zorder=1)
+    for road in roads:
+        path = road.path
+        x_coords = [pos.x for pos in path]
+        y_coords = [pos.y for pos in path]
+        if road.type == RoadType.WATER:
+            ax.plot(
+                x_coords,
+                y_coords,
+                color="brown",
+                linestyle="dotted",
+                linewidth=2,
+                zorder=1,
+            )
+        else:
+            curved_path = apply_curves_to_path(path, noise_map)
+            curved_x = [pos.x for pos in curved_path]
+            curved_y = [pos.y for pos in curved_path]
+            ax.plot(curved_x, curved_y, color="brown", linewidth=2, zorder=1)
 
     # Plot settlements
     existing_texts: list[tuple[int, int]] = []

@@ -268,6 +268,37 @@ class Settlement(BaseModel):
         return self.position.distance_to(other.position)
 
 
+class Road(BaseModel):
+    """
+    Represents a road connecting two settlements.
+
+    Attributes:
+        start_settlement (str):
+            Name of the starting settlement.
+        end_settlement (str):
+            Name of the ending settlement.
+        type (RoadType):
+            Type of the road (land or water).
+        path (list[Position]):
+            List of positions forming the road path.
+
+    """
+
+    start_settlement: str = Field(
+        description="Name of the starting settlement.",
+    )
+    end_settlement: str = Field(
+        description="Name of the ending settlement.",
+    )
+    type: RoadType = Field(
+        description="Type of the road (land or water).",
+    )
+    path: list[Position] = Field(
+        default_factory=list,
+        description="List of positions forming the road path.",
+    )
+
+
 class MapData(BaseModel):
     """
     Represents a 2D map grid with terrain data.
@@ -295,14 +326,17 @@ class MapData(BaseModel):
         default_factory=list,
         description="List of settlements on the map.",
     )
+    roads: list[Road] = Field(
+        default_factory=list,
+        description="List of roads connecting settlements.",
+    )
 
     def _get_tile_index(self, tile: Tile) -> int:
         """Get the index of a tile, adding it if not present."""
         if tile in self.tiles:
             return self.tiles.index(tile)
-        else:
-            self.tiles.append(tile)
-            return len(self.tiles) - 1
+        self.tiles.append(tile)
+        return len(self.tiles) - 1
 
     @property
     def height(self) -> int:

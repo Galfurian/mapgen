@@ -37,14 +37,11 @@ def main() -> None:
     if generator.noise_map is None:
         print("   ❌ Noise map generation failed!")
         return
-    if generator.roads_graph is None:
-        print("   ❌ Road generation failed!")
-        return
 
     print(f"   ✅ Generated {generator.width}x{generator.height} map")
     print(f"   📊 Terrain: {len(generator.map_data.tiles)} types")
     print(f"   🏘️  Settlements: {len(generator.map_data.settlements)}")
-    print(f"   🛣️  Roads: {len(generator.roads_graph.edges)}")
+    print(f"   🛣️  Roads: {len(generator.map_data.roads)}")
 
     # Generate PNG from original map.
     print("Generating PNG from original map...")
@@ -53,7 +50,7 @@ def main() -> None:
         map_data=generator.map_data,
         noise_map=generator.noise_map,
         settlements=generator.map_data.settlements,
-        roads_graph=generator.roads_graph,
+        roads=generator.map_data.roads,
     )
     fig_original.savefig(
         map_path_original,
@@ -85,7 +82,7 @@ def main() -> None:
             f"   🏘️  Settlements loaded: {len(loaded_map_data.settlements) if loaded_map_data.settlements else 0}"
         )
         print(
-            f"   🛣️  Roads loaded: {len(loaded_map_data.roads_graph.edges) if loaded_map_data.roads_graph else 0}"
+            f"   🛣️  Roads loaded: {len(loaded_map_data.roads)}"
         )
 
         # Step 5: Generate PNG from loaded map
@@ -131,9 +128,7 @@ def main() -> None:
             integrity_ok = False
 
         # Check roads
-        if len(map_data.roads_graph.edges if map_data.roads_graph else []) != len(
-            loaded_map_data.roads_graph.edges if loaded_map_data.roads_graph else []
-        ):
+        if len(map_data.roads) != len(loaded_map_data.roads):
             print("   ❌ Road count doesn't match!")
             integrity_ok = False
 
@@ -156,7 +151,7 @@ def main() -> None:
             f"   - {len(map_data.settlements) if map_data.settlements else 0} settlements with names and positions"
         )
         print(
-            f"   - Road network with {len(map_data.roads_graph.edges) if map_data.roads_graph else 0} connections"
+            f"   - Road network with {len(map_data.roads)} connections"
         )
         print("\n🚀 You can now load any .json file and generate visualizations!")
 

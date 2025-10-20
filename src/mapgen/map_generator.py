@@ -1,11 +1,9 @@
 """Main map generator module."""
 
-import networkx as nx
 import numpy as np
 
 from . import (
     MapData,
-    Settlement,
     Tile,
     logger,
     roads,
@@ -39,7 +37,7 @@ class MapGenerator:
     # Generated data placeholders.
     map_data: MapData | None
     noise_map: np.ndarray | None
-    roads_graph: nx.Graph | None
+    elevation_map: np.ndarray | None
 
     def __init__(
         self,
@@ -95,8 +93,6 @@ class MapGenerator:
         # Generated data placeholders.
         self.map_data = None
         self.noise_map = None
-        self.elevation_map = None
-        self.roads_graph = None
 
     def generate(self) -> None:
         """
@@ -168,11 +164,11 @@ class MapGenerator:
 
         # Generate roads
         logger.debug("Generating road network")
-        self.roads_graph = roads.generate_roads(
+        roads.generate_roads(
             self.map_data,
             self.noise_map,
         )
-        logger.info(f"Generated road network with {len(self.roads_graph.edges)} roads")
+        logger.info(f"Generated road network with {len(self.map_data.roads)} roads")
         logger.info("Map generation completed successfully")
 
     def _get_default_tiles(self) -> tuple[list[Tile], int]:

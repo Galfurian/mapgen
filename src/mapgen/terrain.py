@@ -6,7 +6,7 @@ import noise
 import numpy as np
 
 from . import logger
-from .map_data import MapData, Tile
+from .map_data import MapData
 
 
 def dig(
