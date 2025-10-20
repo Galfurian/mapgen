@@ -5,8 +5,8 @@ import random
 import numpy as np
 from sklearn.neighbors import KDTree as SKLearnKDTree
 
-from .map_data import MapData, Position, Road, RoadType
 from . import logger
+from .map_data import MapData, Position, Road
 
 
 def reconstruct_path(
@@ -118,7 +118,6 @@ def generate_roads(
             The elevation map.
 
     """
-
     if not map_data.settlements:
         logger.info("No settlements to connect; skipping road generation.")
         return
@@ -134,7 +133,7 @@ def generate_roads(
             continue
         # Find nearest unconnected settlement
         nearest = None
-        min_dist = float('inf')
+        min_dist = float("inf")
         for other in settlements:
             if other.name != settlement.name and other.name not in connected:
                 dist = settlement.distance_to(other)
@@ -149,17 +148,13 @@ def generate_roads(
                 high_points=[],
             )
             if path is not None:
-                # Determine road type
-                has_water_tiles = any(
-                    not map_data.get_terrain(pos.x, pos.y).can_build_road for pos in path
+                roads.append(
+                    Road(
+                        start_settlement=settlement.name,
+                        end_settlement=nearest.name,
+                        path=path,
+                    )
                 )
-                road_type = RoadType.WATER if has_water_tiles else RoadType.LAND
-                roads.append(Road(
-                    start_settlement=settlement.name,
-                    end_settlement=nearest.name,
-                    type=road_type,
-                    path=path,
-                ))
                 connected.add(settlement.name)
                 connected.add(nearest.name)
 
@@ -185,7 +180,10 @@ def generate_roads(
         )[0]
         for j in neighbor_indices:
             settlement2 = settlements[j]
-            if i != j and (settlement1.name, settlement2.name) not in existing_connections:
+            if (
+                i != j
+                and (settlement1.name, settlement2.name) not in existing_connections
+            ):
                 distance = settlement1.distance_to(settlement2)
 
                 connection_probability = (
@@ -200,17 +198,12 @@ def generate_roads(
                         high_points,
                     )
                     if path is not None:
-                        # Determine road type
-                        has_water_tiles = any(
-                            not map_data.get_terrain(pos.x, pos.y).can_build_road
-                            for pos in path
+                        roads.append(
+                            Road(
+                                start_settlement=settlement1.name,
+                                end_settlement=settlement2.name,
+                                path=path,
+                            )
                         )
-                        road_type = RoadType.WATER if has_water_tiles else RoadType.LAND
-                        roads.append(Road(
-                            start_settlement=settlement1.name,
-                            end_settlement=settlement2.name,
-                            type=road_type,
-                            path=path,
-                        ))
                         existing_connections.add((settlement1.name, settlement2.name))
                         existing_connections.add((settlement2.name, settlement1.name))

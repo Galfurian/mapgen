@@ -9,7 +9,57 @@ from . import logger
 from .map_data import MapData, Position, Settlement
 
 
-def generate_settlement_name() -> str:
+def generate_settlements(
+    map_data: MapData,
+    noise_map: np.ndarray,
+    settlement_density: float = 0.002,
+    min_radius: float = 0.5,
+    max_radius: float = 1.0,
+) -> None:
+    """
+    Generate settlements on suitable terrain.
+
+    Args:
+        map_data (MapData):
+            The terrain map grid.
+        noise_map (np.ndarray):
+            The noise map array.
+        settlement_density (float):
+            The probability of placing a settlement on suitable terrain.
+        min_radius (float):
+            The minimum radius of settlements.
+        max_radius (float):
+            The maximum radius of settlements.
+
+    Raises:
+        ValueError: If map_data dimensions don't match noise_map dimensions.
+
+    """
+    if map_data.height != noise_map.shape[0] or map_data.width != noise_map.shape[1]:
+        raise ValueError(
+            f"Map dimensions ({map_data.width}x{map_data.height}) don't match "
+            f"noise map dimensions ({noise_map.shape[1]}x{noise_map.shape[0]})"
+        )
+
+    logger.debug(f"Generating settlements with density {settlement_density}")
+
+    # Find all suitable positions
+    suitable_positions = _find_suitable_settlement_positions(map_data)
+
+    # Place settlements at suitable positions
+    settlements = _place_settlements_at_positions(
+        map_data,
+        suitable_positions,
+        settlement_density,
+        min_radius,
+        max_radius,
+    )
+    settlement_names = [s.name for s in map_data.settlements]
+    logger.debug(f"Generated settlements: {settlement_names}")
+    return settlements
+
+
+def _generate_settlement_name() -> str:
     """Generate a random fantasy settlement name.
 
     Returns:
@@ -38,7 +88,7 @@ def generate_settlement_name() -> str:
     return name.capitalize()
 
 
-def is_position_suitable_for_settlement(
+def _is_position_suitable_for_settlement(
     map_data: MapData,
     position: Position,
 ) -> bool:
@@ -59,7 +109,7 @@ def is_position_suitable_for_settlement(
     return tile.can_build_settlement
 
 
-def should_place_settlement(settlement_density: float) -> bool:
+def _should_place_settlement(settlement_density: float) -> bool:
     """Determine if a settlement should be placed based on probability.
 
     Args:
@@ -80,7 +130,7 @@ def should_place_settlement(settlement_density: float) -> bool:
     return random.random() < settlement_density
 
 
-def settlement_overlaps(
+def _does_settlement_overlaps(
     map_data: MapData,
     position: Position,
     min_radius: float,
@@ -119,7 +169,7 @@ def settlement_overlaps(
     return False
 
 
-def create_settlement(
+def _create_settlement(
     position: Position,
     min_radius: float,
     max_radius: float,
@@ -148,7 +198,7 @@ def create_settlement(
         )
 
     radius = random.uniform(min_radius, max_radius)
-    name = generate_settlement_name()
+    name = _generate_settlement_name()
     connectivity = int(radius * 5)
 
     return Settlement(
@@ -159,7 +209,7 @@ def create_settlement(
     )
 
 
-def find_suitable_settlement_positions(
+def _find_suitable_settlement_positions(
     map_data: MapData,
 ) -> list[Position]:
     """Find all positions on the map that are suitable for settlement placement.
@@ -176,13 +226,13 @@ def find_suitable_settlement_positions(
     for y in range(map_data.height):
         for x in range(map_data.width):
             position = Position(x=x, y=y)
-            if is_position_suitable_for_settlement(map_data, position):
+            if _is_position_suitable_for_settlement(map_data, position):
                 suitable_positions.append(position)
 
     return suitable_positions
 
 
-def place_settlements_at_positions(
+def _place_settlements_at_positions(
     map_data: MapData,
     positions: list[Position],
     settlement_density: float,
@@ -206,64 +256,14 @@ def place_settlements_at_positions(
 
     """
     for position in positions:
-        if not should_place_settlement(settlement_density):
+        if not _should_place_settlement(settlement_density):
             continue
-        if settlement_overlaps(map_data, position, min_radius, max_radius):
+        if _does_settlement_overlaps(map_data, position, min_radius, max_radius):
             continue
         map_data.settlements.append(
-            create_settlement(
+            _create_settlement(
                 position,
                 min_radius,
                 max_radius,
             )
         )
-
-
-def generate_settlements(
-    map_data: MapData,
-    noise_map: np.ndarray,
-    settlement_density: float = 0.002,
-    min_radius: float = 0.5,
-    max_radius: float = 1.0,
-) -> None:
-    """
-    Generate settlements on suitable terrain.
-
-    Args:
-        map_data (MapData):
-            The terrain map grid.
-        noise_map (np.ndarray):
-            The noise map array.
-        settlement_density (float):
-            The probability of placing a settlement on suitable terrain.
-        min_radius (float):
-            The minimum radius of settlements.
-        max_radius (float):
-            The maximum radius of settlements.
-
-    Raises:
-        ValueError: If map_data dimensions don't match noise_map dimensions.
-
-    """
-    if map_data.height != noise_map.shape[0] or map_data.width != noise_map.shape[1]:
-        raise ValueError(
-            f"Map dimensions ({map_data.width}x{map_data.height}) don't match "
-            f"noise map dimensions ({noise_map.shape[1]}x{noise_map.shape[0]})"
-        )
-
-    logger.debug(f"Generating settlements with density {settlement_density}")
-
-    # Find all suitable positions
-    suitable_positions = find_suitable_settlement_positions(map_data)
-
-    # Place settlements at suitable positions
-    settlements = place_settlements_at_positions(
-        map_data,
-        suitable_positions,
-        settlement_density,
-        min_radius,
-        max_radius,
-    )
-    settlement_names = [s.name for s in map_data.settlements]
-    logger.debug(f"Generated settlements: {settlement_names}")
-    return settlements

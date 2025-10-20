@@ -2,27 +2,9 @@
 
 from __future__ import annotations
 
-from enum import Enum
-
 from pydantic import BaseModel, Field
 
 from . import logger
-
-
-class RoadType(Enum):
-    """Enumeration of different road types for visualization and gameplay.
-
-    Road types determine how roads are rendered and can affect gameplay mechanics.
-    This enum can be extended with additional types like BRIDGE, TUNNEL, HIGHWAY, etc.
-
-    Attributes:
-        LAND: Standard land roads (rendered as curved solid lines)
-        WATER: Roads that cross water bodies (rendered as straight dotted lines)
-
-    """
-
-    LAND = "land"
-    WATER = "water"
 
 
 class Tile(BaseModel):
@@ -277,8 +259,6 @@ class Road(BaseModel):
             Name of the starting settlement.
         end_settlement (str):
             Name of the ending settlement.
-        type (RoadType):
-            Type of the road (land or water).
         path (list[Position]):
             List of positions forming the road path.
 
@@ -289,9 +269,6 @@ class Road(BaseModel):
     )
     end_settlement: str = Field(
         description="Name of the ending settlement.",
-    )
-    type: RoadType = Field(
-        description="Type of the road (land or water).",
     )
     path: list[Position] = Field(
         default_factory=list,
