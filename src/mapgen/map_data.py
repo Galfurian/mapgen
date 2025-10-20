@@ -544,11 +544,31 @@ class MapData(BaseModel):
         ]
 
     def __getitem__(self, key: int) -> list[Tile]:
-        """Get a row from the grid."""
+        """Get a row from the grid.
+
+        Args:
+            key (int): The row index.
+
+        Returns:
+            list[Tile]: The row of tiles.
+
+        Raises:
+            IndexError: If key is out of bounds.
+
+        """
         return [self.tiles[i] for i in self.grid[key]]
 
     def __setitem__(self, key: int, value: list[Tile]) -> None:
-        """Set a row in the grid."""
+        """Set a row in the grid.
+
+        Args:
+            key (int): The row index.
+            value (list[Tile]): The row of tiles to set.
+
+        Raises:
+            IndexError: If key is out of bounds.
+
+        """
         self.grid[key] = [self._get_tile_index(tile) for tile in value]
 
     def __len__(self) -> int:

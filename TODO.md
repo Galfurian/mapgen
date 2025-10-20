@@ -15,7 +15,7 @@
 - [ ] Add missing docstrings to private functions (e.g., `_apply_curves_to_path`)
 - [ ] Include examples in docstrings for complex functions
 - [ ] Add parameter descriptions for all functions
-- [ ] Document exceptions raised by functions
+- [x] Document exceptions raised by functions
 - [ ] Create API documentation using Sphinx or similar
 - [x] Add inline comments for complex algorithms
 

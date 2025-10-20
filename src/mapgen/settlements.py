@@ -27,9 +27,6 @@ def generate_settlements(
         max_radius (float):
             The maximum radius of settlements.
 
-    Raises:
-        ValueError: If map_data dimensions don't match noise_map dimensions.
-
     """
     logger.debug(f"Generating settlements with density {settlement_density}")
 
@@ -87,6 +84,9 @@ def _is_position_suitable_for_settlement(
 
     Returns:
         bool: True if the position can have a settlement, False otherwise.
+
+    Raises:
+        ValueError: If position is out of bounds.
 
     """
     if not map_data.is_valid_position(position.x, position.y):
