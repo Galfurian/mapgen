@@ -100,50 +100,70 @@ def smooth_terrain(
         new_grid_indices = [row[:] for row in map_data.grid]
         for y in range(1, map_data.height - 1):
             for x in range(1, map_data.width - 1):
-                current_tile = map_data.get_terrain(x, y)
-
-                # Skip obstacles (non-walkable tiles)
-                if not current_tile.walkable:
-                    continue
-
-                # Get neighbor properties
-                neighbors = map_data.get_neighbor_tiles(
-                    x, y, walkable_only=False, include_diagonals=True
-                )
-
-                # Count different neighbor types based on properties
-                obstacle_count = sum(1 for n in neighbors if not n.walkable)
-                liquid_count = sum(1 for n in neighbors if n.elevation_influence < 0)
-                difficult_count = sum(1 for n in neighbors if n.movement_cost > 1.0)
-                elevated_count = sum(
-                    1 for n in neighbors if n.elevation_influence > 0.5
-                )
-
-                # Apply smoothing rules based on neighbor majority
-                if obstacle_count > 4:
-                    candidates = [t for t in map_data.tiles if not t.walkable]
-                    if candidates:
-                        tile = max(candidates, key=lambda t: t.smoothing_priority)
-                        new_grid_indices[y][x] = map_data.tiles.index(tile)
-                elif liquid_count > 3:
-                    candidates = [
-                        t for t in map_data.tiles if t.elevation_influence < 0
-                    ]
-                    if candidates:
-                        tile = max(candidates, key=lambda t: t.smoothing_priority)
-                        new_grid_indices[y][x] = map_data.tiles.index(tile)
-                elif elevated_count > 3:
-                    candidates = [
-                        t for t in map_data.tiles if t.elevation_influence > 0.5
-                    ]
-                    if candidates:
-                        tile = max(candidates, key=lambda t: t.smoothing_priority)
-                        new_grid_indices[y][x] = map_data.tiles.index(tile)
-                elif difficult_count > 4:
-                    candidates = [
-                        t for t in map_data.tiles if 1.0 < t.movement_cost < 2.0
-                    ]
-                    if candidates:
-                        tile = max(candidates, key=lambda t: t.smoothing_priority)
-                        new_grid_indices[y][x] = map_data.tiles.index(tile)
+                new_tile_index = _get_smoothed_tile_index(map_data, x, y)
+                if new_tile_index is not None:
+                    new_grid_indices[y][x] = new_tile_index
         map_data.grid = new_grid_indices
+
+
+def _get_smoothed_tile_index(
+    map_data: MapData,
+    x: int,
+    y: int,
+) -> int | None:
+    """
+    Get the smoothed tile index for a given position.
+
+    Args:
+        map_data (MapData):
+            The map data.
+        x (int):
+            The x coordinate.
+        y (int):
+            The y coordinate.
+
+    Returns:
+        int | None:
+            The new tile index or None if no change.
+
+    """
+    current_tile = map_data.get_terrain(x, y)
+
+    # Skip obstacles (non-walkable tiles)
+    if not current_tile.walkable:
+        return None
+
+    # Get neighbor properties
+    neighbors = map_data.get_neighbor_tiles(
+        x, y, walkable_only=False, include_diagonals=True
+    )
+
+    # Count different neighbor types based on properties
+    obstacle_count = sum(1 for n in neighbors if not n.walkable)
+    liquid_count = sum(1 for n in neighbors if n.elevation_influence < 0)
+    difficult_count = sum(1 for n in neighbors if n.movement_cost > 1.0)
+    elevated_count = sum(1 for n in neighbors if n.elevation_influence > 0.5)
+
+    # Apply smoothing rules based on neighbor majority
+    if obstacle_count > 4:
+        candidates = [t for t in map_data.tiles if not t.walkable]
+        if candidates:
+            tile = max(candidates, key=lambda t: t.smoothing_priority)
+            return map_data.tiles.index(tile)
+    elif liquid_count > 3:
+        candidates = [t for t in map_data.tiles if t.elevation_influence < 0]
+        if candidates:
+            tile = max(candidates, key=lambda t: t.smoothing_priority)
+            return map_data.tiles.index(tile)
+    elif elevated_count > 3:
+        candidates = [t for t in map_data.tiles if t.elevation_influence > 0.5]
+        if candidates:
+            tile = max(candidates, key=lambda t: t.smoothing_priority)
+            return map_data.tiles.index(tile)
+    elif difficult_count > 4:
+        candidates = [t for t in map_data.tiles if 1.0 < t.movement_cost < 2.0]
+        if candidates:
+            tile = max(candidates, key=lambda t: t.smoothing_priority)
+            return map_data.tiles.index(tile)
+
+    return None
