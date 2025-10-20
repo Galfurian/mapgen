@@ -562,11 +562,8 @@ class MapData(BaseModel):
             filepath (str): Path to the file where the map will be saved.
 
         """
-        logger.info(f"Saving map data to {filepath}")
-
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(self.model_dump_json(indent=2))
-            logger.info(f"Map data saved successfully in {filepath}")
 
     @classmethod
     def load_from_json(cls, filepath: str) -> MapData:
@@ -580,7 +577,6 @@ class MapData(BaseModel):
             MapData: The loaded map data.
 
         """
-        logger.info(f"Loading map data from {filepath}")
         with open(filepath, encoding="utf-8") as f:
             return cls.model_validate_json(f.read())
 

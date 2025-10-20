@@ -44,8 +44,7 @@ def generate_settlements(
         min_radius,
         max_radius,
     )
-    settlement_names = [s.name for s in map_data.settlements]
-    logger.debug(f"Generated settlements: {settlement_names}")
+
     return settlements
 
 

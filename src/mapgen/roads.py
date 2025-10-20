@@ -2,7 +2,6 @@
 
 import heapq
 import random
-from collections import defaultdict
 
 from . import logger
 from .map_data import MapData, Position, Road, Settlement
@@ -31,7 +30,7 @@ def generate_roads(
     )
 
     for settlement in shuffled_settlements:
-        # Find nearest settlement worth connecting
+        # Find nearest settlement worth connecting.
         nearest = _find_nearest_settlement_worth_connecting(
             settlement,
             map_data.settlements,
@@ -65,14 +64,18 @@ def _reconstruct_path(
     current: Position,
     came_from: dict[Position, Position],
 ) -> list[Position]:
-    """Reconstruct the path from A* search.
+    """
+    Reconstruct the path from A* search.
 
     Args:
-        current (Position): The current position.
-        came_from (Dict[Position, Position]): The came_from dictionary.
+        current (Position):
+            The current position.
+        came_from (Dict[Position, Position]):
+            The came_from dictionary.
 
     Returns:
-        List[Position]: The reconstructed path.
+        List[Position]:
+            The reconstructed path.
 
     """
     path = [current]
@@ -88,15 +91,20 @@ def _a_star_search(
     start: Position,
     goal: Position,
 ) -> list[Position] | None:
-    """Perform A* search.
+    """
+    Perform A* search.
 
     Args:
-        map_data (MapData): The map grid.
-        start (Position): The start position.
-        goal (Position): The goal position.
+        map_data (MapData):
+            The map grid.
+        start (Position):
+            The start position.
+        goal (Position):
+            The goal position.
 
     Returns:
-        list[Position] | None: The path if found, None otherwise.
+        list[Position] | None:
+            The path if found, None otherwise.
 
     """
 
@@ -150,49 +158,26 @@ def _a_star_search(
     return None
 
 
-def _settlements_are_connected(
-    map_data: MapData,
-    s1: str,
-    s2: str,
-) -> bool:
-    """
-    Check if two settlements are already connected by a road.
-
-    Args:
-        map_data (MapData):
-            The map data.
-        s1 (str):
-            Name of first settlement.
-        s2 (str):
-            Name of second settlement.
-
-    Returns:
-        bool: True if connected, False otherwise.
-
-    """
-    for road in map_data.roads:
-        if (road.start_settlement == s1 and road.end_settlement == s2) or (
-            road.start_settlement == s2 and road.end_settlement == s1
-        ):
-            return True
-    return False
-
-
 def _shortest_path_distance(
     map_data: MapData,
     start_name: str,
     end_name: str,
 ) -> float | None:
     """
-    Compute the shortest path distance between two settlements via existing roads.
+    Compute the shortest path distance between two settlements via existing
+    roads.
 
     Args:
-        map_data: The map data.
-        start_name: Name of starting settlement.
-        end_name: Name of ending settlement.
+        map_data:
+            The map data.
+        start_name:
+            Name of starting settlement.
+        end_name:
+            Name of ending settlement.
 
     Returns:
-        The shortest distance, or None if no path exists.
+        float | None:
+            The shortest distance, or None if no path exists.
 
     """
     settlements = {s.name: s for s in map_data.settlements}
@@ -228,15 +213,20 @@ def _find_nearest_settlement_worth_connecting(
     map_data: MapData,
 ) -> Settlement | None:
     """
-    Find the nearest settlement where direct connection is better than existing paths.
+    Find the nearest settlement where direct connection is better than existing
+    paths.
 
     Args:
-        settlement: The settlement to connect from.
-        settlements: All settlements.
-        map_data: The map data containing existing roads.
+        settlement:
+            The settlement to connect from.
+        settlements:
+            All settlements.
+        map_data:
+            The map data containing existing roads.
 
     Returns:
-        The nearest settlement worth connecting to, or None.
+        Settlement | None:
+            The nearest settlement worth connecting to, or None.
 
     """
     nearest = None
