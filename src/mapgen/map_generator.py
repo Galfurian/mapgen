@@ -1,5 +1,7 @@
 """Main map generator module."""
 
+import random
+
 import numpy as np
 
 from . import (
@@ -31,6 +33,7 @@ class MapGenerator:
     settlement_density: float
     min_settlement_radius: float
     max_settlement_radius: float
+    seed: int
 
     def __init__(
         self,
@@ -45,6 +48,7 @@ class MapGenerator:
         settlement_density: float = 0.002,
         min_settlement_radius: float = 0.5,
         max_settlement_radius: float = 1.0,
+        seed: int = random.randint(0, 1_000_000),
     ):
         """Initialize the map generator.
 
@@ -60,6 +64,7 @@ class MapGenerator:
             settlement_density (float): Density of settlements.
             min_settlement_radius (float): Minimum settlement radius.
             max_settlement_radius (float): Maximum settlement radius.
+            seed (int): Random seed for reproducible generation.
 
         """
         # Map generation parameters.
@@ -74,6 +79,7 @@ class MapGenerator:
         self.settlement_density = settlement_density
         self.min_settlement_radius = min_settlement_radius
         self.max_settlement_radius = max_settlement_radius
+        self.seed = seed
 
     def generate(self) -> MapData:
         """
@@ -85,8 +91,14 @@ class MapGenerator:
         Returns:
             MapData:
                 The generated map data.
+
         """
         logger.info(f"Starting map generation: {self.width}*{self.height}")
+
+        # Set random seed for reproducible generation
+        random.seed(self.seed)
+        np.random.seed(self.seed)
+        logger.debug(f"Using random seed: {self.seed}")
 
         tiles = self._get_default_tiles()
 
@@ -94,14 +106,6 @@ class MapGenerator:
         map_data = MapData(
             tiles=tiles,
             grid=[[0 for _ in range(self.width)] for _ in range(self.height)],
-        )
-
-        logger.debug("Digging terrain")
-        terrain.dig_map(
-            map_data=map_data,
-            padding=self.padding,
-            initial_x=self.width // 2,
-            initial_y=self.height // 2,
         )
 
         logger.debug("Generating noise map")

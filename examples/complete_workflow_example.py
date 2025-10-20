@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 
 from mapgen import MapGenerator, visualization
-from mapgen.map_data import MapData
 
 
 def main() -> None:
@@ -19,11 +18,18 @@ def main() -> None:
     # Step 1: Generate a map
     print("Generating fantasy map...")
     generator = MapGenerator(
-        width=100,
-        height=80,
-        scale=60.0,
+        width=150,
+        height=100,
+        padding=2,
+        scale=50.0,
         octaves=6,
-        settlement_density=0.0015,
+        persistence=0.5,
+        lacunarity=2.0,
+        smoothing_iterations=5,
+        settlement_density=0.002,
+        min_settlement_radius=0.5,
+        max_settlement_radius=1.0,
+        seed=42,
     )
 
     map_data = generator.generate()
@@ -57,88 +63,6 @@ def main() -> None:
     map_data.save_to_json(str(map_json_path))
     json_size = os.path.getsize(map_json_path)
     print(f"   💾 JSON size: {json_size:,} bytes")
-
-    if False:
-
-        # Step 4: Load map from JSON
-        print("\n4️⃣  Loading map from JSON...")
-        loaded_map_data = MapData.load_from_json(str(map_json_path))
-        print(f"   ✅ Loaded {loaded_map_data.width}x{loaded_map_data.height} map")
-        print(
-            f"   📊 Terrain types preserved: {len(set(tile.name for row in loaded_map_data.tiles_grid for tile in row))}"
-        )
-        print(
-            f"   🏘️  Settlements loaded: {len(loaded_map_data.settlements) if loaded_map_data.settlements else 0}"
-        )
-        print(f"   🛣️  Roads loaded: {len(loaded_map_data.roads)}")
-
-        # Step 5: Generate PNG from loaded map
-        png_loaded_path = output_dir / "loaded_map.png"
-        print("\n5️⃣  Generating PNG from loaded map...")
-        fig_loaded = generator.plot(loaded_map_data)
-        fig_loaded.savefig(
-            png_loaded_path, dpi=200, bbox_inches="tight", facecolor="white"
-        )
-        fig_loaded.get_figure().clear()  # Free memory
-        png_loaded_size = os.path.getsize(png_loaded_path)
-        print(f"   🖼️  Loaded PNG size: {png_loaded_size:,} bytes")
-
-        # Step 6: Verify data integrity
-        print("\n6️⃣  Verifying data integrity...")
-        integrity_ok = True
-
-        # Check dimensions
-        if (
-            loaded_map_data.width != map_data.width
-            or loaded_map_data.height != map_data.height
-        ):
-            print("   ❌ Dimensions don't match!")
-            integrity_ok = False
-
-        # Check terrain
-        terrain_mismatches = 0
-        for y in range(min(map_data.height, loaded_map_data.height)):
-            for x in range(min(map_data.width, loaded_map_data.width)):
-                if (
-                    map_data.get_terrain(x, y).name
-                    != loaded_map_data.get_terrain(x, y).name
-                ):
-                    terrain_mismatches += 1
-
-        if terrain_mismatches > 0:
-            print(f"   ❌ {terrain_mismatches} terrain mismatches!")
-            integrity_ok = False
-
-        # Check settlements
-        if len(map_data.settlements or []) != len(loaded_map_data.settlements or []):
-            print("   ❌ Settlement count doesn't match!")
-            integrity_ok = False
-
-        # Check roads
-        if len(map_data.roads) != len(loaded_map_data.roads):
-            print("   ❌ Road count doesn't match!")
-            integrity_ok = False
-
-        if integrity_ok:
-            print("   ✅ All data preserved perfectly!")
-        else:
-            print("   ⚠️  Some data integrity issues detected")
-
-        # Step 7: Summary
-        print("\n🎉 Workflow completed successfully!")
-        print("   📁 Files created:")
-        print(f"      JSON: {map_json_path} ({json_size:,} bytes)")
-        print(f"      Original PNG: {map_path_original} ({png_original_size:,} bytes)")
-        print(f"      Loaded PNG: {png_loaded_path} ({png_loaded_size:,} bytes)")
-        print("\n💡 The JSON file contains the complete map data:")
-        print(f"   - Terrain grid ({map_data.width}x{map_data.height})")
-        print("   - Noise map for visual shading")
-        print("   - Elevation map for road generation")
-        print(
-            f"   - {len(map_data.settlements) if map_data.settlements else 0} settlements with names and positions"
-        )
-        print(f"   - Road network with {len(map_data.roads)} connections")
-        print("\n🚀 You can now load any .json file and generate visualizations!")
 
 
 if __name__ == "__main__":

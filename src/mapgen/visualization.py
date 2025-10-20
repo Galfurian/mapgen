@@ -7,7 +7,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from scipy.interpolate import interp1d
 
-from .map_data import MapData, Position, Road, Settlement
+from .map_data import MapData, Position
 
 
 def _apply_curves_to_path(

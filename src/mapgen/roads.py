@@ -2,9 +2,7 @@
 
 import heapq
 import random
-
-import numpy as np
-from sklearn.neighbors import KDTree as SKLearnKDTree
+from collections import defaultdict
 
 from . import logger
 from .map_data import MapData, Position, Road, Settlement
@@ -170,6 +168,7 @@ def _settlements_are_connected(
 
     Returns:
         bool: True if connected, False otherwise.
+
     """
     for road in map_data.roads:
         if (road.start_settlement == s1 and road.end_settlement == s2) or (
@@ -194,6 +193,7 @@ def _shortest_path_distance(
 
     Returns:
         The shortest distance, or None if no path exists.
+
     """
     settlements = {s.name: s for s in map_data.settlements}
     dist = {name: float("inf") for name in settlements}
@@ -237,6 +237,7 @@ def _find_nearest_settlement_worth_connecting(
 
     Returns:
         The nearest settlement worth connecting to, or None.
+
     """
     nearest = None
     min_dist = float("inf")

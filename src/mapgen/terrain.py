@@ -9,62 +9,6 @@ from . import logger
 from .map_data import MapData
 
 
-def dig_map(
-    map_data: MapData,
-    padding: int,
-    initial_x: int,
-    initial_y: int,
-) -> None:
-    """
-    Simulate character digging through the map.
-
-    Args:
-        map_data (MapData):
-            The map grid to modify.
-        padding (int):
-            The padding around the edges.
-        initial_x (int):
-            The starting x-coordinate of the character.
-        initial_y (int):
-            The starting y-coordinate of the character.
-
-    """
-    max_countdown = max(100, (map_data.width * map_data.height) // 3)
-
-    logger.debug(f"Starting terrain digging: {max_countdown} walls to dig")
-
-    countdown = 0
-    x = initial_x
-    y = initial_y
-    floor = map_data.tiles.index(next(t for t in map_data.tiles if t.diggable))
-    while countdown < max_countdown:
-        current_tile = map_data.get_terrain(x, y)
-        if not current_tile.walkable:
-            map_data.set_terrain(x, y, floor)
-            countdown += 1
-
-            # Log progress every 10% completion
-            progress = countdown / max_countdown
-            remaining = max_countdown - countdown
-            if progress % 0.1 < 0.01:
-                logger.debug(
-                    f"Digging progress: {progress:.1%} complete ({remaining} walls remaining)"
-                )
-
-        traverse = random.randint(1, 4)
-
-        if traverse == 1 and x > padding:
-            x -= 1
-        elif traverse == 2 and x < map_data.width - 1 - padding:
-            x += 1
-        elif traverse == 3 and y > padding:
-            y -= 1
-        elif traverse == 4 and y < map_data.height - 1 - padding:
-            y += 1
-
-    logger.debug("Terrain digging completed")
-
-
 def generate_noise_map(
     map_data: MapData,
     width: int,
