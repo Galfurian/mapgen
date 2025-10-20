@@ -34,10 +34,6 @@ class MapGenerator:
     settlement_density: float
     min_settlement_radius: float
     max_settlement_radius: float
-    # Generated data placeholders.
-    map_data: MapData | None
-    noise_map: np.ndarray | None
-    elevation_map: np.ndarray | None
 
     def __init__(
         self,
@@ -90,16 +86,17 @@ class MapGenerator:
         self.settlement_density = settlement_density
         self.min_settlement_radius = min_settlement_radius
         self.max_settlement_radius = max_settlement_radius
-        # Generated data placeholders.
-        self.map_data = None
-        self.noise_map = None
 
-    def generate(self) -> None:
+    def generate(self) -> MapData:
         """
         Generate the complete map.
 
         This method performs all steps to generate a procedural fantasy map
         including terrain, settlements, and roads.
+        
+        Returns:
+            MapData:
+                The generated map data.
         """
         logger.info(f"Starting map generation: {self.width}x{self.height}")
 
@@ -107,7 +104,7 @@ class MapGenerator:
 
         # Initialize map.
         logger.debug("Initializing map level")
-        self.map_data = MapData(
+        map_data = MapData(
             tiles=tiles,
             grid=[
                 [default_index for _ in range(self.width)] for _ in range(self.height)
@@ -117,7 +114,7 @@ class MapGenerator:
         # Dig
         logger.debug("Digging terrain")
         terrain.dig(
-            map_data=self.map_data,
+            map_data=map_data,
             padding=self.padding,
             initial_x=self.width // 2,
             initial_y=self.height // 2,
@@ -125,7 +122,8 @@ class MapGenerator:
 
         # Generate noise
         logger.debug("Generating noise map")
-        self.noise_map = terrain.generate_noise_map(
+        terrain.generate_noise_map(
+            map_data,
             self.width,
             self.height,
             self.scale,
@@ -137,8 +135,7 @@ class MapGenerator:
         # Apply terrain features
         logger.debug("Applying terrain features")
         terrain.apply_terrain_features(
-            self.map_data,
-            self.noise_map,
+            map_data,
             self.sea_level,
             self.mountain_level,
             self.forest_threshold,
@@ -147,27 +144,28 @@ class MapGenerator:
         # Smooth terrain
         logger.debug("Smoothing terrain")
         terrain.smooth_terrain(
-            self.map_data,
+            map_data,
             self.smoothing_iterations,
         )
 
         # Generate settlements
         logger.debug("Generating settlements")
         settlements.generate_settlements(
-            self.map_data,
-            self.noise_map,
+            map_data,
             self.settlement_density,
             self.min_settlement_radius,
             self.max_settlement_radius,
         )
-        logger.info(f"Generated {len(self.map_data.settlements)} settlements")
+        logger.info(f"Generated {len(map_data.settlements)} settlements")
 
         # Generate roads
         logger.debug("Generating road network")
-        roads.generate_roads(self.map_data)
-        logger.info(f"Generated road network with {len(self.map_data.roads)} roads")
-        
+        roads.generate_roads(map_data)
+        logger.info(f"Generated road network with {len(map_data.roads)} roads")
+
         logger.info("Map generation completed successfully")
+        
+        return map_data
 
     def _get_default_tiles(self) -> tuple[list[Tile], int]:
         """

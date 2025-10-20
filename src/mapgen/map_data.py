@@ -288,6 +288,12 @@ class MapData(BaseModel):
             List of unique tile types used in the map.
         grid (list[list[int]]):
             The 2D grid of tile indices.
+        settlements (list[Settlement]):
+            List of settlements on the map.
+        roads (list[Road]):
+            List of roads connecting settlements.
+        elevation_map (list[list[float]] | None):
+            2D elevation/height map used for terrain generation.
 
     """
 
@@ -306,6 +312,10 @@ class MapData(BaseModel):
     roads: list[Road] = Field(
         default_factory=list,
         description="List of roads connecting settlements.",
+    )
+    elevation_map: list[list[float]] = Field(
+        default_factory=list,
+        description="2D elevation/height map used for terrain generation.",
     )
 
     def _get_tile_index(self, tile: Tile) -> int:
