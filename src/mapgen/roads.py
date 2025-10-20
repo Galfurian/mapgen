@@ -1,10 +1,12 @@
 """Road generation module."""
 
 import heapq
+import logging
 import random
 
-from . import logger
 from .map_data import MapData, Position, Road, Settlement
+
+logger = logging.getLogger(__name__)
 
 
 def generate_roads(

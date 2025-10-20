@@ -19,10 +19,8 @@ def test_map_generator_initialization() -> None:
 def test_map_generator_generate() -> None:
     """Test map generation."""
     generator = MapGenerator(width=50, height=50)
-    generator.generate()
-    map_data = generator.map_data
+    map_data = generator.generate()
     assert map_data is not None
-    assert generator.noise_map is not None
     assert map_data.settlements is not None
     assert map_data.roads is not None
     assert map_data.height == 50
@@ -31,13 +29,14 @@ def test_map_generator_generate() -> None:
 
 def test_map_generator_plot_without_generate() -> None:
     """Test plotting without generating raises error."""
-    generator = MapGenerator()
+    from mapgen.visualization import plot_map
     # Create a minimal MapData without required fields
     from mapgen.map_data import MapData, Tile
-    grid = [[Tile(walkable=True, movement_cost=1.0, blocks_line_of_sight=False, buildable=True, habitability=0.5, road_buildable=True, elevation_penalty=0.0, elevation_influence=0.0, smoothing_weight=1.0, symbol=".", color=(0.5, 0.5, 0.5), name="test", description="test", resources=[])]]
-    map_data = MapData(grid=grid)
+    tile = Tile(walkable=True, movement_cost=1.0, blocks_line_of_sight=False, buildable=True, habitability=0.5, road_buildable=True, elevation_penalty=0.0, elevation_influence=0.0, smoothing_weight=1.0, symbol=".", color=(0.5, 0.5, 0.5), name="test", description="test", resources=[])
+    grid = [[0]]  # Use tile index instead of Tile object
+    map_data = MapData(tiles=[tile], grid=grid)
     with pytest.raises(ValueError, match="Map data missing noise_map"):
-        generator.plot(map_data)
+        plot_map(map_data)
 
 
 def test_map_data_save_load() -> None:
@@ -76,8 +75,9 @@ def test_map_data_save_load() -> None:
         resources=["ore"],
     )
 
-    grid = [[tile1, tile2], [tile2, tile1]]
-    map_data = MapData(grid=grid)
+    tiles = [tile1, tile2]
+    grid = [[0, 1], [1, 0]]  # Use tile indices
+    map_data = MapData(tiles=tiles, grid=grid)
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         temp_path = f.name
@@ -121,8 +121,9 @@ def test_map_data_backward_compatibility() -> None:
         resources=["food"],
     )
 
-    grid = [[tile1, tile1], [tile1, tile1]]
-    map_data = MapData(grid=grid)
+    tiles = [tile1]
+    grid = [[0, 0], [0, 0]]  # Use tile indices
+    map_data = MapData(tiles=tiles, grid=grid)
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         temp_path = f.name
@@ -172,11 +173,11 @@ def test_map_data_many_tiles() -> None:
     for row in range(10):
         grid_row = []
         for col in range(10):
-            grid_row.append(tiles[tile_index])
+            grid_row.append(tile_index)
             tile_index += 1
         grid.append(grid_row)
 
-    map_data = MapData(grid=grid)
+    map_data = MapData(tiles=tiles, grid=grid)
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         temp_path = f.name

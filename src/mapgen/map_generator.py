@@ -1,17 +1,20 @@
 """Main map generator module."""
 
+import logging
 import random
+import time
 
 import numpy as np
 
 from . import (
     MapData,
     Tile,
-    logger,
     roads,
     settlements,
     terrain,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class MapGenerator:
@@ -134,6 +137,7 @@ class MapGenerator:
                 The generated map data.
 
         """
+        start_time = time.time()
         logger.info(f"Starting map generation: {self.width}*{self.height}")
 
         # Set random seed for reproducible generation
@@ -150,6 +154,7 @@ class MapGenerator:
         )
 
         logger.debug("Generating noise map")
+        terrain_start = time.time()
         terrain.generate_noise_map(
             map_data,
             self.width,
@@ -159,34 +164,49 @@ class MapGenerator:
             self.persistence,
             self.lacunarity,
         )
+        terrain_time = time.time() - terrain_start
+        logger.debug(f"Noise map generation completed in {terrain_time:.3f}s")
 
         logger.debug("Applying terrain features")
+        features_start = time.time()
         terrain.apply_terrain_features(
             map_data,
         )
+        features_time = time.time() - features_start
+        logger.debug(f"Terrain features applied in {features_time:.3f}s")
 
         logger.debug("Smoothing terrain")
+        smooth_start = time.time()
         terrain.smooth_terrain(
             map_data,
             self.smoothing_iterations,
         )
+        smooth_time = time.time() - smooth_start
+        logger.debug(f"Terrain smoothing completed in {smooth_time:.3f}s")
 
         logger.debug("Generating settlements")
+        settlements_start = time.time()
         settlements.generate_settlements(
             map_data,
             self.settlement_density,
             self.min_settlement_radius,
             self.max_settlement_radius,
         )
+        settlements_time = time.time() - settlements_start
+        logger.debug(f"Settlements generated in {settlements_time:.3f}s")
         logger.debug(f"Generated {len(map_data.settlements)} settlements")
 
         logger.debug("Generating road network")
+        roads_start = time.time()
         roads.generate_roads(
             map_data,
         )
+        roads_time = time.time() - roads_start
+        logger.debug(f"Road network generated in {roads_time:.3f}s")
         logger.debug(f"Generated road network with {len(map_data.roads)} roads")
 
-        logger.info("Map generation completed successfully")
+        total_time = time.time() - start_time
+        logger.info(f"Map generation completed successfully in {total_time:.3f}s")
 
         return map_data
 

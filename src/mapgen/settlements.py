@@ -1,11 +1,13 @@
 """Settlement generation module."""
 
+import logging
 import random
 
 from onymancer import generate
 
-from . import logger
 from .map_data import MapData, Position, Settlement
+
+logger = logging.getLogger(__name__)
 
 
 def generate_settlements(

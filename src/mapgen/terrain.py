@@ -1,12 +1,14 @@
 """Terrain generation module for procedural maps."""
 
+import logging
 import random
 
 import noise
 import numpy as np
 
-from . import logger
 from .map_data import MapData
+
+logger = logging.getLogger(__name__)
 
 
 def generate_noise_map(
