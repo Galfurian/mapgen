@@ -111,14 +111,18 @@ def _a_star_search(
     def heuristic(a: Position, b: Position) -> float:
         return a.manhattan_distance_to(b)
 
+    # Priority queue of (position, cost_so_far, total_estimated_cost)
     open_set: list[tuple[Position, float, float]] = []
+    # Set of positions already evaluated
     closed_set = set()
+    # Dictionary mapping position to its predecessor in the path
     came_from: dict[Position, Position] = {}
 
     start_node = (start, 0.0, heuristic(start, goal))
     open_set.append(start_node)
 
     while open_set:
+        # Find the node with the lowest total estimated cost
         current = min(open_set, key=lambda x: x[2])
         current_pos, current_cost, _current_heuristic = current
 
@@ -135,17 +139,20 @@ def _a_star_search(
             tile = map_data.get_terrain(neighbor.x, neighbor.y)
             tentative_cost = current_cost + tile.pathfinding_cost
 
-            if neighbor in [n[0] for n in open_set]:
-                if tentative_cost < next(n[1] for n in open_set if n[0] == neighbor):
-                    for i, node in enumerate(open_set):
-                        if node[0] == neighbor:
-                            open_set[i] = (
-                                neighbor,
-                                tentative_cost,
-                                tentative_cost + heuristic(neighbor, goal),
-                            )
-                            came_from[neighbor] = current_pos
+            # Check if neighbor is already in open set
+            existing_node = next((n for n in open_set if n[0] == neighbor), None)
+            if existing_node:
+                # If this path is better, update the node
+                if tentative_cost < existing_node[1]:
+                    idx = open_set.index(existing_node)
+                    open_set[idx] = (
+                        neighbor,
+                        tentative_cost,
+                        tentative_cost + heuristic(neighbor, goal),
+                    )
+                    came_from[neighbor] = current_pos
             else:
+                # Add new node to open set
                 open_set.append(
                     (
                         neighbor,

@@ -17,7 +17,7 @@
 - [ ] Add parameter descriptions for all functions
 - [ ] Document exceptions raised by functions
 - [ ] Create API documentation using Sphinx or similar
-- [ ] Add inline comments for complex algorithms
+- [x] Add inline comments for complex algorithms
 
 ### Code Structure and Organization
 
