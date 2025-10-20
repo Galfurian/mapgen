@@ -67,25 +67,30 @@ def dig(
 
 
 def generate_noise_map(
+    map_data: MapData,
     width: int,
     height: int,
     scale: float = 50.0,
     octaves: int = 6,
     persistence: float = 0.5,
     lacunarity: float = 2.0,
-) -> np.ndarray:
-    """Generate a Perlin noise map.
+) -> None:
+    """
+    Generate a Perlin noise map.
 
     Args:
-        width (int): The width of the noise map.
-        height (int): The height of the noise map.
-        scale (float): The scale of the noise.
-        octaves (int): The number of octaves.
-        persistence (float): The persistence value.
-        lacunarity (float): The lacunarity value.
-
-    Returns:
-        np.ndarray: The generated noise map.
+        width (int):
+            The width of the noise map.
+        height (int):
+            The height of the noise map.
+        scale (float):
+            The scale of the noise.
+        octaves (int):
+            The number of octaves.
+        persistence (float):
+            The persistence value.
+        lacunarity (float):
+            The lacunarity value.
 
     """
     offset_x = random.uniform(0, 10000)
@@ -95,22 +100,24 @@ def generate_noise_map(
 
     for y in range(height):
         for x in range(width):
-            noise_map[y, x] = noise.pnoise2(
-                (x / scale) + offset_x,
-                (y / scale) + offset_y,
-                octaves=octaves,
-                persistence=persistence,
-                lacunarity=lacunarity,
-                repeatx=width,
-                repeaty=height,
-                base=0,
+            noise_map[y, x] = round(
+                number=noise.pnoise2(
+                    (x / scale) + offset_x,
+                    (y / scale) + offset_y,
+                    octaves=octaves,
+                    persistence=persistence,
+                    lacunarity=lacunarity,
+                    repeatx=width,
+                    repeaty=height,
+                    base=0,
+                ),
+                ndigits=4,
             )
-    return noise_map
+    map_data.elevation_map = noise_map.tolist()
 
 
 def apply_terrain_features(
     map_data: MapData,
-    noise_map: np.ndarray,
     sea_level: float = 0.03,
     mountain_level: float = 0.5,
     forest_threshold: float = 0.1,
@@ -140,11 +147,11 @@ def apply_terrain_features(
 
     for y in range(map_data.height):
         for x in range(map_data.width):
-            noise_value = noise_map[y, x]
-            if noise_value < sea_level:
+            elevation = map_data.elevation_map[y][x]
+            if elevation < sea_level:
                 map_data.set_terrain(x, y, water)
-            elif noise_value < mountain_level:
-                if noise_value > forest_threshold:
+            elif elevation < mountain_level:
+                if elevation > forest_threshold:
                     map_data.set_terrain(x, y, forest)
                 else:
                     map_data.set_terrain(x, y, plains)

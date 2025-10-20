@@ -93,16 +93,15 @@ class MapGenerator:
 
         This method performs all steps to generate a procedural fantasy map
         including terrain, settlements, and roads.
-        
+
         Returns:
             MapData:
                 The generated map data.
         """
-        logger.info(f"Starting map generation: {self.width}x{self.height}")
+        logger.info(f"Starting map generation: {self.width}*{self.height}")
 
         tiles, default_index = self._get_default_tiles()
 
-        # Initialize map.
         logger.debug("Initializing map level")
         map_data = MapData(
             tiles=tiles,
@@ -111,7 +110,6 @@ class MapGenerator:
             ],
         )
 
-        # Dig
         logger.debug("Digging terrain")
         terrain.dig(
             map_data=map_data,
@@ -120,7 +118,6 @@ class MapGenerator:
             initial_y=self.height // 2,
         )
 
-        # Generate noise
         logger.debug("Generating noise map")
         terrain.generate_noise_map(
             map_data,
@@ -132,7 +129,6 @@ class MapGenerator:
             self.lacunarity,
         )
 
-        # Apply terrain features
         logger.debug("Applying terrain features")
         terrain.apply_terrain_features(
             map_data,
@@ -141,14 +137,12 @@ class MapGenerator:
             self.forest_threshold,
         )
 
-        # Smooth terrain
         logger.debug("Smoothing terrain")
         terrain.smooth_terrain(
             map_data,
             self.smoothing_iterations,
         )
 
-        # Generate settlements
         logger.debug("Generating settlements")
         settlements.generate_settlements(
             map_data,
@@ -156,15 +150,16 @@ class MapGenerator:
             self.min_settlement_radius,
             self.max_settlement_radius,
         )
-        logger.info(f"Generated {len(map_data.settlements)} settlements")
+        logger.debug(f"Generated {len(map_data.settlements)} settlements")
 
-        # Generate roads
         logger.debug("Generating road network")
-        roads.generate_roads(map_data)
-        logger.info(f"Generated road network with {len(map_data.roads)} roads")
+        roads.generate_roads(
+            map_data,
+        )
+        logger.debug(f"Generated road network with {len(map_data.roads)} roads")
 
         logger.info("Map generation completed successfully")
-        
+
         return map_data
 
     def _get_default_tiles(self) -> tuple[list[Tile], int]:

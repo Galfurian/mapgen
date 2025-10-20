@@ -11,7 +11,6 @@ from .map_data import MapData, Position, Settlement
 
 def generate_settlements(
     map_data: MapData,
-    noise_map: np.ndarray,
     settlement_density: float = 0.002,
     min_radius: float = 0.5,
     max_radius: float = 1.0,
@@ -22,8 +21,6 @@ def generate_settlements(
     Args:
         map_data (MapData):
             The terrain map grid.
-        noise_map (np.ndarray):
-            The noise map array.
         settlement_density (float):
             The probability of placing a settlement on suitable terrain.
         min_radius (float):
@@ -35,12 +32,6 @@ def generate_settlements(
         ValueError: If map_data dimensions don't match noise_map dimensions.
 
     """
-    if map_data.height != noise_map.shape[0] or map_data.width != noise_map.shape[1]:
-        raise ValueError(
-            f"Map dimensions ({map_data.width}x{map_data.height}) don't match "
-            f"noise map dimensions ({noise_map.shape[1]}x{noise_map.shape[0]})"
-        )
-
     logger.debug(f"Generating settlements with density {settlement_density}")
 
     # Find all suitable positions

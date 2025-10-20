@@ -111,38 +111,28 @@ def is_coastal(
     return False
 
 
-def plot_map(
-    map_data: MapData,
-    noise_map: np.ndarray,
-    settlements: list[Settlement],
-    roads: list[Road],
-) -> Figure:
+def plot_map(map_data: MapData) -> Figure:
     """
     Plot the map with terrain, settlements, and roads.
 
     Args:
         map_data (MapData):
             The map grid.
-        noise_map (np.ndarray):
-            The noise map.
-        settlements (list[Settlement]):
-            List of settlements.
-        roads_graph (nx.Graph):
-            The roads graph.
 
     Returns:
         Figure:
             The matplotlib figure.
 
     """
+    elevation_map = np.array(map_data.elevation_map)
     rgb_values = np.zeros((map_data.height, map_data.width, 3))
 
     for y in range(map_data.height):
         for x in range(map_data.width):
             tile = map_data.get_terrain(x, y)
             base_color = tile.color
-            noise_value = noise_map[y, x]
-            shade_factor = (noise_value + 1) / 2
+            elevation = elevation_map[y, x]
+            shade_factor = (elevation + 1) / 2
             shaded_color = tuple(c * shade_factor for c in base_color)
             rgb_values[y, x, :] = shaded_color
 
@@ -156,23 +146,23 @@ def plot_map(
     ax.contour(
         X,
         Y,
-        noise_map,
+        elevation_map,
         levels=contour_levels,
         colors=contour_colors,
         linewidths=0.5,
     )
 
     # Plot roads first (so settlements appear on top)
-    for road in roads:
+    for road in map_data.roads:
         path = road.path
-        curved_path = apply_curves_to_path(path, noise_map)
+        curved_path = apply_curves_to_path(path, elevation_map)
         curved_x = [pos.x for pos in curved_path]
         curved_y = [pos.y for pos in curved_path]
         ax.plot(curved_x, curved_y, color="brown", linewidth=2, zorder=1)
 
     # Plot settlements
     existing_texts: list[tuple[int, int]] = []
-    for settlement in settlements:
+    for settlement in map_data.settlements:
         x = settlement.position.x
         y = settlement.position.y
         radius = settlement.radius

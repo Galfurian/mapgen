@@ -29,29 +29,21 @@ def main() -> None:
         settlement_density=0.0015,
     )
 
-    generator.generate()
+    map_data = generator.generate()
 
-    if generator.map_data is None:
+    if map_data is None:
         print("   ❌ Map generation failed!")
-        return
-    if generator.noise_map is None:
-        print("   ❌ Noise map generation failed!")
         return
 
     print(f"   ✅ Generated {generator.width}x{generator.height} map")
-    print(f"   📊 Terrain: {len(generator.map_data.tiles)} types")
-    print(f"   🏘️  Settlements: {len(generator.map_data.settlements)}")
-    print(f"   🛣️  Roads: {len(generator.map_data.roads)}")
+    print(f"   📊 Terrain: {len(map_data.tiles)} types")
+    print(f"   🏘️  Settlements: {len(map_data.settlements)}")
+    print(f"   🛣️  Roads: {len(map_data.roads)}")
 
     # Generate PNG from original map.
     print("Generating PNG from original map...")
     map_path_original = output_dir / "original_map.png"
-    fig_original = visualization.plot_map(
-        map_data=generator.map_data,
-        noise_map=generator.noise_map,
-        settlements=generator.map_data.settlements,
-        roads=generator.map_data.roads,
-    )
+    fig_original = visualization.plot_map(map_data)
     fig_original.savefig(
         map_path_original,
         dpi=200,
@@ -65,7 +57,7 @@ def main() -> None:
     # Save the map to JSON
     map_json_path = output_dir / "complete_workflow_map.json"
     print(f"Saving to JSON: {map_json_path}")
-    generator.map_data.save_to_json(str(map_json_path))
+    map_data.save_to_json(str(map_json_path))
     json_size = os.path.getsize(map_json_path)
     print(f"   💾 JSON size: {json_size:,} bytes")
 
@@ -81,9 +73,7 @@ def main() -> None:
         print(
             f"   🏘️  Settlements loaded: {len(loaded_map_data.settlements) if loaded_map_data.settlements else 0}"
         )
-        print(
-            f"   🛣️  Roads loaded: {len(loaded_map_data.roads)}"
-        )
+        print(f"   🛣️  Roads loaded: {len(loaded_map_data.roads)}")
 
         # Step 5: Generate PNG from loaded map
         png_loaded_path = output_dir / "loaded_map.png"
@@ -150,9 +140,7 @@ def main() -> None:
         print(
             f"   - {len(map_data.settlements) if map_data.settlements else 0} settlements with names and positions"
         )
-        print(
-            f"   - Road network with {len(map_data.roads)} connections"
-        )
+        print(f"   - Road network with {len(map_data.roads)} connections")
         print("\n🚀 You can now load any .json file and generate visualizations!")
 
 

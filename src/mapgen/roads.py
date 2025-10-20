@@ -24,7 +24,7 @@ def generate_roads(
 
     """
     if not map_data.settlements:
-        logger.info("No settlements to connect; skipping road generation.")
+        logger.warning("No settlements to connect; skipping road generation.")
         return
 
     # Shuffle settlements to randomize connection order
@@ -60,7 +60,7 @@ def generate_roads(
             )
         )
 
-        logger.info(f"Connected {settlement.name} to {nearest.name} with a road.")
+        logger.debug(f"Connected {settlement.name} to {nearest.name} with a road.")
 
 
 def _reconstruct_path(
