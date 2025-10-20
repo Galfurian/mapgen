@@ -9,7 +9,60 @@ from . import logger
 from .map_data import MapData, Position, Road, Settlement
 
 
-def reconstruct_path(
+def generate_roads(
+    map_data: MapData,
+) -> None:
+    """
+    Generate road network connecting settlements.
+
+    Args:
+        map_data (MapData):
+            The map grid.
+        noise_map (np.ndarray):
+            The elevation map.
+
+    """
+    if not map_data.settlements:
+        logger.info("No settlements to connect; skipping road generation.")
+        return
+
+    # Shuffle settlements to randomize connection order
+    shuffled_settlements = random.sample(
+        map_data.settlements, len(map_data.settlements)
+    )
+
+    for settlement in shuffled_settlements:
+        # Find nearest settlement not already connected
+        nearest = _find_nearest_settlement_not_connected(
+            settlement,
+            map_data.settlements,
+            map_data,
+        )
+        if not nearest:
+            logger.debug(f"No unconnected settlements found for {settlement.name}")
+            continue
+        # Find the path between settlements.
+        path = _a_star_search(
+            map_data,
+            settlement.position,
+            nearest.position,
+        )
+        if path is None:
+            logger.debug(f"No path found between {settlement.name} and {nearest.name}")
+            continue
+        # Add the road to the map data.
+        map_data.roads.append(
+            Road(
+                start_settlement=settlement.name,
+                end_settlement=nearest.name,
+                path=path,
+            )
+        )
+
+        logger.info(f"Connected {settlement.name} to {nearest.name} with a road.")
+
+
+def _reconstruct_path(
     current: Position,
     came_from: dict[Position, Position],
 ) -> list[Position]:
@@ -31,21 +84,17 @@ def reconstruct_path(
     return path
 
 
-def a_star_search(
+def _a_star_search(
     map_data: MapData,
     start: Position,
     goal: Position,
-    high_points: list[Position],
-    high_point_penalty: int = 5,
 ) -> list[Position] | None:
-    """Perform A* search with high point avoidance.
+    """Perform A* search.
 
     Args:
         map_data (MapData): The map grid.
         start (Position): The start position.
         goal (Position): The goal position.
-        high_points (List[Position]): List of high points to avoid.
-        high_point_penalty (int): Penalty for high points.
 
     Returns:
         list[Position] | None: The path if found, None otherwise.
@@ -67,7 +116,7 @@ def a_star_search(
         current_pos, current_cost, _current_heuristic = current
 
         if current_pos == goal:
-            return reconstruct_path(current_pos, came_from)
+            return _reconstruct_path(current_pos, came_from)
 
         open_set.remove(current)
         closed_set.add(current_pos)
@@ -77,9 +126,7 @@ def a_star_search(
                 continue
 
             tile = map_data.get_terrain(neighbor.x, neighbor.y)
-            base_cost = tile.pathfinding_cost
-            high_point_cost = high_point_penalty if neighbor in high_points else 0
-            tentative_cost = current_cost + base_cost + high_point_cost
+            tentative_cost = current_cost + tile.pathfinding_cost
 
             if neighbor in [n[0] for n in open_set]:
                 if tentative_cost < next(n[1] for n in open_set if n[0] == neighbor):
@@ -104,167 +151,58 @@ def a_star_search(
     return None
 
 
-def generate_roads(
+def _settlements_are_connected(
     map_data: MapData,
-    noise_map: np.ndarray,
-) -> None:
+    s1: str,
+    s2: str,
+) -> bool:
     """
-    Generate road network connecting settlements.
+    Check if two settlements are already connected by a road.
 
     Args:
         map_data (MapData):
-            The map grid.
-        noise_map (np.ndarray):
-            The elevation map.
+            The map data.
+        s1 (str):
+            Name of first settlement.
+        s2 (str):
+            Name of second settlement.
 
+    Returns:
+        bool: True if connected, False otherwise.
     """
-    if not map_data.settlements:
-        logger.info("No settlements to connect; skipping road generation.")
-        return
-
-    # 1. Connect settlements using a simple nearest neighbor approach
-    _connect_settlements_with_nearest_neighbors(map_data)
-
-    # 2. Identify High Points
-    high_points = _identify_high_points(noise_map)
-
-    # 3. Add Additional Connections (Avoiding High Points)
-    _add_additional_connections(map_data, high_points)
+    for road in map_data.roads:
+        if (road.start_settlement == s1 and road.end_settlement == s2) or (
+            road.start_settlement == s2 and road.end_settlement == s1
+        ):
+            return True
+    return False
 
 
-def _connect_settlements_with_nearest_neighbors(map_data: MapData) -> None:
-    """
-    Connect settlements using nearest neighbor approach.
-
-    Args:
-        map_data: The map grid with settlements.
-
-    """
-    roads = map_data.roads
-    settlements = map_data.settlements
-
-    connected = set()
-    for settlement in settlements:
-        if settlement.name in connected:
-            continue
-        # Find nearest unconnected settlement
-        nearest = _find_nearest_unconnected_settlement(settlement, settlements, connected)
-        if nearest:
-            path = a_star_search(
-                map_data,
-                settlement.position,
-                nearest.position,
-                high_points=[],
-            )
-            if path is not None:
-                roads.append(
-                    Road(
-                        start_settlement=settlement.name,
-                        end_settlement=nearest.name,
-                        path=path,
-                    )
-                )
-                connected.add(settlement.name)
-                connected.add(nearest.name)
-
-
-def _find_nearest_unconnected_settlement(
+def _find_nearest_settlement_not_connected(
     settlement: Settlement,
     settlements: list[Settlement],
-    connected: set[str],
+    map_data: MapData,
 ) -> Settlement | None:
     """
-    Find the nearest unconnected settlement.
+    Find the nearest settlement not already connected to the given settlement.
 
     Args:
         settlement: The settlement to connect from.
         settlements: All settlements.
-        connected: Set of already connected settlement names.
+        map_data: The map data containing existing roads.
 
     Returns:
         The nearest unconnected settlement, or None.
-
     """
     nearest = None
     min_dist = float("inf")
     for other in settlements:
-        if other.name != settlement.name and other.name not in connected:
-            dist = settlement.distance_to(other)
-            if dist < min_dist:
-                min_dist = dist
-                nearest = other
+        if other.name == settlement.name:
+            continue
+        if _settlements_are_connected(map_data, settlement.name, other.name):
+            continue
+        dist = settlement.distance_to(other)
+        if dist < min_dist:
+            min_dist = dist
+            nearest = other
     return nearest
-
-
-def _identify_high_points(noise_map: np.ndarray) -> list[Position]:
-    """
-    Identify high points in the elevation map.
-
-    Args:
-        noise_map: The elevation map.
-
-    Returns:
-        List of high point positions.
-
-    """
-    high_points = []
-    # For simplicity, consider points above a threshold as high points
-    threshold = np.percentile(noise_map, 80)
-    for y in range(noise_map.shape[0]):
-        for x in range(noise_map.shape[1]):
-            if noise_map[y, x] > threshold:
-                high_points.append(Position(x=x, y=y))
-    return high_points
-
-
-def _add_additional_connections(map_data: MapData, high_points: list[Position]) -> None:
-    """
-    Add additional road connections avoiding high points.
-
-    Args:
-        map_data: The map grid.
-        high_points: List of high points to avoid.
-
-    """
-    roads = map_data.roads
-    settlements = map_data.settlements
-
-    settlement_positions = np.array([(s.position.x, s.position.y) for s in settlements])
-    kdtree = SKLearnKDTree(settlement_positions)
-
-    existing_connections = {(r.start_settlement, r.end_settlement) for r in roads}
-    existing_connections.update({(r.end_settlement, r.start_settlement) for r in roads})
-
-    for i, settlement1 in enumerate(settlements):
-        neighbor_indices = kdtree.query_radius(
-            [(settlement1.position.x, settlement1.position.y)], r=40
-        )[0]
-        for j in neighbor_indices:
-            settlement2 = settlements[j]
-            if (
-                i != j
-                and (settlement1.name, settlement2.name) not in existing_connections
-            ):
-                distance = settlement1.distance_to(settlement2)
-
-                connection_probability = (
-                    settlement1.connectivity * settlement2.connectivity
-                ) / (distance * 5)
-
-                if random.random() < connection_probability:
-                    path = a_star_search(
-                        map_data,
-                        settlement1.position,
-                        settlement2.position,
-                        high_points,
-                    )
-                    if path is not None:
-                        roads.append(
-                            Road(
-                                start_settlement=settlement1.name,
-                                end_settlement=settlement2.name,
-                                path=path,
-                            )
-                        )
-                        existing_connections.add((settlement1.name, settlement2.name))
-                        existing_connections.add((settlement2.name, settlement1.name))

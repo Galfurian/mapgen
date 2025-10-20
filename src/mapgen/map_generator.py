@@ -164,11 +164,9 @@ class MapGenerator:
 
         # Generate roads
         logger.debug("Generating road network")
-        roads.generate_roads(
-            self.map_data,
-            self.noise_map,
-        )
+        roads.generate_roads(self.map_data)
         logger.info(f"Generated road network with {len(self.map_data.roads)} roads")
+        
         logger.info("Map generation completed successfully")
 
     def _get_default_tiles(self) -> tuple[list[Tile], int]:

@@ -18,13 +18,13 @@ def test_map_generator_initialization() -> None:
 
 def test_map_generator_generate() -> None:
     """Test map generation."""
-    generator = MapGenerator(width=50, height=50, wall_countdown=1000)
-    map_data = generator.generate()
+    generator = MapGenerator(width=50, height=50)
+    generator.generate()
+    map_data = generator.map_data
     assert map_data is not None
-    assert map_data.noise_map is not None
-    assert map_data.elevation_map is not None
+    assert generator.noise_map is not None
     assert map_data.settlements is not None
-    assert map_data.roads_graph is not None
+    assert map_data.roads is not None
     assert map_data.height == 50
     assert map_data.width == 50
 
