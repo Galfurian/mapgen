@@ -53,16 +53,16 @@ def generate_noise_map(
                 repeaty=height,
                 base=0,
             )
-    
+
     # Normalize to full -1 to 1 range
     min_val = np.min(noise_map)
     max_val = np.max(noise_map)
     if max_val > min_val:
         noise_map = (noise_map - min_val) / (max_val - min_val) * 2 - 1
-    
+
     # Round to 4 decimal places
     noise_map = np.round(noise_map, decimals=4)
-    
+
     map_data.elevation_map = noise_map.tolist()
 
 
@@ -78,15 +78,28 @@ def apply_terrain_features(
 
     """
     sorted_tiles = sorted(
-        map_data.tiles, key=lambda t: t.terrain_priority, reverse=True
+        map_data.tiles,
+        key=lambda t: t.terrain_priority,
+        reverse=True,
     )
+
+    def apply_suitable_tile(x: int, y: int) -> bool:
+        """
+        Apply the most suitable tile for the given position.
+        """
+        elevation = map_data.get_elevation(x, y)
+        for tile in sorted_tiles:
+            if tile.elevation_min <= elevation <= tile.elevation_max:
+                map_data.set_terrain(x, y, tile)
+                return True
+        return False
+
     for y in range(map_data.height):
         for x in range(map_data.width):
-            elevation = map_data.elevation_map[y][x]
-            for tile in sorted_tiles:
-                if tile.elevation_min <= elevation < tile.elevation_max:
-                    map_data.set_terrain(x, y, tile)
-                    break
+            if not apply_suitable_tile(x, y):
+                logger.warning(
+                    f"No suitable tile found for elevation {map_data.get_elevation(x, y)} at ({x}, {y})"
+                )
 
 
 def smooth_terrain(
@@ -142,7 +155,10 @@ def _get_smoothed_tile_index(
 
     # Get neighbor properties
     neighbors = map_data.get_neighbor_tiles(
-        x, y, walkable_only=False, include_diagonals=True
+        x,
+        y,
+        walkable_only=False,
+        include_diagonals=True,
     )
 
     # Count different neighbor types

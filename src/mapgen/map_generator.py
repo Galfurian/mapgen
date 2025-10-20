@@ -161,26 +161,6 @@ class MapGenerator:
         """
         tiles = [
             Tile(
-                name="wall",
-                description="Impassable wall",
-                walkable=False,
-                movement_cost=1.0,
-                blocks_line_of_sight=True,
-                buildable=False,
-                habitability=0.0,
-                road_buildable=False,
-                elevation_penalty=0.0,
-                elevation_influence=0.0,
-                smoothing_weight=1.0,
-                elevation_min=0.0,
-                elevation_max=0.0,
-                terrain_priority=0,
-                smoothing_priority=1,
-                symbol="#",
-                color=(0.0, 0.0, 0.0),
-                resources=[],
-            ),
-            Tile(
                 name="floor",
                 description="Open floor space",
                 walkable=True,
