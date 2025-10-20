@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.neighbors import KDTree as SKLearnKDTree
 
 from . import logger
-from .map_data import MapData, Position, Road
+from .map_data import MapData, Position, Road, Settlement
 
 
 def reconstruct_path(
@@ -64,7 +64,7 @@ def a_star_search(
 
     while open_set:
         current = min(open_set, key=lambda x: x[2])
-        current_pos, current_cost, current_heuristic = current
+        current_pos, current_cost, _current_heuristic = current
 
         if current_pos == goal:
             return reconstruct_path(current_pos, came_from)
@@ -122,24 +122,33 @@ def generate_roads(
         logger.info("No settlements to connect; skipping road generation.")
         return
 
+    # 1. Connect settlements using a simple nearest neighbor approach
+    _connect_settlements_with_nearest_neighbors(map_data)
+
+    # 2. Identify High Points
+    high_points = _identify_high_points(noise_map)
+
+    # 3. Add Additional Connections (Avoiding High Points)
+    _add_additional_connections(map_data, high_points)
+
+
+def _connect_settlements_with_nearest_neighbors(map_data: MapData) -> None:
+    """
+    Connect settlements using nearest neighbor approach.
+
+    Args:
+        map_data: The map grid with settlements.
+
+    """
     roads = map_data.roads
     settlements = map_data.settlements
 
-    # 1. Connect settlements using a simple nearest neighbor approach
-    # (instead of full MST to avoid NetworkX)
     connected = set()
     for settlement in settlements:
         if settlement.name in connected:
             continue
         # Find nearest unconnected settlement
-        nearest = None
-        min_dist = float("inf")
-        for other in settlements:
-            if other.name != settlement.name and other.name not in connected:
-                dist = settlement.distance_to(other)
-                if dist < min_dist:
-                    min_dist = dist
-                    nearest = other
+        nearest = _find_nearest_unconnected_settlement(settlement, settlements, connected)
         if nearest:
             path = a_star_search(
                 map_data,
@@ -158,7 +167,46 @@ def generate_roads(
                 connected.add(settlement.name)
                 connected.add(nearest.name)
 
-    # 2. Identify High Points (simplified, without matplotlib contours)
+
+def _find_nearest_unconnected_settlement(
+    settlement: Settlement,
+    settlements: list[Settlement],
+    connected: set[str],
+) -> Settlement | None:
+    """
+    Find the nearest unconnected settlement.
+
+    Args:
+        settlement: The settlement to connect from.
+        settlements: All settlements.
+        connected: Set of already connected settlement names.
+
+    Returns:
+        The nearest unconnected settlement, or None.
+
+    """
+    nearest = None
+    min_dist = float("inf")
+    for other in settlements:
+        if other.name != settlement.name and other.name not in connected:
+            dist = settlement.distance_to(other)
+            if dist < min_dist:
+                min_dist = dist
+                nearest = other
+    return nearest
+
+
+def _identify_high_points(noise_map: np.ndarray) -> list[Position]:
+    """
+    Identify high points in the elevation map.
+
+    Args:
+        noise_map: The elevation map.
+
+    Returns:
+        List of high point positions.
+
+    """
     high_points = []
     # For simplicity, consider points above a threshold as high points
     threshold = np.percentile(noise_map, 80)
@@ -166,8 +214,21 @@ def generate_roads(
         for x in range(noise_map.shape[1]):
             if noise_map[y, x] > threshold:
                 high_points.append(Position(x=x, y=y))
+    return high_points
 
-    # 3. Add Additional Connections (Avoiding High Points)
+
+def _add_additional_connections(map_data: MapData, high_points: list[Position]) -> None:
+    """
+    Add additional road connections avoiding high points.
+
+    Args:
+        map_data: The map grid.
+        high_points: List of high points to avoid.
+
+    """
+    roads = map_data.roads
+    settlements = map_data.settlements
+
     settlement_positions = np.array([(s.position.x, s.position.y) for s in settlements])
     kdtree = SKLearnKDTree(settlement_positions)
 
