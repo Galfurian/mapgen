@@ -2,9 +2,61 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from pydantic import BaseModel, Field
 
-from . import logger
+
+@dataclass(frozen=True, slots=True)
+class Position:
+    """
+    Represents a 2D coordinate position.
+
+    This class encapsulates x and y coordinates for positions in the map grid.
+    It's immutable (frozen) to ensure coordinate integrity.
+
+    Attributes:
+        x (int):
+            The x-coordinate.
+        y (int):
+            The y-coordinate.
+
+    """
+
+    x: int
+    y: int
+
+    def distance_to(self, other: Position) -> float:
+        """Calculate Euclidean distance to another position.
+
+        Args:
+            other (Position):
+                The other position.
+
+        Returns:
+            float:
+                The Euclidean distance.
+
+        """
+        return ((self.x - other.x) ** 2 + (self.y - other.y) ** 2) ** 0.5
+
+    def manhattan_distance_to(self, other: Position) -> int:
+        """
+        Calculate Manhattan distance to another position.
+
+        Args:
+            other (Position):
+                The other position.
+
+        Returns:
+            int:
+                The Manhattan distance.
+
+        """
+        return abs(self.x - other.x) + abs(self.y - other.y)
+
+    def __hash__(self) -> int:
+        return hash((self.x, self.y))
 
 
 class Tile(BaseModel):
@@ -180,61 +232,6 @@ class Tile(BaseModel):
     def pathfinding_cost(self) -> float:
         """Get the total cost for pathfinding algorithms."""
         return self.movement_cost + self.elevation_penalty
-
-
-class Position(BaseModel):
-    """
-    Represents a 2D coordinate position.
-
-    This class encapsulates x and y coordinates for positions in the map grid.
-    It's immutable (frozen) to ensure coordinate integrity.
-
-    Attributes:
-        x (int):
-            The x-coordinate.
-        y (int):
-            The y-coordinate.
-
-    """
-
-    x: int = Field(
-        description="The x-coordinate.",
-    )
-    y: int = Field(
-        description="The y-coordinate.",
-    )
-
-    def distance_to(self, other: Position) -> float:
-        """Calculate Euclidean distance to another position.
-
-        Args:
-            other (Position):
-                The other position.
-
-        Returns:
-            float:
-                The Euclidean distance.
-
-        """
-        return ((self.x - other.x) ** 2 + (self.y - other.y) ** 2) ** 0.5
-
-    def manhattan_distance_to(self, other: Position) -> int:
-        """
-        Calculate Manhattan distance to another position.
-
-        Args:
-            other (Position):
-                The other position.
-
-        Returns:
-            int:
-                The Manhattan distance.
-
-        """
-        return abs(self.x - other.x) + abs(self.y - other.y)
-
-    def __hash__(self) -> int:
-        return hash((self.x, self.y))
 
 
 class Settlement(BaseModel):
