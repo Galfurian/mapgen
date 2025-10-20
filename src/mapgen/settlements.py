@@ -2,7 +2,6 @@
 
 import random
 
-import numpy as np
 from onymancer import generate
 
 from . import logger

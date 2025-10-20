@@ -27,9 +27,6 @@ class MapGenerator:
     octaves: int
     persistence: float
     lacunarity: float
-    sea_level: float
-    mountain_level: float
-    forest_threshold: float
     smoothing_iterations: int
     settlement_density: float
     min_settlement_radius: float
@@ -44,9 +41,6 @@ class MapGenerator:
         octaves: int = 6,
         persistence: float = 0.5,
         lacunarity: float = 2.0,
-        sea_level: float = 0.03,
-        mountain_level: float = 0.5,
-        forest_threshold: float = 0.1,
         smoothing_iterations: int = 5,
         settlement_density: float = 0.002,
         min_settlement_radius: float = 0.5,
@@ -62,9 +56,6 @@ class MapGenerator:
             octaves (int): Number of noise octaves.
             persistence (float): Noise persistence.
             lacunarity (float): Noise lacunarity.
-            sea_level (float): Sea level threshold.
-            mountain_level (float): Mountain level threshold.
-            forest_threshold (float): Forest threshold.
             smoothing_iterations (int): Number of smoothing iterations.
             settlement_density (float): Density of settlements.
             min_settlement_radius (float): Minimum settlement radius.
@@ -79,9 +70,6 @@ class MapGenerator:
         self.octaves = octaves
         self.persistence = persistence
         self.lacunarity = lacunarity
-        self.sea_level = sea_level
-        self.mountain_level = mountain_level
-        self.forest_threshold = forest_threshold
         self.smoothing_iterations = smoothing_iterations
         self.settlement_density = settlement_density
         self.min_settlement_radius = min_settlement_radius
@@ -100,18 +88,16 @@ class MapGenerator:
         """
         logger.info(f"Starting map generation: {self.width}*{self.height}")
 
-        tiles, default_index = self._get_default_tiles()
+        tiles = self._get_default_tiles()
 
         logger.debug("Initializing map level")
         map_data = MapData(
             tiles=tiles,
-            grid=[
-                [default_index for _ in range(self.width)] for _ in range(self.height)
-            ],
+            grid=[[0 for _ in range(self.width)] for _ in range(self.height)],
         )
 
         logger.debug("Digging terrain")
-        terrain.dig(
+        terrain.dig_map(
             map_data=map_data,
             padding=self.padding,
             initial_x=self.width // 2,
@@ -132,9 +118,6 @@ class MapGenerator:
         logger.debug("Applying terrain features")
         terrain.apply_terrain_features(
             map_data,
-            self.sea_level,
-            self.mountain_level,
-            self.forest_threshold,
         )
 
         logger.debug("Smoothing terrain")
@@ -162,13 +145,13 @@ class MapGenerator:
 
         return map_data
 
-    def _get_default_tiles(self) -> tuple[list[Tile], int]:
+    def _get_default_tiles(self) -> list[Tile]:
         """
         Create the catalog of tiles used for map generation.
 
         Returns:
-            dict[str, Tile]: Dictionary mapping tile names to Tile instances.
-            str: The name of the default tile.
+            list[Tile]:
+                List of Tile instances used in the map.
 
         """
         tiles = [
@@ -184,6 +167,10 @@ class MapGenerator:
                 elevation_penalty=0.0,
                 elevation_influence=0.0,
                 smoothing_weight=1.0,
+                elevation_min=0.0,
+                elevation_max=0.0,
+                terrain_priority=0,
+                smoothing_priority=1,
                 symbol="#",
                 color=(0.0, 0.0, 0.0),
                 resources=[],
@@ -200,6 +187,11 @@ class MapGenerator:
                 elevation_penalty=0.0,
                 elevation_influence=0.0,
                 smoothing_weight=1.0,
+                elevation_min=0.0,
+                elevation_max=0.0,
+                terrain_priority=0,
+                smoothing_priority=0,
+                diggable=True,
                 symbol=".",
                 color=(0.9, 0.9, 0.9),
                 resources=[],
@@ -216,6 +208,10 @@ class MapGenerator:
                 elevation_penalty=0.0,
                 elevation_influence=-0.5,
                 smoothing_weight=1.0,
+                elevation_min=-1.0,
+                elevation_max=0.03,
+                terrain_priority=1,
+                smoothing_priority=2,
                 symbol="~",
                 color=(0.2, 0.5, 1.0),
                 resources=[],
@@ -232,6 +228,10 @@ class MapGenerator:
                 elevation_penalty=0.0,
                 elevation_influence=0.0,
                 smoothing_weight=1.0,
+                elevation_min=0.1,
+                elevation_max=0.5,
+                terrain_priority=3,
+                smoothing_priority=4,
                 symbol="F",
                 color=(0.2, 0.6, 0.2),
                 resources=["wood", "game"],
@@ -248,6 +248,10 @@ class MapGenerator:
                 elevation_penalty=0.0,
                 elevation_influence=0.0,
                 smoothing_weight=1.0,
+                elevation_min=0.03,
+                elevation_max=0.1,
+                terrain_priority=2,
+                smoothing_priority=0,
                 symbol=".",
                 color=(0.8, 0.9, 0.6),
                 resources=["grain", "herbs"],
@@ -264,9 +268,13 @@ class MapGenerator:
                 elevation_penalty=0.0,
                 elevation_influence=1.0,
                 smoothing_weight=1.0,
+                elevation_min=0.5,
+                elevation_max=1.0,
+                terrain_priority=4,
+                smoothing_priority=3,
                 symbol="^",
                 color=(0.5, 0.4, 0.3),
                 resources=["stone", "ore"],
             ),
         ]
-        return tiles, 0  # Default tile is "wall"
+        return tiles

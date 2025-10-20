@@ -44,6 +44,16 @@ class Tile(BaseModel):
             How much this tile affects terrain elevation during generation.
         smoothing_weight (float):
             How much this tile participates in terrain smoothing algorithms.
+        elevation_min (float):
+            Minimum elevation for terrain generation.
+        elevation_max (float):
+            Maximum elevation for terrain generation.
+        terrain_priority (int):
+            Priority for terrain assignment (higher = preferred).
+        smoothing_priority (int):
+            Priority for smoothing assignment (higher = preferred).
+        diggable (bool):
+            Whether this tile can be dug into (e.g., floor).
         symbol (str):
             Character symbol used for text-based map representation.
         color (tuple[float, float, float]):
@@ -91,6 +101,26 @@ class Tile(BaseModel):
     smoothing_weight: float = Field(
         description="How much this tile participates in terrain smoothing algorithms.",
     )
+    elevation_min: float = Field(
+        default=0.0,
+        description="Minimum elevation for terrain generation.",
+    )
+    elevation_max: float = Field(
+        default=1.0,
+        description="Maximum elevation for terrain generation.",
+    )
+    terrain_priority: int = Field(
+        default=0,
+        description="Priority for terrain assignment (higher = preferred).",
+    )
+    smoothing_priority: int = Field(
+        default=0,
+        description="Priority for smoothing assignment (higher = preferred).",
+    )
+    diggable: bool = Field(
+        default=False,
+        description="Whether this tile can be dug into (e.g., floor).",
+    )
     # Visualization (optional - can be computed from other properties)
     symbol: str = Field(
         description="Character symbol used for text-based map representation.",
@@ -117,6 +147,11 @@ class Tile(BaseModel):
                 self.elevation_penalty,
                 self.elevation_influence,
                 self.smoothing_weight,
+                self.elevation_min,
+                self.elevation_max,
+                self.terrain_priority,
+                self.smoothing_priority,
+                self.diggable,
                 self.symbol,
                 self.color,
                 self.name,

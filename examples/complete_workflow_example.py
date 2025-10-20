@@ -23,9 +23,6 @@ def main() -> None:
         height=80,
         scale=60.0,
         octaves=6,
-        sea_level=0.02,
-        mountain_level=0.6,
-        forest_threshold=0.15,
         settlement_density=0.0015,
     )
 
