@@ -23,7 +23,7 @@
 
 - [ ] Fix incomplete properties in `map_data.py` (e.g., `can_build_road` property)
 - [ ] Remove unused imports (e.g., `defaultdict` in roads.py)
-- [ ] Clean up unused variables and parameters
+- [x] Clean up unused variables and parameters
 - [ ] Implement proper error handling with custom exceptions
 - [ ] Add input validation for all public functions
 - [ ] Use dataclasses or attrs for simpler data structures where appropriate

@@ -37,15 +37,13 @@ def generate_settlements(
     suitable_positions = _find_suitable_settlement_positions(map_data)
 
     # Place settlements at suitable positions
-    settlements = _place_settlements_at_positions(
+    _place_settlements_at_positions(
         map_data,
         suitable_positions,
         settlement_density,
         min_radius,
         max_radius,
     )
-
-    return settlements
 
 
 def _generate_settlement_name() -> str:
