@@ -3,13 +3,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import patches
+from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from scipy.interpolate import interp1d
 
 from .map_data import MapData, Position, Road, Settlement
 
 
-def apply_curves_to_path(
+def _apply_curves_to_path(
     path: list[Position],
     elevation_map: np.ndarray,
     num_control_points: int = 5,
@@ -84,44 +85,13 @@ def apply_curves_to_path(
     return curved_path
 
 
-def is_coastal(
-    map_data: MapData,
-    x: int,
-    y: int,
-    max_distance: int = 2,
-) -> bool:
-    """Check if a point is within distance from water.
+def plot_base_terrain(ax: Axes, map_data: MapData) -> None:
+    """
+    Plot the base terrain layer with elevation-based shading.
 
     Args:
-        map_data (MapData): The map grid.
-        x (int): The x coordinate.
-        y (int): The y coordinate.
-        max_distance (int): Maximum distance to check.
-
-    Returns:
-        bool: True if coastal, False otherwise.
-
-    """
-    for dx in range(-max_distance, max_distance + 1):
-        for dy in range(-max_distance, max_distance + 1):
-            nx, ny = x + dx, y + dy
-            tile = map_data.get_terrain(nx, ny)
-            if not tile.can_build_road:
-                return True
-    return False
-
-
-def plot_map(map_data: MapData) -> Figure:
-    """
-    Plot the map with terrain, settlements, and roads.
-
-    Args:
-        map_data (MapData):
-            The map grid.
-
-    Returns:
-        Figure:
-            The matplotlib figure.
+        ax (plt.Axes): The matplotlib axes to plot on.
+        map_data (MapData): The map data containing terrain and elevation.
 
     """
     elevation_map = np.array(map_data.elevation_map)
@@ -136,31 +106,69 @@ def plot_map(map_data: MapData) -> Figure:
             shaded_color = tuple(c * shade_factor for c in base_color)
             rgb_values[y, x, :] = shaded_color
 
-    fig, ax = plt.subplots()
     ax.imshow(rgb_values)
 
-    # Contour lines
-    contour_levels = 10
-    contour_colors = "k"
-    X, Y = np.meshgrid(np.arange(map_data.width), np.arange(map_data.height))
-    ax.contour(
-        X,
-        Y,
-        elevation_map,
-        levels=contour_levels,
-        colors=contour_colors,
-        linewidths=0.5,
-    )
 
-    # Plot roads first (so settlements appear on top)
+def plot_contour_lines(
+    ax: Axes,
+    map_data: MapData,
+    levels: int = 10,
+    colors: str = "k",
+    linewidths: float = 0.5,
+) -> None:
+    """
+    Plot elevation contour lines on the map.
+
+    Args:
+        ax (plt.Axes): The matplotlib axes to plot on.
+        map_data (MapData): The map data containing elevation.
+        levels (int): Number of contour levels.
+        colors (str): Color of the contour lines.
+        linewidths (float): Width of the contour lines.
+
+    """
+    elevation_map = np.array(map_data.elevation_map)
+    X, Y = np.meshgrid(np.arange(map_data.width), np.arange(map_data.height))
+    ax.contour(X, Y, elevation_map, levels=levels, colors=colors, linewidths=linewidths)
+
+
+def plot_roads(
+    ax: Axes,
+    map_data: MapData,
+    color: str = "brown",
+    linewidth: float = 2,
+    zorder: int = 1,
+) -> None:
+    """
+    Plot roads on the map.
+
+    Args:
+        ax (plt.Axes): The matplotlib axes to plot on.
+        map_data (MapData): The map data containing roads.
+        color (str): Color of the roads.
+        linewidth (float): Width of the road lines.
+        zorder (int): Z-order for layering.
+
+    """
+    elevation_map = np.array(map_data.elevation_map)
     for road in map_data.roads:
         path = road.path
-        curved_path = apply_curves_to_path(path, elevation_map)
+        curved_path = _apply_curves_to_path(path, elevation_map)
         curved_x = [pos.x for pos in curved_path]
         curved_y = [pos.y for pos in curved_path]
-        ax.plot(curved_x, curved_y, color="brown", linewidth=2, zorder=1)
+        ax.plot(curved_x, curved_y, color=color, linewidth=linewidth, zorder=zorder)
 
-    # Plot settlements
+
+def plot_settlements(ax: Axes, map_data: MapData, zorder: int = 3) -> None:
+    """
+    Plot settlements with circles and labels on the map.
+
+    Args:
+        ax (plt.Axes): The matplotlib axes to plot on.
+        map_data (MapData): The map data containing settlements.
+        zorder (int): Z-order for layering.
+
+    """
     existing_texts: list[tuple[int, int]] = []
     for settlement in map_data.settlements:
         x = settlement.position.x
@@ -173,11 +181,11 @@ def plot_map(map_data: MapData) -> Figure:
             facecolor="white",
             edgecolor="black",
             linewidth=1,
-            zorder=3,
+            zorder=zorder,
         )
         ax.add_patch(circle)
 
-        font_size = int(radius * 6)  # Reduced from 10 to 6 for smaller text
+        font_size = int(radius * 6)
 
         possible_positions = [
             (x, y + 2),
@@ -230,10 +238,39 @@ def plot_map(map_data: MapData) -> Figure:
                 },
                 ha="center",
                 va="center",
-                zorder=3,
+                zorder=zorder,
             )
             existing_texts.append((text_x, text_y))
 
+
+def plot_map(
+    map_data: MapData,
+    enable_contours: bool = True,
+    enable_roads: bool = True,
+    enable_settlements: bool = True,
+) -> Figure:
+    """
+    Plot the complete map with all layers: terrain, contours, roads, and settlements.
+
+    Args:
+        map_data (MapData): The map data to visualize.
+
+    Returns:
+        Figure: The matplotlib figure containing the complete map.
+
+    """
+    fig, ax = plt.subplots()
+
+    # Plot each layer in order
+    plot_base_terrain(ax, map_data)
+    if enable_contours:
+        plot_contour_lines(ax, map_data)
+    if enable_roads:
+        plot_roads(ax, map_data)
+    if enable_settlements:
+        plot_settlements(ax, map_data)
+
+    # Configure axes
     ax.set_xticks([])
     ax.set_yticks([])
     plt.tight_layout(pad=0)
