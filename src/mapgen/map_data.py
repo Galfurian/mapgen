@@ -185,6 +185,19 @@ class Tile(BaseModel):
         default_factory=list,
         description="List of resources available on this tile type.",
     )
+    # Water properties
+    is_water: bool = Field(
+        default=False,
+        description="Whether this tile represents any kind of water.",
+    )
+    is_salt_water: bool = Field(
+        default=False,
+        description="Whether this water tile is salt water (ocean, sea).",
+    )
+    is_flowing_water: bool = Field(
+        default=False,
+        description="Whether this water tile represents flowing water (rivers, streams).",
+    )
 
     def __hash__(self) -> int:
         """Return hash based on all tile properties."""
@@ -209,6 +222,9 @@ class Tile(BaseModel):
                 self.name,
                 self.description,
                 tuple(self.resources),
+                self.is_water,
+                self.is_salt_water,
+                self.is_flowing_water,
             )
         )
 
@@ -232,6 +248,16 @@ class Tile(BaseModel):
     def pathfinding_cost(self) -> float:
         """Get the total cost for pathfinding algorithms."""
         return self.movement_cost + self.elevation_penalty
+
+    @property
+    def is_fresh_water(self) -> bool:
+        """Check if this tile is fresh water."""
+        return self.is_water and not self.is_salt_water
+
+    @property
+    def is_still_water(self) -> bool:
+        """Check if this tile is still water."""
+        return self.is_water and not self.is_flowing_water
 
 
 class Settlement(BaseModel):
@@ -337,6 +363,14 @@ class MapData(BaseModel):
         default_factory=list,
         description="The 2D grid of tile indices.",
     )
+    elevation_map: list[list[float]] = Field(
+        default_factory=list,
+        description="2D elevation/height map used for terrain generation.",
+    )
+    rainfall_map: list[list[float]] = Field(
+        default_factory=list,
+        description="2D rainfall map for hydrological features.",
+    )
     settlements: list[Settlement] = Field(
         default_factory=list,
         description="List of settlements on the map.",
@@ -344,10 +378,6 @@ class MapData(BaseModel):
     roads: list[Road] = Field(
         default_factory=list,
         description="List of roads connecting settlements.",
-    )
-    elevation_map: list[list[float]] = Field(
-        default_factory=list,
-        description="2D elevation/height map used for terrain generation.",
     )
 
     def _get_tile_index(self, tile: Tile) -> int:
@@ -381,13 +411,15 @@ class MapData(BaseModel):
 
         Returns:
             float:
-                The elevation at the coordinates.
+                The elevation at the coordinates (0.0 if elevation data not available).
 
         Raises:
             IndexError:
-                If coordinates are out of bounds.
+                If coordinates are out of bounds when elevation data exists.
 
         """
+        if not self.elevation_map:
+            return 0.0
         return self.elevation_map[y][x]
 
     def get_terrain(self, x: int, y: int) -> Tile:
@@ -603,3 +635,61 @@ class MapData(BaseModel):
     def tiles_grid(self) -> list[list[Tile]]:
         """Get the grid as list of list of tiles."""
         return [[self.tiles[i] for i in row] for row in self.grid]
+
+    def get_rainfall(self, x: int, y: int) -> float:
+        """
+        Get the rainfall at the specified coordinates.
+
+        Args:
+            x (int):
+                The x coordinate.
+            y (int):
+                The y coordinate.
+
+        Returns:
+            float:
+                The rainfall at the coordinates (0.0 if rainfall data not available).
+
+        Raises:
+            IndexError:
+                If coordinates are out of bounds when rainfall data exists.
+
+        """
+        if not self.rainfall_map:
+            return 0.0
+        return self.rainfall_map[y][x]
+
+    def find_tiles_by_properties(self, **properties) -> list[Tile]:
+        """
+        Find tiles that match the given properties.
+
+        Args:
+            **properties:
+                Keyword arguments representing tile properties to match.
+
+        Returns:
+            list[Tile]:
+                List of tiles that match all the specified properties.
+
+        Example:
+            # Find all flowing water tiles
+            flowing_water = map_data.find_tiles_by_properties(is_flowing_water=True)
+
+            # Find all walkable, buildable tiles
+            buildable_tiles = map_data.find_tiles_by_properties(
+                walkable=True, buildable=True
+            )
+        """
+        matching_tiles = []
+        for tile in self.tiles:
+            matches = True
+            for prop_name, prop_value in properties.items():
+                if not hasattr(tile, prop_name):
+                    matches = False
+                    break
+                if getattr(tile, prop_name) != prop_value:
+                    matches = False
+                    break
+            if matches:
+                matching_tiles.append(tile)
+        return matching_tiles

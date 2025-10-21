@@ -10,6 +10,7 @@ from . import (
     MapData,
     Tile,
     roads,
+    rivers,
     settlements,
     terrain,
 )
@@ -52,6 +53,11 @@ class MapGenerator:
         min_settlement_radius: float = 0.5,
         max_settlement_radius: float = 1.0,
         seed: int = random.randint(0, 1_000_000),
+        enable_rainfall: bool = True,
+        enable_smoothing: bool = True,
+        enable_settlements: bool = True,
+        enable_roads: bool = True,
+        enable_rivers: bool = True,
     ):
         """Initialize the map generator.
 
@@ -80,6 +86,16 @@ class MapGenerator:
                 Maximum settlement radius.
             seed (int):
                 Random seed for reproducible generation.
+            enable_rainfall (bool):
+                Whether to generate rainfall data.
+            enable_smoothing (bool):
+                Whether to apply terrain smoothing.
+            enable_settlements (bool):
+                Whether to generate settlements.
+            enable_roads (bool):
+                Whether to generate road networks.
+            enable_rivers (bool):
+                Whether to generate rivers.
 
         Raises:
             ValueError: If any parameter has an invalid value.
@@ -124,6 +140,11 @@ class MapGenerator:
         self.min_settlement_radius = min_settlement_radius
         self.max_settlement_radius = max_settlement_radius
         self.seed = seed
+        self.enable_rainfall = enable_rainfall
+        self.enable_smoothing = enable_smoothing
+        self.enable_settlements = enable_settlements
+        self.enable_roads = enable_roads
+        self.enable_rivers = enable_rivers
 
     def generate(self) -> MapData:
         """
@@ -167,6 +188,17 @@ class MapGenerator:
         terrain_time = time.time() - terrain_start
         logger.debug(f"Noise map generation completed in {terrain_time:.3f}s")
 
+        if self.enable_rainfall:
+            logger.debug("Generating rainfall map")
+            rainfall_start = time.time()
+            terrain.generate_rainfall_map(
+                map_data,
+                self.width,
+                self.height,
+            )
+            rainfall_time = time.time() - rainfall_start
+            logger.debug(f"Rainfall map generation completed in {rainfall_time:.3f}s")
+
         logger.debug("Applying terrain features")
         features_start = time.time()
         terrain.apply_terrain_features(
@@ -175,35 +207,58 @@ class MapGenerator:
         features_time = time.time() - features_start
         logger.debug(f"Terrain features applied in {features_time:.3f}s")
 
-        logger.debug("Smoothing terrain")
-        smooth_start = time.time()
-        terrain.smooth_terrain(
-            map_data,
-            self.smoothing_iterations,
-        )
-        smooth_time = time.time() - smooth_start
-        logger.debug(f"Terrain smoothing completed in {smooth_time:.3f}s")
+        if self.enable_smoothing:
+            logger.debug("Smoothing terrain")
+            smooth_start = time.time()
+            terrain.smooth_terrain(
+                map_data,
+                self.smoothing_iterations,
+            )
+            smooth_time = time.time() - smooth_start
+            logger.debug(f"Terrain smoothing completed in {smooth_time:.3f}s")
 
-        logger.debug("Generating settlements")
-        settlements_start = time.time()
-        settlements.generate_settlements(
-            map_data,
-            self.settlement_density,
-            self.min_settlement_radius,
-            self.max_settlement_radius,
-        )
-        settlements_time = time.time() - settlements_start
-        logger.debug(f"Settlements generated in {settlements_time:.3f}s")
-        logger.debug(f"Generated {len(map_data.settlements)} settlements")
+        if self.enable_rivers:
+            logger.debug("Generating rivers")
+            rivers_start = time.time()
+            rivers.generate_rivers(
+                map_data,
+                min_river_length=5,  # Shorter rivers for smaller maps
+                max_rivers=3,  # Fewer rivers
+                rainfall_threshold=0.5,  # Lower threshold
+            )
+            rivers_time = time.time() - rivers_start
+            logger.debug(f"River generation completed in {rivers_time:.3f}s")
+            logger.debug("Smoothing terrain")
+            smooth_start = time.time()
+            terrain.smooth_terrain(
+                map_data,
+                self.smoothing_iterations,
+            )
+            smooth_time = time.time() - smooth_start
+            logger.debug(f"Terrain smoothing completed in {smooth_time:.3f}s")
 
-        logger.debug("Generating road network")
-        roads_start = time.time()
-        roads.generate_roads(
-            map_data,
-        )
-        roads_time = time.time() - roads_start
-        logger.debug(f"Road network generated in {roads_time:.3f}s")
-        logger.debug(f"Generated road network with {len(map_data.roads)} roads")
+        if self.enable_settlements:
+            logger.debug("Generating settlements")
+            settlements_start = time.time()
+            settlements.generate_settlements(
+                map_data,
+                self.settlement_density,
+                self.min_settlement_radius,
+                self.max_settlement_radius,
+            )
+            settlements_time = time.time() - settlements_start
+            logger.debug(f"Settlements generated in {settlements_time:.3f}s")
+            logger.debug(f"Generated {len(map_data.settlements)} settlements")
+
+        if self.enable_roads:
+            logger.debug("Generating road network")
+            roads_start = time.time()
+            roads.generate_roads(
+                map_data,
+            )
+            roads_time = time.time() - roads_start
+            logger.debug(f"Road network generated in {roads_time:.3f}s")
+            logger.debug(f"Generated road network with {len(map_data.roads)} roads")
 
         total_time = time.time() - start_time
         logger.info(f"Map generation completed successfully in {total_time:.3f}s")
@@ -261,6 +316,32 @@ class MapGenerator:
                 symbol="~",
                 color=(0.2, 0.5, 1.0),
                 resources=[],
+                is_water=True,
+                is_salt_water=False,
+                is_flowing_water=False,
+            ),
+            Tile(
+                name="river",
+                description="Flowing river water",
+                walkable=True,
+                movement_cost=1.5,
+                blocks_line_of_sight=False,
+                buildable=False,
+                habitability=0.0,
+                road_buildable=False,
+                elevation_penalty=0.0,
+                elevation_influence=-0.3,
+                smoothing_weight=1.0,
+                elevation_min=-0.5,
+                elevation_max=0.1,
+                terrain_priority=1,
+                smoothing_priority=1,
+                symbol="≈",
+                color=(0.1, 0.4, 0.9),
+                resources=["fish"],
+                is_water=True,
+                is_salt_water=False,
+                is_flowing_water=True,
             ),
             Tile(
                 name="plains",

@@ -89,7 +89,20 @@ Container for all map data including terrain, settlements, roads, and visualizat
 
 ## Examples
 
-See the `examples/` directory for more detailed usage examples.
+The `examples/full_generation.py` script provides a comprehensive demonstration of MapGen's capabilities:
+
+```bash
+# Generate a basic map with all features
+python examples/full_generation.py --output map.png
+
+# Generate all visualizations (terrain, elevation, rainfall, 3D)
+python examples/full_generation.py --all-visualizations --output-dir visualizations/
+
+# Generate terrain only (disable settlements and roads)
+python examples/full_generation.py --disable-settlements --disable-roads --output terrain_only.png
+```
+
+See `python examples/full_generation.py --help` for all available options.
 
 ## Development
 

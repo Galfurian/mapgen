@@ -347,11 +347,13 @@ def plot_3d_map(
     """
     # Create 3D figure
     fig = plt.figure(figsize=(12, 8))
-    ax = fig.add_subplot(111, projection='3d')
+    ax: Axes3D = fig.add_subplot(111, projection="3d")
 
     # Convert elevation map to numpy array
     if not map_data.elevation_map:
-        raise ValueError("Map data missing elevation_map - cannot create 3D visualization")
+        raise ValueError(
+            "Map data missing elevation_map - cannot create 3D visualization"
+        )
 
     elevation_array = np.array(map_data.elevation_map)
     height, width = elevation_array.shape
@@ -361,50 +363,78 @@ def plot_3d_map(
 
     # Scale elevation for better visualization
     scaled_elevation = elevation_array * elevation_scale
-    
+
     # Calculate maximum elevation for positioning settlements above terrain
     max_elevation = np.max(scaled_elevation)
-    settlement_height = max_elevation + (elevation_scale * 0.5)  # Position settlements well above terrain
-    label_height = max_elevation + (elevation_scale * 0.7)       # Position labels even higher
+    settlement_height = max_elevation + (
+        elevation_scale * 0.5
+    )  # Position settlements well above terrain
+    label_height = max_elevation + (
+        elevation_scale * 0.7
+    )  # Position labels even higher
 
     # Plot the 3D terrain surface
     surf = ax.plot_surface(
-        x_coords, y_coords, scaled_elevation,
+        x_coords,
+        y_coords,
+        scaled_elevation,
         cmap=colormap,
         linewidth=0,
         antialiased=True,
-        alpha=0.8
+        alpha=0.8,
     )
 
     # Add settlements as 3D markers
     if enable_settlements and map_data.settlements:
         settlement_x = [s.position.x for s in map_data.settlements]
         settlement_y = [s.position.y for s in map_data.settlements]
-        settlement_z = [settlement_height] * len(map_data.settlements)  # Fixed height above terrain
-        settlement_sizes = [s.radius * 20 for s in map_data.settlements]  # Scale for visibility
+        # Fixed height above terrain.
+        settlement_z = [settlement_height] * len(map_data.settlements)
+        settlement_sizes = [
+            s.radius * 20 for s in map_data.settlements
+        ]  # Scale for visibility
 
         # Add vertical lines from terrain to settlements for better visibility
         for settlement in map_data.settlements:
             terrain_z = scaled_elevation[settlement.position.y, settlement.position.x]
             ax.plot(
                 [settlement.position.x, settlement.position.x],
-                [settlement.position.y, settlement.position.y], 
+                [settlement.position.y, settlement.position.y],
                 [terrain_z, settlement_height],
-                color='red', linewidth=1, alpha=0.5, linestyle='--'
+                color="red",
+                linewidth=1,
+                alpha=0.5,
+                linestyle="--",
             )
 
         ax.scatter(
-            settlement_x, settlement_y, settlement_z,
-            c='red', s=settlement_sizes, alpha=0.9, edgecolors='darkred', linewidth=1,
-            label='Settlements'
+            xs=settlement_x,
+            ys=settlement_y,
+            zs=settlement_z,
+            c="red",
+            s=settlement_sizes,
+            alpha=0.9,
+            edgecolors="darkred",
+            linewidth=1,
+            label="Settlements",
         )
 
         # Add settlement labels at fixed height above settlements
         for settlement in map_data.settlements:
             ax.text(
-                settlement.position.x, settlement.position.y, label_height,
-                settlement.name, fontsize=9, ha='center', va='bottom',
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8, edgecolor="gray")
+                settlement.position.x,
+                settlement.position.y,
+                label_height,
+                settlement.name,
+                fontsize=9,
+                ha="center",
+                va="bottom",
+                bbox=dict(
+                    boxstyle="round,pad=0.3",
+                    facecolor="white",
+                    alpha=0.8,
+                    edgecolor="gray",
+                ),
             )
 
     # Add roads as 3D lines
@@ -413,12 +443,20 @@ def plot_3d_map(
             if len(road.path) > 1:
                 road_x = [pos.x for pos in road.path]
                 road_y = [pos.y for pos in road.path]
-                road_z = [scaled_elevation[pos.y, pos.x] + 0.05 for pos in road.path]  # Slightly above terrain
+                road_z = [
+                    scaled_elevation[pos.y, pos.x] + 0.05 for pos in road.path
+                ]  # Slightly above terrain
 
                 ax.plot(
-                    road_x, road_y, road_z,
-                    color='brown', linewidth=2, alpha=0.7,
-                    label='Roads' if road == map_data.roads[0] else ""  # Only label first road
+                    road_x,
+                    road_y,
+                    road_z,
+                    color="brown",
+                    linewidth=2,
+                    alpha=0.7,
+                    label=(
+                        "Roads" if road == map_data.roads[0] else ""
+                    ),  # Only label first road
                 )
 
     # Add roads as 3D lines
@@ -427,29 +465,40 @@ def plot_3d_map(
             if len(road.path) > 1:
                 road_x = [pos.x for pos in road.path]
                 road_y = [pos.y for pos in road.path]
-                road_z = [scaled_elevation[pos.y, pos.x] + 0.05 for pos in road.path]  # Slightly above terrain
+                road_z = [
+                    scaled_elevation[pos.y, pos.x] + 0.05 for pos in road.path
+                ]  # Slightly above terrain
 
                 ax.plot(
-                    road_x, road_y, road_z,
-                    color='brown', linewidth=2, alpha=0.7,
-                    label='Roads' if road == map_data.roads[0] else ""  # Only label first road
+                    road_x,
+                    road_y,
+                    road_z,
+                    color="brown",
+                    linewidth=2,
+                    alpha=0.7,
+                    label=(
+                        "Roads" if road == map_data.roads[0] else ""
+                    ),  # Only label first road
                 )
 
     # Configure the 3D view
-    ax.set_xlabel('X Coordinate')
-    ax.set_ylabel('Y Coordinate')
-    ax.set_zlabel('Elevation')
-    ax.set_title('3D Fantasy Map Visualization')
+    ax.set_xlabel("X Coordinate")
+    ax.set_ylabel("Y Coordinate")
+    ax.set_zlabel("Elevation")
+    ax.set_title("3D Fantasy Map Visualization")
 
     # Set equal aspect ratio and nice viewing angle
-    ax.set_box_aspect([width/height, 1, 0.3])  # Compress Z axis for better viewing
+    ax.set_box_aspect([width / height, 1, 0.3])  # Compress Z axis for better viewing
     ax.view_init(elev=30, azim=45)  # Nice isometric view
 
     # Add colorbar
-    fig.colorbar(surf, ax=ax, shrink=0.5, aspect=10, label='Elevation')
+    fig.colorbar(surf, ax=ax, shrink=0.5, aspect=10, label="Elevation")
 
     # Add legend if we have elements and legend is enabled
-    if enable_legend and ((enable_settlements and map_data.settlements) or (enable_roads and map_data.roads)):
+    if enable_legend and (
+        (enable_settlements and map_data.settlements)
+        or (enable_roads and map_data.roads)
+    ):
         ax.legend()
 
     plt.tight_layout()
@@ -477,3 +526,89 @@ def get_ascii_map(map_data: MapData) -> str:
             line += tile.symbol
         lines.append(line)
     return "\n".join(lines)
+
+
+def plot_elevation_map(
+    map_data: MapData,
+    colormap: str = "terrain",
+    title: str = "Elevation Map",
+) -> Figure:
+    """
+    Plot the elevation map as a standalone visualization.
+
+    Args:
+        map_data (MapData):
+            The map data containing elevation.
+        colormap (str):
+            Matplotlib colormap for elevation coloring.
+        title (str):
+            Title for the plot.
+
+    Returns:
+        Figure:
+            The matplotlib figure containing the elevation map.
+
+    """
+    if not map_data.elevation_map:
+        raise ValueError("Map data missing elevation_map")
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    elevation_array = np.array(map_data.elevation_map)
+    im = ax.imshow(elevation_array, cmap=colormap, origin="upper")
+
+    # Add colorbar
+    cbar = fig.colorbar(im, ax=ax, shrink=0.8, aspect=20)
+    cbar.set_label("Elevation")
+
+    ax.set_title(title)
+    ax.set_xlabel("X Coordinate")
+    ax.set_ylabel("Y Coordinate")
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    plt.tight_layout()
+    return fig
+
+
+def plot_rainfall_map(
+    map_data: MapData,
+    colormap: str = "Blues",
+    title: str = "Rainfall Map",
+) -> Figure:
+    """
+    Plot the rainfall map as a standalone visualization.
+
+    Args:
+        map_data (MapData):
+            The map data containing rainfall.
+        colormap (str):
+            Matplotlib colormap for rainfall coloring.
+        title (str):
+            Title for the plot.
+
+    Returns:
+        Figure:
+            The matplotlib figure containing the rainfall map.
+
+    """
+    if not map_data.rainfall_map:
+        raise ValueError("Map data missing rainfall_map")
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    rainfall_array = np.array(map_data.rainfall_map)
+    im = ax.imshow(rainfall_array, cmap=colormap, origin="upper")
+
+    # Add colorbar
+    cbar = fig.colorbar(im, ax=ax, shrink=0.8, aspect=20)
+    cbar.set_label("Rainfall Intensity")
+
+    ax.set_title(title)
+    ax.set_xlabel("X Coordinate")
+    ax.set_ylabel("Y Coordinate")
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    plt.tight_layout()
+    return fig

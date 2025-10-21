@@ -5,9 +5,12 @@ import logging
 from .map_data import MapData, Position, Settlement, Tile
 from .map_generator import MapGenerator
 from .visualization import (
+    get_ascii_map,
     plot_base_terrain,
     plot_contour_lines,
+    plot_elevation_map,
     plot_map,
+    plot_rainfall_map,
     plot_3d_map,
     plot_roads,
     plot_settlements,
@@ -36,10 +39,13 @@ __all__ = [
     "Position",
     "Settlement",
     "Tile",
+    "get_ascii_map",
     "logger",
     "plot_base_terrain",
     "plot_contour_lines",
+    "plot_elevation_map",
     "plot_map",
+    "plot_rainfall_map",
     "plot_3d_map",
     "plot_roads",
     "plot_settlements",

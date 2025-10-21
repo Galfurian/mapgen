@@ -1,122 +1,86 @@
 #!/usr/bin/env python3
-"""Complete MapGen workflow example demonstrating generation, saving, loading, and visualization."""
+"""
+Complete MapGen workflow - generates a fantasy map with configurable features and all available visualizations.
+
+This script generates a fantasy map with configurable generation features and automatically
+creates all available visualizations based on what was generated.
+"""
 
 import argparse
 import logging
-import os
-import random
 from pathlib import Path
 
-import numpy as np
-
-from mapgen import roads, settlements, terrain, visualization
-from mapgen.map_data import MapData
-from mapgen.map_generator import MapGenerator, logger
+from mapgen import (
+    MapGenerator,
+    plot_elevation_map,
+    plot_map,
+    plot_rainfall_map,
+    plot_3d_map,
+    get_ascii_map,
+    logger,
+)
 
 
 def main() -> None:
-    """Demonstrate the complete MapGen workflow."""
-    parser = argparse.ArgumentParser(description="Generate a fantasy map")
+    """Generate a fantasy map with configurable features and all available visualizations."""
+    parser = argparse.ArgumentParser(
+        description="Generate fantasy maps with configurable features and all visualizations",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Generate everything with default settings
+  python full_generation.py output/
+
+  # Generate with specific seed for reproducibility
+  python full_generation.py output/ --seed 123
+
+  # Generate without rainfall and rivers
+  python full_generation.py output/ --disable-rainfall --disable-rivers
+
+  # Generate minimal map (terrain only)
+  python full_generation.py output/ --disable-settlements --disable-roads --disable-rainfall --disable-rivers
+        """,
+    )
+
     parser.add_argument(
-        "--output",
+        "output_dir",
         type=str,
-        default="generated_map.json",
-        help="Output filename (extension determines format: .json for data, .png for image, .txt for ASCII)",
-    )
-    parser.add_argument(
-        "-W",
-        "--width",
-        type=int,
-        default=150,
-        help="Map width (default: 150)",
-    )
-    parser.add_argument(
-        "-H",
-        "--height",
-        type=int,
-        default=100,
-        help="Map height (default: 100)",
-    )
-    parser.add_argument(
-        "-N",
-        "--scale",
-        type=float,
-        default=50.0,
-        help="Noise scale (default: 50.0)",
-    )
-    parser.add_argument(
-        "-O",
-        "--octaves",
-        type=int,
-        default=6,
-        help="Noise octaves (default: 6)",
-    )
-    parser.add_argument(
-        "-P",
-        "--persistence",
-        type=float,
-        default=0.5,
-        help="Noise persistence (default: 0.5)",
-    )
-    parser.add_argument(
-        "-L",
-        "--lacunarity",
-        type=float,
-        default=2.0,
-        help="Noise lacunarity (default: 2.0)",
-    )
-    parser.add_argument(
-        "-sd",
-        "--settlement-density",
-        type=float,
-        default=0.002,
-        help="Settlement density (default: 0.002)",
-    )
-    parser.add_argument(
-        "-msr",
-        "--min-settlement-radius",
-        type=float,
-        default=0.5,
-        help="Minimum settlement radius (default: 0.5)",
-    )
-    parser.add_argument(
-        "-mxsr",
-        "--max-settlement-radius",
-        type=float,
-        default=1.0,
-        help="Maximum settlement radius (default: 1.0)",
-    )
-    parser.add_argument(
-        "-dsm",
-        "--disable-smoothing",
-        action="store_true",
-        help="Disable terrain smoothing",
-    )
-    parser.add_argument(
-        "-dst",
-        "--disable-settlements",
-        action="store_true",
-        help="Disable settlement generation",
-    )
-    parser.add_argument(
-        "-drd",
-        "--disable-roads",
-        action="store_true",
-        help="Disable road generation",
+        help="Output directory for all generated files",
     )
     parser.add_argument(
         "--seed",
         type=int,
         default=42,
-        help="Random seed for map generation (default: 42)",
+        help="Random seed for reproducible generation (default: 42)",
+    )
+
+    # Feature control flags
+    parser.add_argument(
+        "--disable-rainfall",
+        action="store_true",
+        help="Disable rainfall generation",
     )
     parser.add_argument(
-        "-si",
-        "--smoothing-iterations",
-        type=int,
-        default=3,
-        help="Number of smoothing iterations (default: 3)",
+        "--disable-smoothing",
+        action="store_true",
+        help="Disable terrain smoothing",
     )
+    parser.add_argument(
+        "--disable-settlements",
+        action="store_true",
+        help="Disable settlement generation",
+    )
+    parser.add_argument(
+        "--disable-roads",
+        action="store_true",
+        help="Disable road network generation",
+    )
+    parser.add_argument(
+        "--disable-rivers",
+        action="store_true",
+        help="Disable river generation",
+    )
+
     parser.add_argument(
         "-v",
         "--verbose",
@@ -126,147 +90,108 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # Set the logging level based on verbosity.
+    # Set logging level
     logger.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 
-    # Generate the map.
-    map_data = _generate_map(
-        width=args.width,
-        height=args.height,
-        scale=args.scale,
-        octaves=args.octaves,
-        persistence=args.persistence,
-        lacunarity=args.lacunarity,
-        settlement_density=args.settlement_density,
-        min_settlement_radius=args.min_settlement_radius,
-        max_settlement_radius=args.max_settlement_radius,
+    # Create output directory
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Generate the map with configurable features
+    logger.info("🗺️ Generating fantasy map...")
+    generator = MapGenerator(
+        seed=args.seed,
+        enable_rainfall=not args.disable_rainfall,
         enable_smoothing=not args.disable_smoothing,
         enable_settlements=not args.disable_settlements,
         enable_roads=not args.disable_roads,
-        seed=args.seed,
-        smoothing_iterations=args.smoothing_iterations,
+        enable_rivers=not args.disable_rivers,
     )
 
-    if map_data is not None:
-        logger.info("✅ Map generation succeeded!")
-    else:
+    map_data = generator.generate()
+
+    if map_data is None:
         logger.error("❌ Map generation failed!")
         return
 
-    output_path = Path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_extension = output_path.suffix.lower()
+    logger.info("✅ Map generation succeeded!")
+    logger.info(f"📐 Map size: {map_data.width}×{map_data.height}")
+    logger.info(f"🏘️ Settlements: {len(map_data.settlements)}")
+    logger.info(f"🛣️ Roads: {len(map_data.roads)}")
 
-    # Save to JSON if requested.
-    if output_extension == ".json":
-        output_path = output_path.with_suffix(".json")
+    # Count terrain types
+    terrain_counts = {}
+    for y in range(map_data.height):
+        for x in range(map_data.width):
+            tile = map_data.get_terrain(x, y)
+            terrain_counts[tile.name] = terrain_counts.get(tile.name, 0) + 1
 
-        logger.info(f"Saving map data to: {output_path}")
-        map_data.save_to_json(str(output_path.with_suffix(".json")))
-        json_size = os.path.getsize(output_path)
-        logger.info(f"📦 JSON size: {json_size:,} bytes")
+    logger.info("🏔️ Terrain distribution:")
+    for tile_name, count in sorted(terrain_counts.items()):
+        percentage = (count / (map_data.width * map_data.height)) * 100
+        logger.info(f"   {tile_name}: {count:,} tiles ({percentage:.1f}%)")
 
-    elif output_extension == ".png":
-        output_path = output_path.with_suffix(".png")
+    # Generate ALL available visualizations automatically
+    dpi = 300
+    generated_files = 0
 
-        logger.info(f"Saving map image to: {output_path}")
-        fig = visualization.plot_map(map_data)
-        fig.savefig(
-            output_path,
-            dpi=300,
-            bbox_inches="tight",
-            facecolor="white",
-        )
-        fig.get_figure().clear()
-        png_size = os.path.getsize(output_path)
-        logger.info(f"🖼️ PNG size: {png_size:,} bytes")
+    # 1. Main terrain map (always generated)
+    logger.info("🖼️ Generating main terrain map...")
+    fig = plot_map(map_data)
+    main_map_path = output_dir / f"terrain_map_seed_{args.seed}.png"
+    fig.savefig(main_map_path, dpi=dpi, bbox_inches="tight", facecolor="white")
+    fig.clear()
+    logger.info(f"💾 Main map saved: {main_map_path}")
+    generated_files += 1
 
-    elif output_extension == ".txt":
-        output_path = output_path.with_suffix(".txt")
+    # 2. Elevation map (always available since elevation_map is always initialized)
+    if map_data.elevation_map:
+        logger.info("📊 Generating elevation map...")
+        fig = plot_elevation_map(map_data, title=f"Elevation Map (Seed: {args.seed})")
+        elevation_path = output_dir / f"elevation_map_seed_{args.seed}.png"
+        fig.savefig(elevation_path, dpi=dpi, bbox_inches="tight")
+        fig.clear()
+        logger.info(f"💾 Elevation map saved: {elevation_path}")
+        generated_files += 1
 
-        logger.info(f"Saving ASCII map to: {output_path}")
-        ascii_map = visualization.get_ascii_map(map_data)
-        with open(output_path, "w") as f:
-            f.write(ascii_map)
-        txt_size = os.path.getsize(output_path)
-        logger.info(f"📄 TXT size: {txt_size:,} bytes")
+    # 3. Rainfall map (available if rainfall was generated)
+    if map_data.rainfall_map:
+        logger.info("🌧️ Generating rainfall map...")
+        fig = plot_rainfall_map(map_data, title=f"Rainfall Map (Seed: {args.seed})")
+        rainfall_path = output_dir / f"rainfall_map_seed_{args.seed}.png"
+        fig.savefig(rainfall_path, dpi=dpi, bbox_inches="tight")
+        fig.clear()
+        logger.info(f"💾 Rainfall map saved: {rainfall_path}")
+        generated_files += 1
 
-    logger.info("🎉 Map generation completed successfully!")
+    # 4. 3D visualization (always available)
+    logger.info("🎲 Generating 3D visualization...")
+    fig = plot_3d_map(map_data)
+    map_3d_path = output_dir / f"terrain_3d_seed_{args.seed}.png"
+    fig.savefig(map_3d_path, dpi=dpi, bbox_inches="tight")
+    fig.clear()
+    logger.info(f"💾 3D map saved: {map_3d_path}")
+    generated_files += 1
 
+    # 5. ASCII representation (always available)
+    logger.info("📄 Generating ASCII map...")
+    ascii_map = get_ascii_map(map_data)
+    ascii_path = output_dir / f"terrain_ascii_seed_{args.seed}.txt"
+    with open(ascii_path, "w") as f:
+        f.write(ascii_map)
+    logger.info(f"💾 ASCII map saved: {ascii_path}")
+    generated_files += 1
 
-def _generate_map(
-    width: int = 150,
-    height: int = 100,
-    scale: float = 50.0,
-    octaves: int = 6,
-    persistence: float = 0.5,
-    lacunarity: float = 2.0,
-    settlement_density: float = 0.002,
-    min_settlement_radius: float = 0.5,
-    max_settlement_radius: float = 1.0,
-    enable_smoothing: bool = True,
-    enable_settlements: bool = True,
-    enable_roads: bool = True,
-    seed: int = 42,
-    smoothing_iterations: int = 3,
-) -> MapData:
+    # 6. JSON data (always available)
+    logger.info("📦 Saving map data as JSON...")
+    json_path = output_dir / f"map_data_seed_{args.seed}.json"
+    map_data.save_to_json(str(json_path))
+    logger.info(f"💾 JSON data saved: {json_path}")
+    generated_files += 1
 
-    logger.info("🗺️ Generating fantasy map...")
-
-    # Set random seed for reproducible generation
-    random.seed(seed)
-    np.random.seed(seed)
-    logger.debug(f"  Using random seed: {seed}")
-
-    tiles = MapGenerator.get_default_tiles()
-
-    logger.debug("  Initializing map level...")
-    map_data = MapData(
-        tiles=tiles,
-        grid=[[0 for _ in range(width)] for _ in range(height)],
-    )
-
-    logger.debug("  Generating noise map...")
-    terrain.generate_noise_map(
-        map_data,
-        width,
-        height,
-        scale,
-        octaves,
-        persistence,
-        lacunarity,
-    )
-
-    logger.debug("  Applying terrain features...")
-    terrain.apply_terrain_features(
-        map_data,
-    )
-
-    if enable_smoothing:
-        logger.debug("  Smoothing terrain...")
-        terrain.smooth_terrain(
-            map_data,
-            smoothing_iterations,
-        )
-
-    if enable_settlements:
-        logger.debug("  Generating settlements...")
-        settlements.generate_settlements(
-            map_data,
-            settlement_density,
-            min_settlement_radius,
-            max_settlement_radius,
-        )
-        logger.debug(f"  🏘️ Settlements: {len(map_data.settlements)}")
-
-    if enable_roads:
-        logger.debug("Generating road network")
-        roads.generate_roads(
-            map_data,
-        )
-        logger.debug(f"  🛣️ Roads: {len(map_data.roads)}")
-
-    return map_data
+    logger.info("🎉 Map generation and visualization finished!")
+    logger.info(f"📁 All outputs saved to: {output_dir}")
+    logger.info(f"📊 Generated {generated_files} files")
 
 
 if __name__ == "__main__":
