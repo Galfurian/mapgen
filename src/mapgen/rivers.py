@@ -71,7 +71,7 @@ def _find_river_sources(
     rainfall_threshold: float,
 ) -> list[Position]:
     """
-    Find potential river sources in high rainfall areas.
+    Find potential river sources: prioritize high-elevation lakes, then springs (high rainfall, high elevation, local minima).
 
     Args:
         map_data (MapData):
@@ -85,42 +85,79 @@ def _find_river_sources(
 
     """
     sources = []
+
+    # First, add lake centers as sources, prioritizing high-elevation lakes
+    lake_sources = []
+    for lake in map_data.lakes:
+        # Use lake center as source, but only if not coastal and has some elevation
+        if lake.mean_elevation > 0.3:  # Lower threshold for lakes
+            # Check if lake is not adjacent to sea (coastal)
+            center_x, center_y = lake.center
+            is_coastal = False
+            for pos in lake.tiles:
+                neighbors = map_data.get_neighbors(pos.x, pos.y, walkable_only=False)
+                for neighbor in neighbors:
+                    neighbor_tile = map_data.get_terrain(neighbor.x, neighbor.y)
+                    if neighbor_tile.is_water and neighbor_tile.is_salt_water:
+                        is_coastal = True
+                        break
+                if is_coastal:
+                    break
+            
+            if not is_coastal:
+                lake_sources.append((lake.center, lake.mean_elevation, lake.total_accumulation))
+    
+    # Sort lakes by elevation (highest first), then by accumulation
+    lake_sources.sort(key=lambda x: (x[1], x[2]), reverse=True)
+    for center, _, _ in lake_sources:
+        sources.append(Position(int(center[0]), int(center[1])))
+
+    # Then, find spring sources: local minima with high rainfall and elevation
+    spring_sources = []
     elevations = []
     rainfall_values = []
 
-    # Sample every tile for more candidates
     sample_step = 1
-
     for y in range(0, map_data.height, sample_step):
         for x in range(0, map_data.width, sample_step):
             rainfall = map_data.get_rainfall(x, y)
-            if rainfall >= rainfall_threshold:
-                # Optionally: relax local max constraint for more sources
-                # neighbors = map_data.get_neighbors(x, y)
-                # is_local_max = True
-                # for neighbor in neighbors:
-                #     if map_data.get_rainfall(neighbor.x, neighbor.y) > rainfall:
-                #         is_local_max = False
-                #         break
-                # if is_local_max:
-                sources.append(Position(x, y))
-                elevations.append(map_data.get_elevation(x, y))
-                rainfall_values.append(rainfall)
+            elevation = map_data.get_elevation(x, y)
+            current_tile = map_data.get_terrain(x, y)
+            
+            # Higher elevation threshold and ensure not on water
+            if (rainfall >= rainfall_threshold and 
+                elevation > 0.5 and  # Lower elevation threshold
+                not current_tile.is_water):  # Not on existing water
+                
+                # Check if local minimum
+                neighbors = map_data.get_neighbors(x, y, walkable_only=False)
+                is_local_min = True
+                for neighbor in neighbors:
+                    if map_data.get_elevation(neighbor.x, neighbor.y) < elevation:
+                        is_local_min = False
+                        break
+                if is_local_min:
+                    spring_sources.append(Position(x, y))
+                    elevations.append(elevation)
+                    rainfall_values.append(rainfall)
+
+    # Sort springs by rainfall and elevation
+    spring_sources.sort(key=lambda pos: (map_data.get_rainfall(pos.x, pos.y), map_data.get_elevation(pos.x, pos.y)), reverse=True)
+    sources.extend(spring_sources)
 
     logger.debug(
-        f"Found {len(sources)} candidate river sources (rainfall >= {rainfall_threshold})"
+        f"Found {len(sources)} river sources: {len(lake_sources)} from lakes, {len(spring_sources)} from springs"
     )
     if sources:
+        elevations_all = [map_data.get_elevation(p.x, p.y) for p in sources]
+        rainfall_all = [map_data.get_rainfall(p.x, p.y) for p in sources]
         logger.debug(
-            f"Rainfall range of sources: min={min(rainfall_values):.3f}, max={max(rainfall_values):.3f}, mean={sum(rainfall_values)/len(rainfall_values):.3f}"
+            f"Source rainfall: min={min(rainfall_all):.3f}, max={max(rainfall_all):.3f}"
         )
         logger.debug(
-            f"Elevation range of sources: min={min(elevations):.3f}, max={max(elevations):.3f}, mean={sum(elevations)/len(elevations):.3f}"
+            f"Source elevation: min={min(elevations_all):.3f}, max={max(elevations_all):.3f}"
         )
 
-    # Sort by rainfall (highest first) and add some randomness
-    sources.sort(key=lambda pos: map_data.get_rainfall(pos.x, pos.y), reverse=True)
-    random.shuffle(sources[: len(sources) // 2])
     return sources
 
 
@@ -182,10 +219,10 @@ def _generate_river_path(
             # We've reached a local minimum, stop here
             break
 
-        # Check if we've reached water (ocean/lake)
-        current_tile = map_data.get_terrain(current.x, current.y)
-        if current_tile.is_water:
-            # River has reached water, stop here
+        # Check if next position is salt water (ocean) - rivers stop at sea
+        next_tile = map_data.get_terrain(next_pos.x, next_pos.y)
+        if next_tile.is_water and next_tile.is_salt_water:
+            # River has reached the sea, stop here (don't add sea tiles to path)
             break
 
         # Add to path and continue
@@ -214,16 +251,17 @@ def _apply_river_to_map(
             The path of the river.
 
     """
-    # Find the river tile
-    river_tile = None
-    for tile in map_data.tiles:
-        if tile.name == "river":
-            river_tile = tile
-            break
+    # Find river tiles (flowing fresh water)
+    river_tiles = map_data.find_tiles_by_properties(
+        is_water=True, is_salt_water=False, is_flowing_water=True
+    )
 
-    if not river_tile:
-        logger.warning("No river tile found in tile catalog")
+    if not river_tiles:
+        logger.warning("No river tiles found in tile catalog")
         return
+
+    # Use the first matching river tile
+    river_tile = river_tiles[0]
 
     # Apply river tiles along the path
     for position in river_path:

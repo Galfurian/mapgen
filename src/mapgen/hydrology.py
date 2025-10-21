@@ -11,7 +11,7 @@ def detect_lakes(
     accumulation: np.ndarray,
     min_accumulation: float = 5.0,
     min_lake_size: int = 3,
-    max_elevation: float = 0.2,
+    max_elevation: float = 0.1,
 ) -> list[Lake]:
     """
     Detect lakes/basins as contiguous low-elevation, high-accumulation regions.

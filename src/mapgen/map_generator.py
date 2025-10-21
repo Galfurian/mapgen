@@ -1,4 +1,5 @@
 from . import hydrology
+
 """Main map generator module."""
 
 import logging
@@ -45,7 +46,7 @@ class MapGenerator:
         width: int = 150,
         height: int = 100,
         padding: int = 2,
-        scale: float = 50.0,
+        scale: float = 100.0,
         octaves: int = 6,
         persistence: float = 0.5,
         lacunarity: float = 2.0,
@@ -118,15 +119,25 @@ class MapGenerator:
         if lacunarity <= 1.0:
             raise ValueError(f"Lacunarity must be greater than 1, got {lacunarity}")
         if smoothing_iterations < 0:
-            raise ValueError(f"Smoothing iterations must be non-negative, got {smoothing_iterations}")
+            raise ValueError(
+                f"Smoothing iterations must be non-negative, got {smoothing_iterations}"
+            )
         if not (0.0 <= settlement_density <= 1.0):
-            raise ValueError(f"Settlement density must be between 0 and 1, got {settlement_density}")
+            raise ValueError(
+                f"Settlement density must be between 0 and 1, got {settlement_density}"
+            )
         if min_settlement_radius <= 0:
-            raise ValueError(f"Minimum settlement radius must be positive, got {min_settlement_radius}")
+            raise ValueError(
+                f"Minimum settlement radius must be positive, got {min_settlement_radius}"
+            )
         if max_settlement_radius <= 0:
-            raise ValueError(f"Maximum settlement radius must be positive, got {max_settlement_radius}")
+            raise ValueError(
+                f"Maximum settlement radius must be positive, got {max_settlement_radius}"
+            )
         if min_settlement_radius > max_settlement_radius:
-            raise ValueError(f"Minimum settlement radius ({min_settlement_radius}) cannot be greater than maximum ({max_settlement_radius})")
+            raise ValueError(
+                f"Minimum settlement radius ({min_settlement_radius}) cannot be greater than maximum ({max_settlement_radius})"
+            )
 
         # Map generation parameters.
         self.width = width
@@ -224,6 +235,9 @@ class MapGenerator:
         features_time = time.time() - features_start
         logger.debug(f"Terrain features applied in {features_time:.3f}s")
 
+        # Apply lakes to the map AFTER terrain features (so they don't get overwritten)
+        MapGenerator._apply_lakes_to_map(map_data)
+
         if self.enable_smoothing:
             logger.debug("Smoothing terrain")
             smooth_start = time.time()
@@ -283,6 +297,34 @@ class MapGenerator:
         return map_data
 
     @staticmethod
+    def _apply_lakes_to_map(map_data: MapData) -> None:
+        """
+        Apply lake tiles to the map for detected lakes.
+
+        Args:
+            map_data (MapData): The map data to modify.
+        """
+        # Find lake tiles (fresh water, not flowing)
+        lake_tiles = map_data.find_tiles_by_properties(
+            is_water=True, is_salt_water=False, is_flowing_water=False
+        )
+
+        if not lake_tiles:
+            logger.warning("No lake tiles found in tile catalog")
+            return
+
+        # Use the first matching lake tile
+        lake_tile = lake_tiles[0]
+
+        # Apply lake tiles for each lake
+        for lake in map_data.lakes:
+            for position in lake.tiles:
+                # Set to lake if not already water
+                current_tile = map_data.get_terrain(position.x, position.y)
+                if not current_tile.is_water:
+                    map_data.set_terrain(position.x, position.y, lake_tile)
+
+    @staticmethod
     def get_default_tiles() -> list[Tile]:
         """
         Create the catalog of tiles used for map generation.
@@ -315,8 +357,8 @@ class MapGenerator:
                 resources=[],
             ),
             Tile(
-                name="water",
-                description="Water terrain",
+                name="sea",
+                description="Sea water terrain",
                 walkable=True,
                 movement_cost=2.0,
                 blocks_line_of_sight=False,
@@ -327,14 +369,14 @@ class MapGenerator:
                 elevation_influence=-0.5,
                 smoothing_weight=1.0,
                 elevation_min=-1.0,
-                elevation_max=0.03,
+                elevation_max=-0.5,
                 terrain_priority=1,
                 smoothing_priority=2,
                 symbol="~",
                 color=(0.2, 0.5, 1.0),
                 resources=[],
                 is_water=True,
-                is_salt_water=False,
+                is_salt_water=True,
                 is_flowing_water=False,
             ),
             Tile(
@@ -361,6 +403,29 @@ class MapGenerator:
                 is_flowing_water=True,
             ),
             Tile(
+                name="lake",
+                description="Freshwater lake",
+                walkable=True,
+                movement_cost=2.0,
+                blocks_line_of_sight=False,
+                buildable=False,
+                habitability=0.0,
+                road_buildable=False,
+                elevation_penalty=0.0,
+                elevation_influence=-0.4,
+                smoothing_weight=1.0,
+                elevation_min=-0.4,
+                elevation_max=0.0,
+                terrain_priority=1,
+                smoothing_priority=2,
+                symbol="~",
+                color=(0.4, 0.9, 0.8),
+                resources=["fish"],
+                is_water=True,
+                is_salt_water=False,
+                is_flowing_water=False,
+            ),
+            Tile(
                 name="plains",
                 description="Open plains",
                 walkable=True,
@@ -372,7 +437,7 @@ class MapGenerator:
                 elevation_penalty=0.0,
                 elevation_influence=0.0,
                 smoothing_weight=1.0,
-                elevation_min=0.03,
+                elevation_min=0.0,
                 elevation_max=0.2,
                 terrain_priority=2,
                 smoothing_priority=0,
