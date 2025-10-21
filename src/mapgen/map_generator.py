@@ -11,6 +11,7 @@ import numpy as np
 from . import (
     MapData,
     Tile,
+    PlacementMethod,
     roads,
     rivers,
     settlements,
@@ -407,6 +408,7 @@ class MapGenerator:
                 is_water=True,
                 is_salt_water=False,
                 is_flowing_water=True,
+                placement_method=PlacementMethod.ALGORITHM_BASED,
             ),
             Tile(
                 name="lake",
@@ -430,6 +432,7 @@ class MapGenerator:
                 is_water=True,
                 is_salt_water=False,
                 is_flowing_water=False,
+                placement_method=PlacementMethod.ALGORITHM_BASED,
             ),
             Tile(
                 name="plains",

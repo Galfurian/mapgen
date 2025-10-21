@@ -6,7 +6,7 @@ import random
 import noise
 import numpy as np
 
-from .map_data import MapData
+from .map_data import MapData, PlacementMethod
 
 logger = logging.getLogger(__name__)
 
@@ -233,7 +233,7 @@ def apply_terrain_features(
         suitable_tiles = [
             tile for tile in sorted_tiles
             if tile.elevation_min <= elevation <= tile.elevation_max
-            and not tile.is_flowing_water  # Don't assign flowing water (rivers) during terrain features
+            and tile.placement_method.name == "TERRAIN_BASED"  # Only assign terrain-based tiles during terrain features
         ]
 
         if not suitable_tiles:
@@ -328,8 +328,8 @@ def _get_smoothed_tile_index(
     """
     current_tile = map_data.get_terrain(x, y)
 
-    # Skip flowing water tiles (rivers should stay as rivers)
-    if current_tile.is_flowing_water:
+    # Skip algorithm-based tiles (rivers, lakes should stay as placed by algorithms)
+    if current_tile.placement_method == PlacementMethod.ALGORITHM_BASED:
         return None
 
     # Skip obstacles (non-walkable tiles)

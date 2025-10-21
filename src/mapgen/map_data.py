@@ -2,8 +2,15 @@
 
 from __future__ import annotations
 
+from enum import Enum
 from dataclasses import dataclass
 from pydantic import BaseModel, Field
+
+
+class PlacementMethod(Enum):
+    """How tiles are placed on the map."""
+    TERRAIN_BASED = "terrain_based"  # Assigned based on elevation/climate rules
+    ALGORITHM_BASED = "algorithm_based"  # Assigned by specific algorithms (rivers, lakes, etc.)
 
 
 @dataclass(frozen=True, slots=True)
@@ -197,6 +204,11 @@ class Tile(BaseModel):
         default=False,
         description="Whether this water tile represents flowing water (rivers, streams).",
     )
+    # Placement method
+    placement_method: PlacementMethod = Field(
+        default=PlacementMethod.TERRAIN_BASED,
+        description="How this tile is placed on the map.",
+    )
 
     def __hash__(self) -> int:
         """Return hash based on all tile properties."""
@@ -224,6 +236,7 @@ class Tile(BaseModel):
                 self.is_water,
                 self.is_salt_water,
                 self.is_flowing_water,
+                self.placement_method,
             )
         )
 
