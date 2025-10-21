@@ -7,7 +7,7 @@ from typing import Protocol
 import numpy as np
 
 from .map_data import MapData, PlacementMethod
-from .rivers import generate_rivers
+from .rivers import generate_rivers, RiverGenerator, RiverConfig
 from .hydrology import detect_lakes
 
 
@@ -22,22 +22,6 @@ class GenerationConfig(Protocol):
 class TerrainConfig(GenerationConfig):
     """Configuration for terrain generation."""
     pass
-
-
-class RiverConfig(GenerationConfig):
-    """Configuration for river generation."""
-    
-    def __init__(
-        self,
-        min_river_length: int = 10,
-        max_rivers: int = 5,
-        rainfall_threshold: float = 0.6,
-        elevation_threshold: float = 0.3,
-    ):
-        self.min_river_length = min_river_length
-        self.max_rivers = max_rivers
-        self.rainfall_threshold = rainfall_threshold
-        self.elevation_threshold = elevation_threshold
 
 
 class LakeConfig(GenerationConfig):
@@ -144,34 +128,6 @@ class TerrainGenerator(BaseGenerator):
                     logger.warning(
                         f"No suitable terrain tile found for elevation {map_data.get_elevation(x, y)} at ({x}, {y})"
                     )
-
-
-class RiverGenerator(BaseGenerator):
-    """Generator for river features based on elevation and rainfall."""
-
-    def generate(self, map_data: MapData, config: GenerationConfig | None = None) -> None:
-        """
-        Generate rivers from high elevation, high rainfall areas.
-
-        Rivers flow downhill following paths of least resistance.
-
-        Args:
-            map_data: The map data to modify
-            config: River generation configuration
-        """
-        if config is None:
-            config = RiverConfig()
-        
-        if not isinstance(config, RiverConfig):
-            raise ValueError(f"RiverGenerator requires RiverConfig, got {type(config)}")
-        
-        generate_rivers(
-            map_data=map_data,
-            min_river_length=config.min_river_length,
-            max_rivers=config.max_rivers,
-            rainfall_threshold=config.rainfall_threshold,
-            elevation_threshold=config.elevation_threshold,
-        )
 
 
 class LakeGenerator(BaseGenerator):

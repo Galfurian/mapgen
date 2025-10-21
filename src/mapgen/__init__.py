@@ -4,7 +4,8 @@ import logging
 
 from .map_data import MapData, Position, Settlement, Tile, PlacementMethod
 from .map_generator import MapGenerator
-from .generators import BaseGenerator, GenerationConfig, TerrainGenerator, TerrainConfig, RiverGenerator, RiverConfig, LakeGenerator, LakeConfig, MapBuilder
+from .generators import BaseGenerator, GenerationConfig, TerrainGenerator, TerrainConfig, LakeGenerator, LakeConfig, MapBuilder
+from .rivers import RiverGenerator, RiverConfig
 from .visualization import (
     get_ascii_map,
     plot_base_terrain,
