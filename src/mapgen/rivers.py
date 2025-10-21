@@ -12,13 +12,13 @@ def generate_rivers(
     map_data: MapData,
     min_river_length: int = 10,
     max_rivers: int = 5,
-    rainfall_threshold: float = 0.7,
+    rainfall_threshold: float = 0.6,
+    elevation_threshold: float = 0.3,
 ) -> None:
     """
-    Generate river network based on rainfall and elevation.
+    Generate rivers from high elevation, high rainfall areas.
 
-    Rivers start in high rainfall areas and flow downhill following
-    elevation gradients.
+    Rivers flow downhill following paths of least resistance.
 
     Args:
         map_data (MapData):
@@ -28,15 +28,17 @@ def generate_rivers(
         max_rivers (int):
             Maximum number of rivers to generate.
         rainfall_threshold (float):
-            Minimum rainfall value (0-1) for river sources.
+            Minimum rainfall value for river sources.
+        elevation_threshold (float):
+            Minimum elevation value for river sources.
 
     """
     if not map_data.rainfall_map or not map_data.elevation_map:
         logger.warning("Cannot generate rivers without rainfall and elevation data")
         return
 
-    # Find potential river sources (high rainfall areas)
-    sources = _find_river_sources(map_data, rainfall_threshold)
+    # Find potential river sources
+    sources = _find_river_sources(map_data, rainfall_threshold, elevation_threshold)
 
     if not sources:
         logger.debug("No suitable river sources found")
@@ -45,9 +47,7 @@ def generate_rivers(
     # Limit number of rivers
     sources = sources[:max_rivers]
 
-    logger.debug(
-        f"Generating up to {len(sources)} rivers from {len(_find_river_sources(map_data, 0.0))} potential sources"
-    )
+    logger.debug(f"Generating up to {len(sources)} rivers")
 
     rivers_generated = 0
     for source in sources:
@@ -55,13 +55,9 @@ def generate_rivers(
         if river_path and len(river_path) >= min_river_length:
             _apply_river_to_map(map_data, river_path)
             rivers_generated += 1
-            logger.debug(
-                f"Generated river {rivers_generated} with {len(river_path)} tiles"
-            )
+            logger.debug(f"Generated river {rivers_generated} with {len(river_path)} tiles")
         else:
-            logger.debug(
-                f"River from {source} failed: path_length={len(river_path) if river_path else 0}, min_length={min_river_length}"
-            )
+            logger.debug(f"River from {source} failed: path_length={len(river_path) if river_path else 0}")
 
     logger.debug(f"Generated {rivers_generated} rivers")
 
@@ -69,15 +65,18 @@ def generate_rivers(
 def _find_river_sources(
     map_data: MapData,
     rainfall_threshold: float,
+    elevation_threshold: float,
 ) -> list[Position]:
     """
-    Find potential river sources: prioritize high-elevation lakes, then springs (high rainfall, high elevation, local minima).
+    Find river sources: high elevation, high rainfall areas not on water.
 
     Args:
         map_data (MapData):
             The map data.
         rainfall_threshold (float):
-            Minimum rainfall value for sources.
+            Minimum rainfall for sources.
+        elevation_threshold (float):
+            Minimum elevation for sources.
 
     Returns:
         list[Position]:
@@ -86,78 +85,21 @@ def _find_river_sources(
     """
     sources = []
 
-    # First, add lake centers as sources, prioritizing high-elevation lakes
-    lake_sources = []
-    for lake in map_data.lakes:
-        # Use lake center as source, but only if not coastal and has some elevation
-        if lake.mean_elevation > 0.3:  # Lower threshold for lakes
-            # Check if lake is not adjacent to sea (coastal)
-            center_x, center_y = lake.center
-            is_coastal = False
-            for pos in lake.tiles:
-                neighbors = map_data.get_neighbors(pos.x, pos.y, walkable_only=False)
-                for neighbor in neighbors:
-                    neighbor_tile = map_data.get_terrain(neighbor.x, neighbor.y)
-                    if neighbor_tile.is_water and neighbor_tile.is_salt_water:
-                        is_coastal = True
-                        break
-                if is_coastal:
-                    break
-            
-            if not is_coastal:
-                lake_sources.append((lake.center, lake.mean_elevation, lake.total_accumulation))
-    
-    # Sort lakes by elevation (highest first), then by accumulation
-    lake_sources.sort(key=lambda x: (x[1], x[2]), reverse=True)
-    for center, _, _ in lake_sources:
-        sources.append(Position(int(center[0]), int(center[1])))
-
-    # Then, find spring sources: local minima with high rainfall and elevation
-    spring_sources = []
-    elevations = []
-    rainfall_values = []
-
-    sample_step = 1
-    for y in range(0, map_data.height, sample_step):
-        for x in range(0, map_data.width, sample_step):
+    for y in range(map_data.height):
+        for x in range(map_data.width):
             rainfall = map_data.get_rainfall(x, y)
             elevation = map_data.get_elevation(x, y)
             current_tile = map_data.get_terrain(x, y)
-            
-            # Higher elevation threshold and ensure not on water
-            if (rainfall >= rainfall_threshold and 
-                elevation > 0.5 and  # Lower elevation threshold
-                not current_tile.is_water):  # Not on existing water
-                
-                # Check if local minimum
-                neighbors = map_data.get_neighbors(x, y, walkable_only=False)
-                is_local_min = True
-                for neighbor in neighbors:
-                    if map_data.get_elevation(neighbor.x, neighbor.y) < elevation:
-                        is_local_min = False
-                        break
-                if is_local_min:
-                    spring_sources.append(Position(x, y))
-                    elevations.append(elevation)
-                    rainfall_values.append(rainfall)
 
-    # Sort springs by rainfall and elevation
-    spring_sources.sort(key=lambda pos: (map_data.get_rainfall(pos.x, pos.y), map_data.get_elevation(pos.x, pos.y)), reverse=True)
-    sources.extend(spring_sources)
+            if (rainfall >= rainfall_threshold and
+                elevation >= elevation_threshold and
+                not current_tile.is_water):
+                sources.append(Position(x, y))
 
-    logger.debug(
-        f"Found {len(sources)} river sources: {len(lake_sources)} from lakes, {len(spring_sources)} from springs"
-    )
-    if sources:
-        elevations_all = [map_data.get_elevation(p.x, p.y) for p in sources]
-        rainfall_all = [map_data.get_rainfall(p.x, p.y) for p in sources]
-        logger.debug(
-            f"Source rainfall: min={min(rainfall_all):.3f}, max={max(rainfall_all):.3f}"
-        )
-        logger.debug(
-            f"Source elevation: min={min(elevations_all):.3f}, max={max(elevations_all):.3f}"
-        )
+    # Sort by rainfall and elevation (highest first)
+    sources.sort(key=lambda pos: (map_data.get_rainfall(pos.x, pos.y), map_data.get_elevation(pos.x, pos.y)), reverse=True)
 
+    logger.debug(f"Found {len(sources)} potential river sources")
     return sources
 
 
@@ -167,7 +109,7 @@ def _generate_river_path(
     min_length: int,
 ) -> list[Position] | None:
     """
-    Generate a river path from source to endpoint using downhill flow.
+    Generate a river path from source following downhill gradient with erosion.
 
     Args:
         map_data (MapData):
@@ -186,18 +128,14 @@ def _generate_river_path(
     current = start
     visited = set([start])
 
-    max_iterations = min_length * 3  # Prevent infinite loops
+    max_iterations = min(min_length * 2, 30)  # Hard limit of 30 tiles max per river
     iterations = 0
 
     while iterations < max_iterations:
         iterations += 1
 
-        # Find the lowest elevation neighbor
+        # Find the lowest elevation neighbor (steepest downhill)
         neighbors = map_data.get_neighbors(current.x, current.y, walkable_only=False)
-        if not neighbors:
-            break
-
-        # Filter out visited positions and find lowest elevation
         candidates = []
         for neighbor in neighbors:
             if neighbor not in visited:
@@ -205,24 +143,26 @@ def _generate_river_path(
                 candidates.append((elevation, neighbor))
 
         if not candidates:
+            # No unvisited neighbors, stop
             break
 
         # Sort by elevation (lowest first)
         candidates.sort(key=lambda x: x[0])
 
-        # Choose the lowest elevation neighbor
-        lowest_elevation, next_pos = candidates[0]
-
         # Check if we're still flowing downhill
         current_elevation = map_data.get_elevation(current.x, current.y)
-        if lowest_elevation >= current_elevation:
-            # We've reached a local minimum, stop here
+        lowest_elevation, next_pos = candidates[0]
+
+        # If we can't go downhill, try "erosion" - allow slight uphill if it's the only option
+        # But only if the difference is small (erosion effect) and we're not too far along
+        elevation_diff = lowest_elevation - current_elevation
+        if elevation_diff > 0.01:  # Much more restrictive erosion
             break
 
         # Check if next position is salt water (ocean) - rivers stop at sea
         next_tile = map_data.get_terrain(next_pos.x, next_pos.y)
         if next_tile.is_water and next_tile.is_salt_water:
-            # River has reached the sea, stop here (don't add sea tiles to path)
+            # River has reached the sea, stop
             break
 
         # Add to path and continue
@@ -265,7 +205,7 @@ def _apply_river_to_map(
 
     # Apply river tiles along the path
     for position in river_path:
-        # Only replace non-water tiles with river
+        # Replace any non-salt-water tile with river
         current_tile = map_data.get_terrain(position.x, position.y)
-        if not current_tile.is_water:
+        if not (current_tile.is_water and current_tile.is_salt_water):
             map_data.set_terrain(position.x, position.y, river_tile)

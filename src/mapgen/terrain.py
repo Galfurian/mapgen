@@ -233,6 +233,7 @@ def apply_terrain_features(
         suitable_tiles = [
             tile for tile in sorted_tiles
             if tile.elevation_min <= elevation <= tile.elevation_max
+            and not tile.is_flowing_water  # Don't assign flowing water (rivers) during terrain features
         ]
 
         if not suitable_tiles:
@@ -326,6 +327,10 @@ def _get_smoothed_tile_index(
 
     """
     current_tile = map_data.get_terrain(x, y)
+
+    # Skip flowing water tiles (rivers should stay as rivers)
+    if current_tile.is_flowing_water:
+        return None
 
     # Skip obstacles (non-walkable tiles)
     if not current_tile.walkable:

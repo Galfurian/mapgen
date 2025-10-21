@@ -235,7 +235,20 @@ class MapGenerator:
         features_time = time.time() - features_start
         logger.debug(f"Terrain features applied in {features_time:.3f}s")
 
-        # Apply lakes to the map AFTER terrain features (so they don't get overwritten)
+        if self.enable_rivers:
+            logger.debug("Generating rivers")
+            rivers_start = time.time()
+            rivers.generate_rivers(
+                map_data,
+                min_river_length=15,  # Longer minimum rivers
+                max_rivers=3,  # Fewer rivers
+                rainfall_threshold=0.8,  # Higher rainfall requirement
+                elevation_threshold=0.6,  # Higher elevation requirement
+            )
+            rivers_time = time.time() - rivers_start
+            logger.debug(f"River generation completed in {rivers_time:.3f}s")
+
+        # Apply lakes to the map AFTER terrain features and rivers (so they don't get overwritten)
         MapGenerator._apply_lakes_to_map(map_data)
 
         if self.enable_smoothing:
@@ -248,18 +261,11 @@ class MapGenerator:
             smooth_time = time.time() - smooth_start
             logger.debug(f"Terrain smoothing completed in {smooth_time:.3f}s")
 
-        if self.enable_rivers:
-            logger.debug("Generating rivers")
-            rivers_start = time.time()
-            rivers.generate_rivers(
-                map_data,
-                min_river_length=5,  # Shorter rivers for smaller maps
-                max_rivers=3,  # Fewer rivers
-                rainfall_threshold=0.5,  # Lower threshold
-            )
-            rivers_time = time.time() - rivers_start
-            logger.debug(f"River generation completed in {rivers_time:.3f}s")
-            logger.debug("Smoothing terrain")
+        if self.enable_rivers and not self.enable_smoothing:
+            # If rivers were enabled but smoothing was already done above, no need to smooth again
+            pass
+        elif self.enable_rivers:
+            logger.debug("Smoothing terrain after rivers")
             smooth_start = time.time()
             terrain.smooth_terrain(
                 map_data,
@@ -392,10 +398,10 @@ class MapGenerator:
                 elevation_influence=-0.3,
                 smoothing_weight=1.0,
                 elevation_min=-0.5,
-                elevation_max=0.1,
+                elevation_max=1.0,
                 terrain_priority=1,
                 smoothing_priority=1,
-                symbol="≈",
+                symbol="R",
                 color=(0.1, 0.4, 0.9),
                 resources=["fish"],
                 is_water=True,
@@ -418,7 +424,7 @@ class MapGenerator:
                 elevation_max=0.0,
                 terrain_priority=1,
                 smoothing_priority=2,
-                symbol="~",
+                symbol="L",
                 color=(0.4, 0.9, 0.8),
                 resources=["fish"],
                 is_water=True,
