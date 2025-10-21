@@ -1,9 +1,7 @@
 """River generation module."""
 
-import heapq
 import logging
 import random
-from collections import defaultdict
 
 from .map_data import MapData, Position
 
@@ -41,13 +39,15 @@ def generate_rivers(
     sources = _find_river_sources(map_data, rainfall_threshold)
 
     if not sources:
-        logger.info("No suitable river sources found")
+        logger.debug("No suitable river sources found")
         return
 
     # Limit number of rivers
     sources = sources[:max_rivers]
 
-    logger.info(f"Generating up to {len(sources)} rivers from {len(_find_river_sources(map_data, 0.0))} potential sources")
+    logger.debug(
+        f"Generating up to {len(sources)} rivers from {len(_find_river_sources(map_data, 0.0))} potential sources"
+    )
 
     rivers_generated = 0
     for source in sources:
@@ -55,11 +55,15 @@ def generate_rivers(
         if river_path and len(river_path) >= min_river_length:
             _apply_river_to_map(map_data, river_path)
             rivers_generated += 1
-            logger.debug(f"Generated river {rivers_generated} with {len(river_path)} tiles")
+            logger.debug(
+                f"Generated river {rivers_generated} with {len(river_path)} tiles"
+            )
         else:
-            logger.debug(f"River from {source} failed: path_length={len(river_path) if river_path else 0}, min_length={min_river_length}")
+            logger.debug(
+                f"River from {source} failed: path_length={len(river_path) if river_path else 0}, min_length={min_river_length}"
+            )
 
-    logger.info(f"Generated {rivers_generated} rivers")
+    logger.debug(f"Generated {rivers_generated} rivers")
 
 
 def _find_river_sources(
@@ -81,32 +85,42 @@ def _find_river_sources(
 
     """
     sources = []
+    elevations = []
+    rainfall_values = []
 
-    # Sample points to avoid checking every tile
-    sample_step = max(1, min(map_data.width, map_data.height) // 20)
+    # Sample every tile for more candidates
+    sample_step = 1
 
     for y in range(0, map_data.height, sample_step):
         for x in range(0, map_data.width, sample_step):
             rainfall = map_data.get_rainfall(x, y)
             if rainfall >= rainfall_threshold:
-                # Check if this is a local maximum in rainfall
-                neighbors = map_data.get_neighbors(x, y)
-                is_local_max = True
+                # Optionally: relax local max constraint for more sources
+                # neighbors = map_data.get_neighbors(x, y)
+                # is_local_max = True
+                # for neighbor in neighbors:
+                #     if map_data.get_rainfall(neighbor.x, neighbor.y) > rainfall:
+                #         is_local_max = False
+                #         break
+                # if is_local_max:
+                sources.append(Position(x, y))
+                elevations.append(map_data.get_elevation(x, y))
+                rainfall_values.append(rainfall)
 
-                for neighbor in neighbors:
-                    if map_data.get_rainfall(neighbor.x, neighbor.y) > rainfall:
-                        is_local_max = False
-                        break
-
-                if is_local_max:
-                    sources.append(Position(x, y))
+    logger.debug(
+        f"Found {len(sources)} candidate river sources (rainfall >= {rainfall_threshold})"
+    )
+    if sources:
+        logger.debug(
+            f"Rainfall range of sources: min={min(rainfall_values):.3f}, max={max(rainfall_values):.3f}, mean={sum(rainfall_values)/len(rainfall_values):.3f}"
+        )
+        logger.debug(
+            f"Elevation range of sources: min={min(elevations):.3f}, max={max(elevations):.3f}, mean={sum(elevations)/len(elevations):.3f}"
+        )
 
     # Sort by rainfall (highest first) and add some randomness
     sources.sort(key=lambda pos: map_data.get_rainfall(pos.x, pos.y), reverse=True)
-
-    # Add some randomization to avoid always picking the same sources
-    random.shuffle(sources[:len(sources)//2])
-
+    random.shuffle(sources[: len(sources) // 2])
     return sources
 
 

@@ -1,3 +1,4 @@
+# This file was renamed from full_generation.py to generate.py for clarity and consistency.
 #!/usr/bin/env python3
 """
 Complete MapGen workflow - generates a fantasy map with configurable features and all available visualizations.
@@ -53,8 +54,72 @@ Examples:
         default=42,
         help="Random seed for reproducible generation (default: 42)",
     )
-
-    # Feature control flags
+    parser.add_argument(
+        "--width",
+        type=int,
+        default=150,
+        help="Map width (default: 150)",
+    )
+    parser.add_argument(
+        "--height",
+        type=int,
+        default=100,
+        help="Map height (default: 100)",
+    )
+    parser.add_argument(
+        "--padding",
+        type=int,
+        default=2,
+        help="Padding around edges (default: 2)",
+    )
+    parser.add_argument(
+        "--scale",
+        type=float,
+        default=50.0,
+        help="Noise scale (default: 50.0)",
+    )
+    parser.add_argument(
+        "--octaves",
+        type=int,
+        default=6,
+        help="Number of noise octaves (default: 6)",
+    )
+    parser.add_argument(
+        "--persistence",
+        type=float,
+        default=0.5,
+        help="Noise persistence (default: 0.5)",
+    )
+    parser.add_argument(
+        "--lacunarity",
+        type=float,
+        default=2.0,
+        help="Noise lacunarity (default: 2.0)",
+    )
+    parser.add_argument(
+        "--smoothing-iterations",
+        type=int,
+        default=5,
+        help="Number of smoothing iterations (default: 5)",
+    )
+    parser.add_argument(
+        "--settlement-density",
+        type=float,
+        default=0.002,
+        help="Density of settlements (default: 0.002)",
+    )
+    parser.add_argument(
+        "--min-settlement-radius",
+        type=float,
+        default=0.5,
+        help="Minimum settlement radius (default: 0.5)",
+    )
+    parser.add_argument(
+        "--max-settlement-radius",
+        type=float,
+        default=1.0,
+        help="Maximum settlement radius (default: 1.0)",
+    )
     parser.add_argument(
         "--disable-rainfall",
         action="store_true",
@@ -80,7 +145,6 @@ Examples:
         action="store_true",
         help="Disable river generation",
     )
-
     parser.add_argument(
         "-v",
         "--verbose",
@@ -100,6 +164,17 @@ Examples:
     # Generate the map with configurable features
     logger.info("🗺️ Generating fantasy map...")
     generator = MapGenerator(
+        width=args.width,
+        height=args.height,
+        padding=args.padding,
+        scale=args.scale,
+        octaves=args.octaves,
+        persistence=args.persistence,
+        lacunarity=args.lacunarity,
+        smoothing_iterations=args.smoothing_iterations,
+        settlement_density=args.settlement_density,
+        min_settlement_radius=args.min_settlement_radius,
+        max_settlement_radius=args.max_settlement_radius,
         seed=args.seed,
         enable_rainfall=not args.disable_rainfall,
         enable_smoothing=not args.disable_smoothing,

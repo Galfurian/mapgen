@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-
 from pydantic import BaseModel, Field
 
 
@@ -334,6 +333,25 @@ class Road(BaseModel):
     )
 
 
+class Lake(BaseModel):
+    """
+    Represents a detected lake or basin in the map.
+
+    Attributes:
+        tiles (list[Position]): List of positions in the lake.
+        center (tuple[float, float]): Centroid of the lake (x, y).
+        total_accumulation (float): Total water accumulation in the lake.
+        mean_elevation (float): Mean elevation of the lake.
+        size (int): Number of tiles in the lake.
+    """
+
+    tiles: list[Position]
+    center: tuple[float, float]
+    total_accumulation: float
+    mean_elevation: float
+    size: int
+
+
 class MapData(BaseModel):
     """
     Represents a 2D map grid with terrain data.
@@ -371,6 +389,7 @@ class MapData(BaseModel):
         default_factory=list,
         description="2D rainfall map for hydrological features.",
     )
+
     settlements: list[Settlement] = Field(
         default_factory=list,
         description="List of settlements on the map.",
@@ -378,6 +397,14 @@ class MapData(BaseModel):
     roads: list[Road] = Field(
         default_factory=list,
         description="List of roads connecting settlements.",
+    )
+    accumulation_map: list[list[float]] = Field(
+        default_factory=list,
+        description="2D water accumulation (runoff) map for hydrological modeling.",
+    )
+    lakes: list[Lake] = Field(
+        default_factory=list,
+        description="List of detected lakes/basins in the map.",
     )
 
     def _get_tile_index(self, tile: Tile) -> int:

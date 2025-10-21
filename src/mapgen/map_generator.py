@@ -1,3 +1,4 @@
+from . import hydrology
 """Main map generator module."""
 
 import logging
@@ -198,6 +199,22 @@ class MapGenerator:
             )
             rainfall_time = time.time() - rainfall_start
             logger.debug(f"Rainfall map generation completed in {rainfall_time:.3f}s")
+
+        # Hydrology: compute accumulation (runoff) map
+        logger.debug("Computing water accumulation (runoff) map")
+        elevation = np.array(map_data.elevation_map)
+        rainfall = np.array(map_data.rainfall_map)
+        accumulation = hydrology.compute_accumulation(elevation, rainfall)
+        map_data.accumulation_map = accumulation.tolist()
+        logger.debug(
+            f"Accumulation stats: min={accumulation.min():.3f}, max={accumulation.max():.3f}, mean={accumulation.mean():.3f}"
+        )
+
+        # Detect lakes from accumulation
+        logger.debug("Detecting lakes/basins from accumulation map")
+        lakes = hydrology.detect_lakes(elevation, accumulation)
+        map_data.lakes = lakes
+        logger.debug(f"Detected {len(lakes)} lakes")
 
         logger.debug("Applying terrain features")
         features_start = time.time()
