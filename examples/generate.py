@@ -12,7 +12,7 @@ import logging
 from pathlib import Path
 
 from mapgen import (
-    MapGenerator,
+    generate_map,
     plot_elevation_map,
     plot_map,
     plot_rainfall_map,
@@ -163,7 +163,7 @@ Examples:
 
     # Generate the map with configurable features
     logger.info("🗺️ Generating fantasy map...")
-    generator = MapGenerator(
+    map_data = generate_map(
         width=args.width,
         height=args.height,
         padding=args.padding,
@@ -182,8 +182,6 @@ Examples:
         enable_roads=not args.disable_roads,
         enable_rivers=not args.disable_rivers,
     )
-
-    map_data = generator.generate()
 
     if map_data is None:
         logger.error("❌ Map generation failed!")

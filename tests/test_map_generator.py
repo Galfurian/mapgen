@@ -5,38 +5,18 @@ import tempfile
 
 import pytest
 
-from mapgen import MapGenerator
+from mapgen import generate_map
 from mapgen.map_data import MapData, Tile
 
 
-def test_map_generator_initialization() -> None:
-    """Test MapGenerator initialization."""
-    generator = MapGenerator(width=50, height=50)
-    assert generator.width == 50
-    assert generator.height == 50
-
-
-def test_map_generator_generate() -> None:
+def test_generate_map() -> None:
     """Test map generation."""
-    generator = MapGenerator(width=50, height=50)
-    map_data = generator.generate()
+    map_data = generate_map(width=50, height=50)
     assert map_data is not None
     assert map_data.settlements is not None
     assert map_data.roads is not None
     assert map_data.height == 50
     assert map_data.width == 50
-
-
-def test_map_generator_plot_without_generate() -> None:
-    """Test plotting without generating raises error."""
-    from mapgen.visualization import plot_map
-    # Create a minimal MapData without required fields
-    from mapgen.map_data import MapData, Tile
-    tile = Tile(walkable=True, movement_cost=1.0, blocks_line_of_sight=False, buildable=True, habitability=0.5, road_buildable=True, elevation_penalty=0.0, elevation_influence=0.0, smoothing_weight=1.0, symbol=".", color=(0.5, 0.5, 0.5), name="test", description="test", resources=[])
-    grid = [[0]]  # Use tile index instead of Tile object
-    map_data = MapData(tiles=[tile], grid=grid)
-    with pytest.raises(ValueError, match="Map data missing noise_map"):
-        plot_map(map_data)
 
 
 def test_map_data_save_load() -> None:

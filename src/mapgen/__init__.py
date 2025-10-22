@@ -3,9 +3,7 @@
 import logging
 
 from .map_data import MapData, Position, Settlement, Tile, PlacementMethod
-from .map_generator import MapGenerator
-from .generators import BaseGenerator, GenerationConfig, TerrainGenerator, TerrainConfig, LakeGenerator, LakeConfig, MapBuilder
-from .rivers import RiverGenerator, RiverConfig
+from .map_generator import generate_map, get_default_tiles
 from .visualization import (
     get_ascii_map,
     plot_base_terrain,
@@ -36,20 +34,11 @@ if not logger.handlers:
     logger.addHandler(console_handler)
 
 __all__ = [
-    "BaseGenerator",
-    "GenerationConfig",
-    "LakeConfig",
-    "LakeGenerator",
-    "MapBuilder",
     "MapData",
-    "MapGenerator",
+    "generate_map",
     "PlacementMethod",
     "Position",
-    "RiverConfig",
-    "RiverGenerator",
     "Settlement",
-    "TerrainConfig",
-    "TerrainGenerator",
     "Tile",
     "get_ascii_map",
     "logger",
