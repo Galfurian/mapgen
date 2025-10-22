@@ -1,5 +1,5 @@
 """
-Hydrology utilities for mapgen: rainfall generation, accumulation (runoff) computation and lake/basin detection.
+Hydrology utilities for mapgen: rainfall generation and accumulation (runoff) computation.
 """
 
 import logging
@@ -8,7 +8,7 @@ import random
 import noise
 import numpy as np
 
-from .map_data import Lake, MapData, Position
+from .map_data import MapData, Position
 
 logger = logging.getLogger(__name__)
 
@@ -148,88 +148,6 @@ def generate_rainfall_map(
     rainfall_map = np.round(rainfall_map, decimals=4)
 
     map_data.rainfall_map = rainfall_map.tolist()
-
-
-def detect_lakes(
-    elevation: np.ndarray,
-    accumulation: np.ndarray,
-    min_accumulation: float = 10.0,
-    min_lake_size: int = 5,
-    max_elevation: float = -0.1,
-) -> list[Lake]:
-    """
-    Detect lakes in clear depressions: low elevation areas surrounded by higher ground.
-
-    Args:
-        elevation (np.ndarray): 2D elevation array.
-        accumulation (np.ndarray): 2D accumulation array.
-        min_accumulation (float): Minimum accumulation to consider a lake tile.
-        min_lake_size (int): Minimum number of tiles for a valid lake.
-        max_elevation (float): Maximum elevation for a tile to be considered part of a lake.
-
-    Returns:
-        list[Lake]: List of detected lakes.
-    """
-    height, width = elevation.shape
-    visited = np.zeros_like(elevation, dtype=bool)
-    lakes = []
-
-    for y in range(height):
-        for x in range(width):
-            if visited[y, x]:
-                continue
-
-            # Check if this could be a lake seed
-            if (elevation[y, x] <= max_elevation and
-                accumulation[y, x] >= min_accumulation):
-
-                # Check if this position is in a depression (surrounded by higher elevation)
-                neighbors = []
-                for dy in [-1, 0, 1]:
-                    for dx in [-1, 0, 1]:
-                        if dx == 0 and dy == 0:
-                            continue
-                        ny, nx = y + dy, x + dx
-                        if 0 <= ny < height and 0 <= nx < width:
-                            neighbors.append(elevation[ny, nx])
-
-                if neighbors and min(neighbors) > elevation[y, x]:
-                    # This is a depression, flood fill to find the full lake
-                    region = []
-                    stack = [(x, y)]
-                    visited[y, x] = True
-                    region_elevations = [elevation[y, x]]
-
-                    while stack:
-                        cx, cy = stack.pop()
-                        region.append(Position(cx, cy))
-
-                        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                            nx, ny = cx + dx, cy + dy
-                            if (0 <= nx < width and 0 <= ny < height and
-                                not visited[ny, nx] and
-                                elevation[ny, nx] <= max_elevation and
-                                accumulation[ny, nx] >= min_accumulation):
-                                visited[ny, nx] = True
-                                stack.append((nx, ny))
-                                region_elevations.append(elevation[ny, nx])
-
-                    if len(region) >= min_lake_size:
-                        total_acc = float(np.sum([accumulation[p.y, p.x] for p in region]))
-                        mean_elev = float(np.mean(region_elevations))
-                        center_yx = np.array([(p.y, p.x) for p in region]).mean(axis=0)
-                        center = (float(center_yx[1]), float(center_yx[0]))
-
-                        lake = Lake(
-                            tiles=region,
-                            center=center,
-                            total_accumulation=total_acc,
-                            mean_elevation=mean_elev,
-                            size=len(region),
-                        )
-                        lakes.append(lake)
-
-    return lakes
 
 
 def compute_accumulation(elevation: np.ndarray, rainfall: np.ndarray) -> np.ndarray:

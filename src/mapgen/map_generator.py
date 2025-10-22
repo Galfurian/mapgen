@@ -173,12 +173,6 @@ def generate_map(
         f"Accumulation stats: min={accumulation.min():.3f}, max={accumulation.max():.3f}, mean={accumulation.mean():.3f}"
     )
 
-    # Detect lakes from accumulation
-    logger.debug("Detecting lakes/basins from accumulation map")
-    lakes = hydrology.detect_lakes(elevation, accumulation)
-    map_data.lakes = lakes
-    logger.debug(f"Detected {len(lakes)} lakes")
-
     logger.debug("Applying terrain features")
     features_start = time.time()
     terrain.apply_terrain_features(map_data)
@@ -197,9 +191,6 @@ def generate_map(
         )
         rivers_time = time.time() - rivers_start
         logger.debug(f"River generation completed in {rivers_time:.3f}s")
-
-    # Apply lakes to the map AFTER terrain features and rivers (so they don't get overwritten)
-    _apply_lakes_to_map(map_data)
 
     if enable_smoothing:
         logger.debug("Smoothing terrain")
@@ -249,34 +240,6 @@ def generate_map(
     logger.info(f"Map generation completed successfully in {total_time:.3f}s")
 
     return map_data
-
-
-def _apply_lakes_to_map(map_data: MapData) -> None:
-    """
-    Apply lake tiles to the map for detected lakes.
-
-    Args:
-        map_data (MapData): The map data to modify.
-    """
-    # Find lake tiles (fresh water, not flowing)
-    lake_tiles = map_data.find_tiles_by_properties(
-        is_water=True, is_salt_water=False, is_flowing_water=False
-    )
-
-    if not lake_tiles:
-        logger.warning("No lake tiles found in tile catalog")
-        return
-
-    # Use the first matching lake tile
-    lake_tile = lake_tiles[0]
-
-    # Apply lake tiles for each lake
-    for lake in map_data.lakes:
-        for position in lake.tiles:
-            # Set to lake if not already water
-            current_tile = map_data.get_terrain(position.x, position.y)
-            if not current_tile.is_water:
-                map_data.set_terrain(position.x, position.y, lake_tile)
 
 
 def get_default_tiles() -> list[Tile]:
@@ -394,32 +357,6 @@ def get_default_tiles() -> list[Tile]:
             is_water=True,
             is_salt_water=False,
             is_flowing_water=True,
-            placement_method=PlacementMethod.ALGORITHM_BASED,
-        )
-    )
-    tiles.append(
-        Tile(
-            name="lake",
-            description="Freshwater lake",
-            walkable=True,
-            movement_cost=2.0,
-            blocks_line_of_sight=False,
-            buildable=False,
-            habitability=0.0,
-            road_buildable=False,
-            elevation_penalty=0.0,
-            elevation_influence=-0.4,
-            smoothing_weight=1.0,
-            elevation_min=-0.4,
-            elevation_max=0.0,
-            terrain_priority=1,
-            smoothing_priority=2,
-            symbol="L",
-            color=(0.4, 0.9, 0.8),
-            resources=["fish"],
-            is_water=True,
-            is_salt_water=False,
-            is_flowing_water=False,
             placement_method=PlacementMethod.ALGORITHM_BASED,
         )
     )
