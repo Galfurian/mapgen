@@ -181,6 +181,7 @@ Examples:
         enable_settlements=not args.disable_settlements,
         enable_roads=not args.disable_roads,
         enable_rivers=not args.disable_rivers,
+        sea_level=-0.5,
     )
 
     if map_data is None:

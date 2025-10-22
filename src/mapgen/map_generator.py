@@ -43,6 +43,7 @@ def generate_map(
     max_rivers: int = 3,
     rainfall_threshold: float = 0.8,
     elevation_threshold: float = 0.6,
+    sea_level: float = 0.0,
 ) -> MapData:
     """
     Generate a complete procedural fantasy map.
@@ -72,6 +73,7 @@ def generate_map(
         max_rivers (int): Maximum number of rivers to generate.
         rainfall_threshold (float): Minimum rainfall for river sources.
         elevation_threshold (float): Minimum elevation for river sources.
+        sea_level (float): Elevation level for sea (controls land/sea ratio, -1.0 to 1.0).
 
     Returns:
         MapData: The generated map data.
@@ -95,15 +97,27 @@ def generate_map(
     if lacunarity <= 1.0:
         raise ValueError(f"Lacunarity must be greater than 1, got {lacunarity}")
     if smoothing_iterations < 0:
-        raise ValueError(f"Smoothing iterations must be non-negative, got {smoothing_iterations}")
+        raise ValueError(
+            f"Smoothing iterations must be non-negative, got {smoothing_iterations}"
+        )
     if not (0.0 <= settlement_density <= 1.0):
-        raise ValueError(f"Settlement density must be between 0 and 1, got {settlement_density}")
+        raise ValueError(
+            f"Settlement density must be between 0 and 1, got {settlement_density}"
+        )
     if min_settlement_radius <= 0:
-        raise ValueError(f"Minimum settlement radius must be positive, got {min_settlement_radius}")
+        raise ValueError(
+            f"Minimum settlement radius must be positive, got {min_settlement_radius}"
+        )
     if max_settlement_radius <= 0:
-        raise ValueError(f"Maximum settlement radius must be positive, got {max_settlement_radius}")
+        raise ValueError(
+            f"Maximum settlement radius must be positive, got {max_settlement_radius}"
+        )
     if min_settlement_radius > max_settlement_radius:
-        raise ValueError(f"Minimum settlement radius ({min_settlement_radius}) cannot be greater than maximum ({max_settlement_radius})")
+        raise ValueError(
+            f"Minimum settlement radius ({min_settlement_radius}) cannot be greater than maximum ({max_settlement_radius})"
+        )
+    if not (-1.0 <= sea_level <= 1.0):
+        raise ValueError(f"Sea level must be between -1 and 1, got {sea_level}")
 
     start_time = time.time()
     logger.info(f"Starting map generation: {width}*{height}")
@@ -133,6 +147,7 @@ def generate_map(
         octaves,
         persistence,
         lacunarity,
+        sea_level,
     )
     terrain_time = time.time() - terrain_start
     logger.debug(f"Noise map generation completed in {terrain_time:.3f}s")
@@ -140,7 +155,7 @@ def generate_map(
     if enable_rainfall:
         logger.debug("Generating rainfall map")
         rainfall_start = time.time()
-        terrain.generate_rainfall_map(
+        hydrology.generate_rainfall_map(
             map_data,
             width,
             height,
@@ -296,54 +311,6 @@ def get_default_tiles() -> list[Tile]:
             is_flowing_water=False,
         ),
         Tile(
-            name="river",
-            description="Flowing river water",
-            walkable=True,
-            movement_cost=1.5,
-            blocks_line_of_sight=False,
-            buildable=False,
-            habitability=0.0,
-            road_buildable=False,
-            elevation_penalty=0.0,
-            elevation_influence=-0.3,
-            smoothing_weight=1.0,
-            elevation_min=-0.5,
-            elevation_max=1.0,
-            terrain_priority=1,
-            smoothing_priority=1,
-            symbol="R",
-            color=(0.1, 0.4, 0.9),
-            resources=["fish"],
-            is_water=True,
-            is_salt_water=False,
-            is_flowing_water=True,
-            placement_method=PlacementMethod.ALGORITHM_BASED,
-        ),
-        Tile(
-            name="lake",
-            description="Freshwater lake",
-            walkable=True,
-            movement_cost=2.0,
-            blocks_line_of_sight=False,
-            buildable=False,
-            habitability=0.0,
-            road_buildable=False,
-            elevation_penalty=0.0,
-            elevation_influence=-0.4,
-            smoothing_weight=1.0,
-            elevation_min=-0.4,
-            elevation_max=0.0,
-            terrain_priority=1,
-            smoothing_priority=2,
-            symbol="L",
-            color=(0.4, 0.9, 0.8),
-            resources=["fish"],
-            is_water=True,
-            is_salt_water=False,
-            is_flowing_water=False,
-            placement_method=PlacementMethod.ALGORITHM_BASED,
-        ),
-        Tile(
             name="plains",
             description="Open plains",
             walkable=True,
@@ -355,8 +322,8 @@ def get_default_tiles() -> list[Tile]:
             elevation_penalty=0.0,
             elevation_influence=0.0,
             smoothing_weight=1.0,
-            elevation_min=-0.2,
-            elevation_max=+0.2,
+            elevation_min=0.0,
+            elevation_max=0.2,
             terrain_priority=2,
             smoothing_priority=0,
             symbol=".",
@@ -404,4 +371,56 @@ def get_default_tiles() -> list[Tile]:
             resources=["stone", "ore"],
         ),
     ]
+    tiles.append(
+        Tile(
+            name="river",
+            description="Flowing river water",
+            walkable=True,
+            movement_cost=1.5,
+            blocks_line_of_sight=False,
+            buildable=False,
+            habitability=0.0,
+            road_buildable=False,
+            elevation_penalty=0.0,
+            elevation_influence=-0.3,
+            smoothing_weight=1.0,
+            elevation_min=-0.5,
+            elevation_max=1.0,
+            terrain_priority=1,
+            smoothing_priority=1,
+            symbol="R",
+            color=(0.1, 0.4, 0.9),
+            resources=["fish"],
+            is_water=True,
+            is_salt_water=False,
+            is_flowing_water=True,
+            placement_method=PlacementMethod.ALGORITHM_BASED,
+        )
+    )
+    tiles.append(
+        Tile(
+            name="lake",
+            description="Freshwater lake",
+            walkable=True,
+            movement_cost=2.0,
+            blocks_line_of_sight=False,
+            buildable=False,
+            habitability=0.0,
+            road_buildable=False,
+            elevation_penalty=0.0,
+            elevation_influence=-0.4,
+            smoothing_weight=1.0,
+            elevation_min=-0.4,
+            elevation_max=0.0,
+            terrain_priority=1,
+            smoothing_priority=2,
+            symbol="L",
+            color=(0.4, 0.9, 0.8),
+            resources=["fish"],
+            is_water=True,
+            is_salt_water=False,
+            is_flowing_water=False,
+            placement_method=PlacementMethod.ALGORITHM_BASED,
+        )
+    )
     return tiles
