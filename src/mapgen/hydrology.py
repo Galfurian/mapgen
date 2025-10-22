@@ -9,6 +9,7 @@ import noise
 import numpy as np
 
 from .map_data import MapData, Position
+from .utils import generate_noise_grid
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,10 @@ def generate_rainfall_map(
     temperature_scale: float = 100.0,
     humidity_scale: float = 80.0,
     elevation_scale: float = 150.0,
+    temp_weight: float = 0.3,
+    humidity_weight: float = 0.4,
+    orographic_weight: float = 0.3,
+    variation_strength: float = 0.1,
 ) -> None:
     """
     Generate a rainfall map based on climate and elevation factors.
@@ -42,6 +47,14 @@ def generate_rainfall_map(
             Scale for humidity-based rainfall patterns.
         elevation_scale (float):
             Scale for elevation-based orographic effects.
+        temp_weight (float):
+            Weight for temperature factor in rainfall calculation.
+        humidity_weight (float):
+            Weight for humidity factor in rainfall calculation.
+        orographic_weight (float):
+            Weight for orographic factor in rainfall calculation.
+        variation_strength (float):
+            Strength of fine-scale variation added to the map.
 
     """
     # Check if we have flowing water tiles for river generation
@@ -53,71 +66,82 @@ def generate_rainfall_map(
         )
         return
 
-    # Generate base climate patterns
-    temp_offset_x = random.uniform(0, 10000)
-    temp_offset_y = random.uniform(0, 10000)
-    humid_offset_x = random.uniform(0, 10000)
-    humid_offset_y = random.uniform(0, 10000)
-    elev_offset_x = random.uniform(0, 10000)
-    elev_offset_y = random.uniform(0, 10000)
+    # Generate noise grids for different climate factors
+    # Temperature noise: Creates large-scale latitudinal climate zones (poles vs equator)
+    # - scale: 100.0 (continental-scale patterns, similar to terrain)
+    # - octaves: 4 (moderate detail for climate zones)
+    # - persistence: 0.6 (medium detail retention across octaves)
+    # - lacunarity: 2.0 (standard frequency scaling)
+    # - base: 1 (unique seed for temperature patterns)
+    temp_noise = generate_noise_grid(
+        width=width,
+        height=height,
+        scale=temperature_scale,
+        octaves=4,
+        persistence=0.6,
+        lacunarity=2.0,
+        base=1,
+    )
 
-    rainfall_map = np.zeros((height, width))
+    # Humidity noise: Creates regional moisture patterns (coastal vs inland)
+    # - scale: 80.0 (slightly smaller than temperature for more variation)
+    # - octaves: 5 (higher detail since humidity varies more locally)
+    # - persistence: 0.5 (lower persistence for more variation between levels)
+    # - lacunarity: 2.2 (slightly higher for different visual patterns)
+    # - base: 2 (different seed from temperature)
+    humid_noise = generate_noise_grid(
+        width=width,
+        height=height,
+        scale=humidity_scale,
+        octaves=5,
+        persistence=0.5,
+        lacunarity=2.2,
+        base=2,
+    )
 
-    for y in range(height):
-        for x in range(width):
-            # Temperature factor - moderate temperatures get more rain
-            temp_noise = noise.pnoise2(
-                (x / temperature_scale) + temp_offset_x,
-                (y / temperature_scale) + temp_offset_y,
-                octaves=4,
-                persistence=0.6,
-                lacunarity=2.0,
-                repeatx=width,
-                repeaty=height,
-                base=1,
-            )
-            # Convert to temperature-like range and calculate rainfall potential
-            temperature = temp_noise * 1.5  # -1.5 to 1.5 range
-            temp_factor = 1.0 - abs(temperature) * 0.5  # Peak at moderate temps
+    # Orographic noise: Creates broad mountain/valley rainfall modification
+    # - scale: 150.0 (larger scale for broader elevation effects)
+    # - octaves: 3 (fewer octaves for smoother, consistent patterns)
+    # - persistence: 0.7 (higher persistence maintains elevation influence)
+    # - lacunarity: 1.8 (lower value for different frequency relationships)
+    # - base: 3 (different seed from other climate factors)
+    elev_noise = generate_noise_grid(
+        width=width,
+        height=height,
+        scale=elevation_scale,
+        octaves=3,
+        persistence=0.7,
+        lacunarity=1.8,
+        base=3,
+    )
 
-            # Humidity factor - direct correlation
-            humidity_noise = noise.pnoise2(
-                (x / humidity_scale) + humid_offset_x,
-                (y / humidity_scale) + humid_offset_y,
-                octaves=5,
-                persistence=0.5,
-                lacunarity=2.2,
-                repeatx=width,
-                repeaty=height,
-                base=2,
-            )
-            humidity_factor = (humidity_noise + 1.0) / 2.0  # 0 to 1 range
+    # Fine-scale variation: Adds subtle local weather randomness
+    # - scale: 20.0 (small scale for local weather variation)
+    # - octaves: 2 (minimal octaves for subtle effects)
+    # - persistence: 0.3 (low persistence so it doesn't dominate main patterns)
+    # - lacunarity: 2.5 (higher value for different small-scale patterns)
+    # - base: 4 (different seed from other factors)
+    variation_noise = generate_noise_grid(
+        width=width,
+        height=height,
+        scale=20.0,
+        octaves=2,
+        persistence=0.3,
+        lacunarity=2.5,
+        base=4,
+    )
 
-            # Orographic factor - elevation gradients create rain shadows
-            elev_noise = noise.pnoise2(
-                (x / elevation_scale) + elev_offset_x,
-                (y / elevation_scale) + elev_offset_y,
-                octaves=3,
-                persistence=0.7,
-                lacunarity=1.8,
-                repeatx=width,
-                repeaty=height,
-                base=3,
-            )
+    # Compute factors using vectorized operations
+    temp_factor = _compute_temperature_factor(temp_noise)
+    humidity_factor = _compute_humidity_factor(humid_noise)
+    orographic_factor = _compute_orographic_factor(elev_noise, map_data, width, height)
 
-            # Calculate elevation gradient (simple approximation)
-            elevation = map_data.get_elevation(x, y) if map_data.elevation_map else 0.0
-            # Higher elevations and steeper gradients get more rain
-            orographic_factor = max(0.3, elevation * 0.7 + abs(elev_noise) * 0.3)
-
-            # Combine factors
-            rainfall = (
-                temp_factor * 0.3 +
-                humidity_factor * 0.4 +
-                orographic_factor * 0.3
-            )
-
-            rainfall_map[y, x] = rainfall
+    # Combine factors with weights
+    rainfall_map = (
+        temp_factor * temp_weight
+        + humidity_factor * humidity_weight
+        + orographic_factor * orographic_weight
+    )
 
     # Normalize to 0-1 range
     min_val = np.min(rainfall_map)
@@ -125,29 +149,44 @@ def generate_rainfall_map(
     if max_val > min_val:
         rainfall_map = (rainfall_map - min_val) / (max_val - min_val)
 
-    # Add some fine-scale variation
-    variation_offset_x = random.uniform(0, 10000)
-    variation_offset_y = random.uniform(0, 10000)
-
-    for y in range(height):
-        for x in range(width):
-            variation = noise.pnoise2(
-                (x / 20.0) + variation_offset_x,
-                (y / 20.0) + variation_offset_y,
-                octaves=2,
-                persistence=0.3,
-                lacunarity=2.5,
-                repeatx=width,
-                repeaty=height,
-                base=4,
-            )
-            rainfall_map[y, x] += variation * 0.1
-            rainfall_map[y, x] = np.clip(rainfall_map[y, x], 0.0, 1.0)
+    # Add fine-scale variation
+    rainfall_map += variation_noise * variation_strength
+    rainfall_map = np.clip(rainfall_map, 0.0, 1.0)
 
     # Round to 4 decimal places
     rainfall_map = np.round(rainfall_map, decimals=4)
 
     map_data.rainfall_map = rainfall_map.tolist()
+
+
+def _compute_temperature_factor(temp_noise: np.ndarray) -> np.ndarray:
+    """Compute temperature-based rainfall factor."""
+    temperature = temp_noise * 1.5
+    return 1.0 - np.abs(temperature) * 0.5
+
+
+def _compute_humidity_factor(humid_noise: np.ndarray) -> np.ndarray:
+    """Compute humidity-based rainfall factor."""
+    return (humid_noise + 1.0) / 2.0
+
+
+def _compute_orographic_factor(
+    elev_noise: np.ndarray,
+    map_data: MapData,
+    width: int,
+    height: int,
+) -> np.ndarray:
+    """Compute orographic rainfall factor based on elevation."""
+    elevation = np.array(
+        [
+            [
+                map_data.get_elevation(x, y) if map_data.elevation_map else 0.0
+                for x in range(width)
+            ]
+            for y in range(height)
+        ]
+    )
+    return np.maximum(0.3, elevation * 0.7 + np.abs(elev_noise) * 0.3)
 
 
 def compute_accumulation(elevation: np.ndarray, rainfall: np.ndarray) -> np.ndarray:

@@ -121,6 +121,36 @@ Examples:
         help="Maximum settlement radius (default: 1.0)",
     )
     parser.add_argument(
+        "--sea-level",
+        type=float,
+        default=-0.5,
+        help="Sea level for land/sea ratio (default: -0.5)",
+    )
+    parser.add_argument(
+        "--rainfall-temp-weight",
+        type=float,
+        default=0.3,
+        help="Weight for temperature influence on rainfall (default: 0.3)",
+    )
+    parser.add_argument(
+        "--rainfall-humidity-weight",
+        type=float,
+        default=0.4,
+        help="Weight for humidity influence on rainfall (default: 0.4)",
+    )
+    parser.add_argument(
+        "--rainfall-orographic-weight",
+        type=float,
+        default=0.3,
+        help="Weight for orographic influence on rainfall (default: 0.3)",
+    )
+    parser.add_argument(
+        "--rainfall-variation-strength",
+        type=float,
+        default=0.1,
+        help="Strength of random variation in rainfall (default: 0.1)",
+    )
+    parser.add_argument(
         "--disable-rainfall",
         action="store_true",
         help="Disable rainfall generation",
@@ -163,6 +193,7 @@ Examples:
 
     # Generate the map with configurable features
     logger.info("🗺️ Generating fantasy map...")
+
     map_data = generate_map(
         width=args.width,
         height=args.height,
@@ -181,7 +212,11 @@ Examples:
         enable_settlements=not args.disable_settlements,
         enable_roads=not args.disable_roads,
         enable_rivers=not args.disable_rivers,
-        sea_level=-0.5,
+        sea_level=args.sea_level,
+        rainfall_temp_weight=args.rainfall_temp_weight,
+        rainfall_humidity_weight=args.rainfall_humidity_weight,
+        rainfall_orographic_weight=args.rainfall_orographic_weight,
+        rainfall_variation_strength=args.rainfall_variation_strength,
     )
 
     if map_data is None:
@@ -209,56 +244,56 @@ Examples:
     dpi = 300
     generated_files = 0
 
-    # 1. Main terrain map (always generated)
-    logger.info("🖼️ Generating main terrain map...")
-    fig = plot_map(map_data)
-    main_map_path = output_dir / f"terrain_map_seed_{args.seed}.png"
-    fig.savefig(main_map_path, dpi=dpi, bbox_inches="tight", facecolor="white")
-    fig.clear()
-    logger.info(f"💾 Main map saved: {main_map_path}")
-    generated_files += 1
-
-    # 2. Elevation map (always available since elevation_map is always initialized)
+    # Elevation map (always available since elevation_map is always initialized)
     if map_data.elevation_map:
         logger.info("📊 Generating elevation map...")
         fig = plot_elevation_map(map_data, title=f"Elevation Map (Seed: {args.seed})")
-        elevation_path = output_dir / f"elevation_map_seed_{args.seed}.png"
+        elevation_path = output_dir / f"seed_{args.seed}_layer_elevation.png"
         fig.savefig(elevation_path, dpi=dpi, bbox_inches="tight")
         fig.clear()
         logger.info(f"💾 Elevation map saved: {elevation_path}")
         generated_files += 1
 
-    # 3. Rainfall map (available if rainfall was generated)
+    # Rainfall map (available if rainfall was generated)
     if map_data.rainfall_map:
         logger.info("🌧️ Generating rainfall map...")
         fig = plot_rainfall_map(map_data, title=f"Rainfall Map (Seed: {args.seed})")
-        rainfall_path = output_dir / f"rainfall_map_seed_{args.seed}.png"
+        rainfall_path = output_dir / f"seed_{args.seed}_layer_rainfall.png"
         fig.savefig(rainfall_path, dpi=dpi, bbox_inches="tight")
         fig.clear()
         logger.info(f"💾 Rainfall map saved: {rainfall_path}")
         generated_files += 1
 
-    # 4. 3D visualization (always available)
+    # Main terrain map (always generated)
+    logger.info("🖼️ Generating main terrain map...")
+    fig = plot_map(map_data)
+    main_map_path = output_dir / f"seed_{args.seed}_map.png"
+    fig.savefig(main_map_path, dpi=dpi, bbox_inches="tight", facecolor="white")
+    fig.clear()
+    logger.info(f"💾 Main map saved: {main_map_path}")
+    generated_files += 1
+
+    # 3D visualization
     logger.info("🎲 Generating 3D visualization...")
     fig = plot_3d_map(map_data)
-    map_3d_path = output_dir / f"terrain_3d_seed_{args.seed}.png"
+    map_3d_path = output_dir / f"seed_{args.seed}_map_3d.png"
     fig.savefig(map_3d_path, dpi=dpi, bbox_inches="tight")
     fig.clear()
     logger.info(f"💾 3D map saved: {map_3d_path}")
     generated_files += 1
 
-    # 5. ASCII representation (always available)
+    # ASCII representation
     logger.info("📄 Generating ASCII map...")
     ascii_map = get_ascii_map(map_data)
-    ascii_path = output_dir / f"terrain_ascii_seed_{args.seed}.txt"
+    ascii_path = output_dir / f"seed_{args.seed}_map_ascii.txt"
     with open(ascii_path, "w") as f:
         f.write(ascii_map)
     logger.info(f"💾 ASCII map saved: {ascii_path}")
     generated_files += 1
 
-    # 6. JSON data (always available)
+    # JSON data
     logger.info("📦 Saving map data as JSON...")
-    json_path = output_dir / f"map_data_seed_{args.seed}.json"
+    json_path = output_dir / f"seed_{args.seed}_map_data.json"
     map_data.save_to_json(str(json_path))
     logger.info(f"💾 JSON data saved: {json_path}")
     generated_files += 1

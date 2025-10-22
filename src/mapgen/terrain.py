@@ -1,5 +1,3 @@
-"""Terrain generation module for procedural maps."""
-
 import logging
 import random
 
@@ -7,6 +5,7 @@ import noise
 import numpy as np
 
 from .map_data import MapData, PlacementMethod
+from .utils import generate_noise_grid
 
 logger = logging.getLogger(__name__)
 
@@ -41,23 +40,15 @@ def generate_noise_map(
             The sea level elevation (controls land/sea ratio).
 
     """
-    offset_x = random.uniform(0, 10000)
-    offset_y = random.uniform(0, 10000)
-
-    noise_map = np.zeros((height, width))
-
-    for y in range(height):
-        for x in range(width):
-            noise_map[y, x] = noise.pnoise2(
-                (x / scale) + offset_x,
-                (y / scale) + offset_y,
-                octaves=octaves,
-                persistence=persistence,
-                lacunarity=lacunarity,
-                repeatx=width,
-                repeaty=height,
-                base=0,
-            )
+    noise_map = generate_noise_grid(
+        width=width,
+        height=height,
+        scale=scale,
+        octaves=octaves,
+        persistence=persistence,
+        lacunarity=lacunarity,
+        base=0,
+    )
 
     # Normalize to full -1 to 1 range
     min_val = np.min(noise_map)
@@ -75,7 +66,9 @@ def generate_noise_map(
             sea_min = np.min(shifted[sea_mask])
             sea_max = 0.0
             if sea_min != sea_max:
-                shifted[sea_mask] = -1 + (shifted[sea_mask] - sea_min) / (sea_max - sea_min)
+                shifted[sea_mask] = -1 + (shifted[sea_mask] - sea_min) / (
+                    sea_max - sea_min
+                )
             else:
                 shifted[sea_mask] = -1
 
@@ -83,7 +76,9 @@ def generate_noise_map(
             land_min = 0.0
             land_max = np.max(shifted[land_mask])
             if land_min != land_max:
-                shifted[land_mask] = (shifted[land_mask] - land_min) / (land_max - land_min)
+                shifted[land_mask] = (shifted[land_mask] - land_min) / (
+                    land_max - land_min
+                )
             else:
                 shifted[land_mask] = 0
 
@@ -120,9 +115,11 @@ def apply_terrain_features(
 
         # Filter tiles based on elevation
         suitable_tiles = [
-            tile for tile in sorted_tiles
+            tile
+            for tile in sorted_tiles
             if tile.elevation_min <= elevation <= tile.elevation_max
-            and tile.placement_method.name == "TERRAIN_BASED"  # Only assign terrain-based tiles during terrain features
+            and tile.placement_method.name
+            == "TERRAIN_BASED"  # Only assign terrain-based tiles during terrain features
         ]
 
         if not suitable_tiles:

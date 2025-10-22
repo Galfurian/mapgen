@@ -44,6 +44,10 @@ def generate_map(
     rainfall_threshold: float = 0.8,
     elevation_threshold: float = 0.6,
     sea_level: float = 0.0,
+    rainfall_temp_weight: float = 0.3,
+    rainfall_humidity_weight: float = 0.4,
+    rainfall_orographic_weight: float = 0.3,
+    rainfall_variation_strength: float = 0.1,
 ) -> MapData:
     """
     Generate a complete procedural fantasy map.
@@ -74,6 +78,10 @@ def generate_map(
         rainfall_threshold (float): Minimum rainfall for river sources.
         elevation_threshold (float): Minimum elevation for river sources.
         sea_level (float): Elevation level for sea (controls land/sea ratio, -1.0 to 1.0).
+        rainfall_temp_weight (float): Weight for temperature influence on rainfall (0.0 to 1.0).
+        rainfall_humidity_weight (float): Weight for humidity influence on rainfall (0.0 to 1.0).
+        rainfall_orographic_weight (float): Weight for orographic influence on rainfall (0.0 to 1.0).
+        rainfall_variation_strength (float): Strength of random variation in rainfall (0.0 to 1.0).
 
     Returns:
         MapData: The generated map data.
@@ -159,6 +167,10 @@ def generate_map(
             map_data,
             width,
             height,
+            temp_weight=rainfall_temp_weight,
+            humidity_weight=rainfall_humidity_weight,
+            orographic_weight=rainfall_orographic_weight,
+            variation_strength=rainfall_variation_strength,
         )
         rainfall_time = time.time() - rainfall_start
         logger.debug(f"Rainfall map generation completed in {rainfall_time:.3f}s")
