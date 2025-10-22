@@ -9,8 +9,11 @@ from pydantic import BaseModel, Field
 
 class PlacementMethod(Enum):
     """How tiles are placed on the map."""
+
     TERRAIN_BASED = "terrain_based"  # Assigned based on elevation/climate rules
-    ALGORITHM_BASED = "algorithm_based"  # Assigned by specific algorithms (rivers, lakes, etc.)
+    ALGORITHM_BASED = (
+        "algorithm_based"  # Assigned by specific algorithms (rivers, lakes, etc.)
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -358,12 +361,13 @@ class MapData(BaseModel):
             List of unique tile types used in the map.
         grid (list[list[int]]):
             The 2D grid of tile indices.
+        layers (dict[str, list[list[float]]]):
+            Dictionary of spatial layers (terrain grid, elevation, rainfall,
+            etc.).
         settlements (list[Settlement]):
             List of settlements on the map.
         roads (list[Road]):
             List of roads connecting settlements.
-        elevation_map (list[list[float]] | None):
-            2D elevation/height map used for terrain generation.
 
     """
 
@@ -375,15 +379,10 @@ class MapData(BaseModel):
         default_factory=list,
         description="The 2D grid of tile indices.",
     )
-    elevation_map: list[list[float]] = Field(
-        default_factory=list,
-        description="2D elevation/height map used for terrain generation.",
+    layers: dict[str, list[list[float]]] = Field(
+        default_factory=dict,
+        description="Dictionary of spatial layers containing terrain and environmental data.",
     )
-    rainfall_map: list[list[float]] = Field(
-        default_factory=list,
-        description="2D rainfall map for hydrological features.",
-    )
-
     settlements: list[Settlement] = Field(
         default_factory=list,
         description="List of settlements on the map.",
@@ -392,10 +391,36 @@ class MapData(BaseModel):
         default_factory=list,
         description="List of roads connecting settlements.",
     )
-    accumulation_map: list[list[float]] = Field(
-        default_factory=list,
-        description="2D water accumulation (runoff) map for hydrological modeling.",
-    )
+
+    @property
+    def elevation_map(self) -> list[list[float]]:
+        """Get the elevation map layer."""
+        return self.layers.get("elevation", [])
+
+    @elevation_map.setter
+    def elevation_map(self, value: list[list[float]]) -> None:
+        """Set the elevation map layer."""
+        self.layers["elevation"] = value
+
+    @property
+    def rainfall_map(self) -> list[list[float]]:
+        """Get the rainfall map layer."""
+        return self.layers.get("rainfall", [])
+
+    @rainfall_map.setter
+    def rainfall_map(self, value: list[list[float]]) -> None:
+        """Set the rainfall map layer."""
+        self.layers["rainfall"] = value
+
+    @property
+    def accumulation_map(self) -> list[list[float]]:
+        """Get the accumulation map layer."""
+        return self.layers.get("accumulation", [])
+
+    @accumulation_map.setter
+    def accumulation_map(self, value: list[list[float]]) -> None:
+        """Set the accumulation map layer."""
+        self.layers["accumulation"] = value
 
     def _get_tile_index(self, tile: Tile) -> int:
         """Get the index of a tile, adding it if not present."""
