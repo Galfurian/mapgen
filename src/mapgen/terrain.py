@@ -4,7 +4,7 @@ import random
 import noise
 import numpy as np
 
-from .map_data import MapData, PlacementMethod
+from .map_data import MapData, PlacementMethod, Tile
 from .utils import generate_noise_grid
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ def generate_elevation_map(
             The sea level elevation (controls land/sea ratio).
 
     """
-    noise_map = generate_noise_grid(
+    elevation_map = generate_noise_grid(
         width=width,
         height=height,
         scale=scale,
@@ -53,14 +53,14 @@ def generate_elevation_map(
     )
 
     # Normalize to full -1 to 1 range
-    min_val = np.min(noise_map)
-    max_val = np.max(noise_map)
+    min_val = np.min(elevation_map)
+    max_val = np.max(elevation_map)
     if max_val > min_val:
-        noise_map = (noise_map - min_val) / (max_val - min_val) * 2 - 1
+        elevation_map = (elevation_map - min_val) / (max_val - min_val) * 2 - 1
 
     # Apply sea level adjustment to control land/sea ratio
     if sea_level != 0.0:
-        shifted = noise_map - sea_level
+        shifted = elevation_map - sea_level
         sea_mask = shifted < 0
         land_mask = shifted >= 0
 
@@ -84,61 +84,12 @@ def generate_elevation_map(
             else:
                 shifted[land_mask] = 0
 
-        noise_map = shifted
+        elevation_map = shifted
 
     # Round to 4 decimal places
-    noise_map = np.round(noise_map, decimals=4)
+    elevation_map = np.round(elevation_map, decimals=4)
 
-    map_data.elevation_map = noise_map.tolist()
-
-
-def apply_terrain_features(
-    map_data: MapData,
-) -> None:
-    """
-    Apply terrain features based on noise map.
-
-    Args:
-        map_data (MapData):
-            The map grid to modify.
-
-    """
-    sorted_tiles = sorted(
-        map_data.tiles,
-        key=lambda t: t.terrain_priority,
-        reverse=True,
-    )
-
-    def apply_suitable_tile(x: int, y: int) -> bool:
-        """
-        Apply the most suitable tile for the given position.
-        """
-        elevation = map_data.get_elevation(x, y)
-
-        # Filter tiles based on elevation
-        suitable_tiles = [
-            tile
-            for tile in sorted_tiles
-            if tile.elevation_min <= elevation <= tile.elevation_max
-            and tile.placement_method.name
-            == "TERRAIN_BASED"  # Only assign terrain-based tiles during terrain features
-        ]
-
-        if not suitable_tiles:
-            return False
-
-        # Choose the tile with the highest priority
-        chosen_tile = max(suitable_tiles, key=lambda t: t.terrain_priority)
-
-        map_data.set_terrain(x, y, chosen_tile)
-        return True
-
-    for y in range(map_data.height):
-        for x in range(map_data.width):
-            if not apply_suitable_tile(x, y):
-                logger.warning(
-                    f"No suitable tile found for elevation {map_data.get_elevation(x, y)} at ({x}, {y})"
-                )
+    map_data.elevation_map = elevation_map.tolist()
 
 
 def smooth_terrain(
@@ -233,3 +184,100 @@ def _get_smoothed_tile_index(
             return map_data.tiles.index(tile)
 
     return None
+
+
+def apply_terrain_features(
+    map_data: MapData,
+) -> None:
+    """
+    Apply terrain features based on elevation map.
+
+    This function assigns terrain tiles to each position on the map based on
+    elevation values and tile suitability criteria. Only tiles with
+    TERRAIN_BASED placement method are considered for assignment.
+
+    Args:
+        map_data (MapData):
+            The map data to modify. Must have an elevation_map.
+
+    Raises:
+        ValueError:
+            If elevation_map is not available in map_data.
+
+    """
+    if not map_data.elevation_map:
+        raise ValueError("Elevation map is required for terrain feature assignment")
+
+    # Pre-filter terrain-based tiles and sort by priority (highest first)
+    terrain_tiles = [
+        tile
+        for tile in map_data.tiles
+        if tile.placement_method == PlacementMethod.TERRAIN_BASED
+    ]
+
+    if not terrain_tiles:
+        logger.warning("No terrain-based tiles found in tile catalog")
+        return
+
+    terrain_tiles.sort(key=lambda t: t.terrain_priority, reverse=True)
+
+    logger.debug(f"Applying terrain features using {len(terrain_tiles)} terrain tiles")
+
+    tiles_assigned = 0
+    for y in range(map_data.height):
+        for x in range(map_data.width):
+            if _apply_suitable_tile(map_data, terrain_tiles, x, y):
+                tiles_assigned += 1
+            else:
+                logger.warning(
+                    f"No suitable tile found for elevation {map_data.get_elevation(x, y):.3f} at ({x}, {y})"
+                )
+
+    logger.debug(
+        f"Assigned terrain tiles to {tiles_assigned}/{map_data.width * map_data.height} positions"
+    )
+
+
+def _apply_suitable_tile(
+    map_data: MapData,
+    terrain_tiles: list[Tile],
+    x: int,
+    y: int,
+) -> bool:
+    """
+    Apply the most suitable terrain tile for the given position.
+
+    Tiles are selected based on elevation range compatibility and terrain priority.
+    The highest priority tile that matches the elevation range is chosen.
+
+    Args:
+        map_data (MapData):
+            The map data containing elevation information.
+        terrain_tiles (list[Tile]):
+            Pre-filtered list of terrain-based tiles, sorted by priority descending.
+        x (int):
+            The x coordinate of the position.
+        y (int):
+            The y coordinate of the position.
+
+    Returns:
+        bool:
+            True if a suitable tile was assigned, False otherwise.
+
+    """
+    elevation = map_data.get_elevation(x, y)
+
+    # Find all tiles that can accommodate this elevation
+    suitable_tiles = [
+        tile
+        for tile in terrain_tiles
+        if tile.elevation_min <= elevation <= tile.elevation_max
+    ]
+
+    if not suitable_tiles:
+        return False
+
+    # The first tile in the pre-sorted list is the highest priority suitable one
+    chosen_tile = suitable_tiles[0]
+    map_data.set_terrain(x, y, chosen_tile)
+    return True

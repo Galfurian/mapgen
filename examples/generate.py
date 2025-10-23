@@ -123,7 +123,7 @@ Examples:
     parser.add_argument(
         "--sea-level",
         type=float,
-        default=-0.5,
+        default=0.0,
         help="Sea level for land/sea ratio (default: -0.5)",
     )
     parser.add_argument(

@@ -114,28 +114,6 @@ def _is_position_suitable_for_settlement(
     return tile.can_build_settlement
 
 
-def _should_place_settlement(settlement_density: float) -> bool:
-    """Determine if a settlement should be placed based on probability.
-
-    Args:
-        settlement_density: The probability of placing a settlement (0.0 to 1.0).
-
-    Returns:
-        bool:
-            True if a settlement should be placed.
-
-    Raises:
-        ValueError: If settlement_density is not between 0.0 and 1.0.
-
-    """
-    if not (0.0 <= settlement_density <= 1.0):
-        raise ValueError(
-            f"Settlement density must be between 0.0 and 1.0, got {settlement_density}"
-        )
-
-    return random.random() < settlement_density
-
-
 def _does_settlement_overlaps(
     map_data: MapData,
     position: Position,
@@ -264,7 +242,7 @@ def _place_settlements_at_positions(
 
     """
     for position in positions:
-        if not _should_place_settlement(settlement_density):
+        if random.random() >= settlement_density:
             continue
         if _does_settlement_overlaps(map_data, position, min_radius, max_radius):
             continue
