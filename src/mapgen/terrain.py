@@ -10,7 +10,7 @@ from .utils import generate_noise_grid
 logger = logging.getLogger(__name__)
 
 
-def generate_noise_map(
+def generate_elevation_map(
     map_data: MapData,
     width: int,
     height: int,
@@ -21,13 +21,15 @@ def generate_noise_map(
     sea_level: float = 0.0,
 ) -> None:
     """
-    Generate a Perlin noise map.
+    Generate an elevation map using Perlin noise.
 
     Args:
+        map_data (MapData):
+            The map data to store the elevation map in.
         width (int):
-            The width of the noise map.
+            The width of the elevation map.
         height (int):
-            The height of the noise map.
+            The height of the elevation map.
         scale (float):
             The scale of the noise.
         octaves (int):

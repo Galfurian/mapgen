@@ -147,7 +147,7 @@ def generate_map(
 
     logger.debug("Generating noise map")
     terrain_start = time.time()
-    terrain.generate_noise_map(
+    terrain.generate_elevation_map(
         map_data,
         width,
         height,
