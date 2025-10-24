@@ -196,17 +196,29 @@ def _compute_orographic_factor(
     return np.maximum(0.3, elevation * 0.7 + np.abs(elev_noise) * 0.3)
 
 
-def compute_accumulation(elevation: np.ndarray, rainfall: np.ndarray) -> np.ndarray:
+def generate_accumulation_map(map_data: MapData) -> None:
     """
-    Compute water accumulation (runoff) for each tile given elevation and rainfall.
+    Generate water accumulation (runoff) map for the given map data.
+
+    This function computes water accumulation based on elevation and rainfall data,
+    then stores the result in map_data.accumulation_map.
 
     Args:
-        elevation (np.ndarray): 2D array of elevation values.
-        rainfall (np.ndarray): 2D array of rainfall values.
+        map_data (MapData): The map data containing elevation and rainfall information.
 
-    Returns:
-        np.ndarray: 2D array of water accumulation values.
+    Raises:
+        ValueError: If elevation_map is not available in map_data.
     """
+    if not map_data.elevation_map:
+        raise ValueError("Elevation map is required for accumulation computation")
+
+    elevation = np.array(map_data.elevation_map)
+    rainfall = (
+        np.array(map_data.rainfall_map)
+        if map_data.rainfall_map
+        else np.ones_like(elevation) * 0.5
+    )
+
     height, width = elevation.shape
     flow_to = np.full((height, width, 2), -1, dtype=int)
     in_degree = np.zeros((height, width), dtype=int)
@@ -245,4 +257,7 @@ def compute_accumulation(elevation: np.ndarray, rainfall: np.ndarray) -> np.ndar
             in_degree[ty, tx] -= 1
             if in_degree[ty, tx] == 0:
                 queue.append((tx, ty))
-    return accumulation
+
+    # Round to 4 decimal places and store in map_data
+    accumulation = np.round(accumulation, decimals=4)
+    map_data.accumulation_map = accumulation.tolist()

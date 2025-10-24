@@ -36,7 +36,6 @@ def generate_map(
     min_settlement_radius: float = 0.5,
     max_settlement_radius: float = 1.0,
     seed: Optional[int] = None,
-    enable_rainfall: bool = True,
     enable_smoothing: bool = True,
     enable_settlements: bool = True,
     enable_roads: bool = True,
@@ -74,7 +73,6 @@ def generate_map(
         min_settlement_radius (float): Minimum settlement radius.
         max_settlement_radius (float): Maximum settlement radius.
         seed (int): Random seed for reproducible generation. If None, uses random seed.
-        enable_rainfall (bool): Whether to generate rainfall data.
         enable_smoothing (bool): Whether to apply terrain smoothing.
         enable_settlements (bool): Whether to generate settlements.
         enable_roads (bool): Whether to generate road networks.
@@ -171,31 +169,27 @@ def generate_map(
     terrain_time = time.time() - terrain_start
     logger.debug(f"Elevation map generation completed in {terrain_time:.3f}s")
 
-    # Phase 2: Generate rainfall map (needed for vegetation)
-    if enable_rainfall:
-        logger.debug("Generating rainfall map")
-        rainfall_start = time.time()
-        hydrology.generate_rainfall_map(
-            map_data,
-            width,
-            height,
-            temp_weight=rainfall_temp_weight,
-            humidity_weight=rainfall_humidity_weight,
-            orographic_weight=rainfall_orographic_weight,
-            variation_strength=rainfall_variation_strength,
-        )
-        rainfall_time = time.time() - rainfall_start
-        logger.debug(f"Rainfall map generation completed in {rainfall_time:.3f}s")
-
-    # Hydrology: compute accumulation (runoff) map
-    logger.debug("Computing water accumulation (runoff) map")
-    elevation = np.array(map_data.elevation_map)
-    rainfall = np.array(map_data.rainfall_map) if enable_rainfall else np.ones_like(elevation) * 0.5
-    accumulation = hydrology.compute_accumulation(elevation, rainfall)
-    map_data.accumulation_map = accumulation.tolist()
-    logger.debug(
-        f"Accumulation stats: min={accumulation.min():.3f}, max={accumulation.max():.3f}, mean={accumulation.mean():.3f}"
+    # Phase 2: Generate rainfall map (provides climate data for vegetation and analysis)
+    logger.debug("Generating rainfall map")
+    rainfall_start = time.time()
+    hydrology.generate_rainfall_map(
+        map_data,
+        width,
+        height,
+        temp_weight=rainfall_temp_weight,
+        humidity_weight=rainfall_humidity_weight,
+        orographic_weight=rainfall_orographic_weight,
+        variation_strength=rainfall_variation_strength,
     )
+    rainfall_time = time.time() - rainfall_start
+    logger.debug(f"Rainfall map generation completed in {rainfall_time:.3f}s")
+
+    # Phase 2.5: Compute water accumulation (runoff)
+    logger.debug("Computing water accumulation (runoff) map")
+    accumulation_start = time.time()
+    hydrology.generate_accumulation_map(map_data)
+    accumulation_time = time.time() - accumulation_start
+    logger.debug(f"Accumulation map generation completed in {accumulation_time:.3f}s")
 
     # Phase 3: Apply base terrain (elevation-driven only)
     logger.debug("Applying base terrain features")
@@ -205,7 +199,7 @@ def generate_map(
     logger.debug(f"Base terrain applied in {features_time:.3f}s")
 
     # Phase 4: Place vegetation (climate-driven)
-    if enable_vegetation and enable_rainfall:
+    if enable_vegetation:
         logger.debug("Placing climate-driven vegetation")
         vegetation_start = time.time()
         flora.place_vegetation(
@@ -216,8 +210,6 @@ def generate_map(
         )
         vegetation_time = time.time() - vegetation_start
         logger.debug(f"Vegetation placement completed in {vegetation_time:.3f}s")
-    elif enable_vegetation and not enable_rainfall:
-        logger.warning("Vegetation placement requires rainfall data; skipping vegetation")
 
     # Phase 5: Generate rivers
     if enable_rivers:
@@ -446,7 +438,7 @@ def get_default_tile_collections() -> TileCollections:
                 elevation_influence=-0.5,
                 smoothing_weight=1.0,
                 elevation_min=-1.0,
-                elevation_max=-0.5,
+                elevation_max=-0.2,
                 terrain_priority=1,
                 smoothing_priority=2,
                 symbol="~",
@@ -469,7 +461,7 @@ def get_default_tile_collections() -> TileCollections:
                 elevation_penalty=0.0,
                 elevation_influence=-0.2,
                 smoothing_weight=1.0,
-                elevation_min=-0.5,
+                elevation_min=-0.2,
                 elevation_max=0.1,
                 terrain_priority=2,
                 smoothing_priority=1,
@@ -627,4 +619,3 @@ def get_default_tile_collections() -> TileCollections:
     # collections.infrastructure.extend([...])
 
     return collections
-

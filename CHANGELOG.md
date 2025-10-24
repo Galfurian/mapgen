@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Grassland placement in moderate climate conditions
 - New `enable_vegetation` parameter in `generate_map()` to toggle vegetation system
 - New `apply_base_terrain()` function in terrain module for base terrain assignment
+- New `enable_accumulation` parameter in `generate_map()` to toggle water accumulation computation
+- `--disable-accumulation` flag in generate.py script
 
 ### Changed
 

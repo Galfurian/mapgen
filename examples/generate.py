@@ -32,17 +32,17 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Generate everything with default settings
+  # Generate everything with default settings (recommended)
   python full_generation.py output/
 
   # Generate with specific seed for reproducibility
   python full_generation.py output/ --seed 123
 
-  # Generate without rainfall and rivers
-  python full_generation.py output/ --disable-rainfall --disable-rivers
+  # Generate without settlements and roads (keep climate data)
+  python full_generation.py output/ --disable-settlements --disable-roads
 
-  # Generate minimal map (terrain only)
-  python full_generation.py output/ --disable-settlements --disable-roads --disable-rainfall --disable-rivers
+  # Generate minimal map (terrain + climate data only)
+  python full_generation.py output/ --disable-settlements --disable-roads --disable-rivers --disable-vegetation
         """,
     )
 
@@ -154,11 +154,6 @@ Examples:
         help="Strength of random variation in rainfall (default: 0.1)",
     )
     parser.add_argument(
-        "--disable-rainfall",
-        action="store_true",
-        help="Disable rainfall generation",
-    )
-    parser.add_argument(
         "--disable-smoothing",
         action="store_true",
         help="Disable terrain smoothing",
@@ -227,7 +222,6 @@ Examples:
         min_settlement_radius=args.min_settlement_radius,
         max_settlement_radius=args.max_settlement_radius,
         seed=args.seed,
-        enable_rainfall=not args.disable_rainfall,
         enable_smoothing=not args.disable_smoothing,
         enable_settlements=not args.disable_settlements,
         enable_roads=not args.disable_roads,
@@ -268,50 +262,47 @@ Examples:
     generated_files = 0
 
     # Elevation map (always available since elevation_map is always initialized)
-    if map_data.elevation_map:
-        logger.info("📊 Generating elevation map...")
-        fig = plot_elevation_map(map_data, title=f"Elevation Map (Seed: {args.seed})")
-        elevation_path = output_dir / f"seed_{args.seed}_layer_elevation.png"
-        fig.savefig(elevation_path, dpi=dpi, bbox_inches="tight")
-        fig.clear()
-        logger.info(f"💾 Elevation map saved: {elevation_path}")
-        generated_files += 1
+    logger.info("📊 Generating elevation map...")
+    fig = plot_elevation_map(map_data, title=f"Elevation Map (Seed: {args.seed})")
+    elevation_path = output_dir / f"seed_{args.seed}_layer_elevation.png"
+    fig.savefig(elevation_path, dpi=dpi, bbox_inches="tight")
+    fig.clear()
+    logger.info(f"💾 Elevation map saved: {elevation_path}")
+    generated_files += 1
 
     # Rainfall map (available if rainfall was generated)
-    if map_data.rainfall_map:
-        logger.info("🌧️ Generating rainfall map...")
-        fig = plot_rainfall_map(map_data, title=f"Rainfall Map (Seed: {args.seed})")
-        rainfall_path = output_dir / f"seed_{args.seed}_layer_rainfall.png"
-        fig.savefig(rainfall_path, dpi=dpi, bbox_inches="tight")
-        fig.clear()
-        logger.info(f"💾 Rainfall map saved: {rainfall_path}")
-        generated_files += 1
+    logger.info("🌧️ Generating rainfall map...")
+    fig = plot_rainfall_map(map_data, title=f"Rainfall Map (Seed: {args.seed})")
+    rainfall_path = output_dir / f"seed_{args.seed}_layer_rainfall.png"
+    fig.savefig(rainfall_path, dpi=dpi, bbox_inches="tight")
+    fig.clear()
+    logger.info(f"💾 Rainfall map saved: {rainfall_path}")
+    generated_files += 1
 
-        logger.info("📄 Generating ASCII rainfall map...")
-        ascii_rainfall_map = get_ascii_rainfall_map(map_data)
-        ascii_rainfall_path = output_dir / f"seed_{args.seed}_map_rainfall_ascii.txt"
-        with open(ascii_rainfall_path, "w") as f:
-            f.write(ascii_rainfall_map)
-        logger.info(f"💾 ASCII rainfall map saved: {ascii_rainfall_path}")
-        generated_files += 1
+    logger.info("📄 Generating ASCII rainfall map...")
+    ascii_rainfall_map = get_ascii_rainfall_map(map_data)
+    ascii_rainfall_path = output_dir / f"seed_{args.seed}_map_rainfall_ascii.txt"
+    with open(ascii_rainfall_path, "w") as f:
+        f.write(ascii_rainfall_map)
+    logger.info(f"💾 ASCII rainfall map saved: {ascii_rainfall_path}")
+    generated_files += 1
 
     # Temperature map (available if temperature was generated)
-    if map_data.temperature_map:
-        logger.info("🌡️ Generating temperature map...")
-        fig = plot_temperature_map(map_data, title=f"Temperature Map (Seed: {args.seed})")
-        temperature_path = output_dir / f"seed_{args.seed}_layer_temperature.png"
-        fig.savefig(temperature_path, dpi=dpi, bbox_inches="tight")
-        fig.clear()
-        logger.info(f"💾 Temperature map saved: {temperature_path}")
-        generated_files += 1
+    logger.info("🌡️ Generating temperature map...")
+    fig = plot_temperature_map(map_data, title=f"Temperature Map (Seed: {args.seed})")
+    temperature_path = output_dir / f"seed_{args.seed}_layer_temperature.png"
+    fig.savefig(temperature_path, dpi=dpi, bbox_inches="tight")
+    fig.clear()
+    logger.info(f"💾 Temperature map saved: {temperature_path}")
+    generated_files += 1
 
-        logger.info("📄 Generating ASCII temperature map...")
-        ascii_temperature_map = get_ascii_temperature_map(map_data)
-        ascii_temperature_path = output_dir / f"seed_{args.seed}_map_temperature_ascii.txt"
-        with open(ascii_temperature_path, "w") as f:
-            f.write(ascii_temperature_map)
-        logger.info(f"💾 ASCII temperature map saved: {ascii_temperature_path}")
-        generated_files += 1
+    logger.info("📄 Generating ASCII temperature map...")
+    ascii_temperature_map = get_ascii_temperature_map(map_data)
+    ascii_temperature_path = output_dir / f"seed_{args.seed}_map_temperature_ascii.txt"
+    with open(ascii_temperature_path, "w") as f:
+        f.write(ascii_temperature_map)
+    logger.info(f"💾 ASCII temperature map saved: {ascii_temperature_path}")
+    generated_files += 1
 
     # Main terrain map (always generated)
     logger.info("🖼️ Generating main terrain map...")
