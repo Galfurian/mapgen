@@ -9,15 +9,12 @@ from .visualization import (
     get_ascii_map,
     get_ascii_rainfall_map,
     get_ascii_temperature_map,
-    plot_base_terrain,
-    plot_contour_lines,
+    get_ascii_elevation_map,
     plot_elevation_map,
     plot_map,
     plot_rainfall_map,
     plot_temperature_map,
     plot_3d_map,
-    plot_roads,
-    plot_settlements,
 )
 from . import flora
 
@@ -51,15 +48,12 @@ __all__ = [
     "get_ascii_map",
     "get_ascii_rainfall_map",
     "get_ascii_temperature_map",
+    "get_ascii_elevation_map",
     "logger",
-    "plot_base_terrain",
-    "plot_contour_lines",
     "plot_elevation_map",
     "plot_map",
     "plot_rainfall_map",
     "plot_temperature_map",
     "plot_3d_map",
-    "plot_roads",
-    "plot_settlements",
 ]
 

@@ -108,8 +108,8 @@ def smooth_terrain(
     """
     for _ in range(iterations):
         new_grid_indices = [row[:] for row in map_data.grid]
-        for y in range(1, map_data.height - 1):
-            for x in range(1, map_data.width - 1):
+        for y in range(0, map_data.height):
+            for x in range(0, map_data.width):
                 new_tile_index = _get_smoothed_tile_index(map_data, x, y)
                 if new_tile_index is not None:
                     new_grid_indices[y][x] = new_tile_index

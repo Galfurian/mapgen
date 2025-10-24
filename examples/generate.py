@@ -21,6 +21,7 @@ from mapgen import (
     get_ascii_map,
     get_ascii_rainfall_map,
     get_ascii_temperature_map,
+    get_ascii_elevation_map,
     logger,
 )
 
@@ -281,7 +282,7 @@ Examples:
 
     logger.info("📄 Generating ASCII rainfall map...")
     ascii_rainfall_map = get_ascii_rainfall_map(map_data)
-    ascii_rainfall_path = output_dir / f"seed_{args.seed}_map_rainfall_ascii.txt"
+    ascii_rainfall_path = output_dir / f"seed_{args.seed}_ascii_map_rainfall.txt"
     with open(ascii_rainfall_path, "w") as f:
         f.write(ascii_rainfall_map)
     logger.info(f"💾 ASCII rainfall map saved: {ascii_rainfall_path}")
@@ -298,7 +299,7 @@ Examples:
 
     logger.info("📄 Generating ASCII temperature map...")
     ascii_temperature_map = get_ascii_temperature_map(map_data)
-    ascii_temperature_path = output_dir / f"seed_{args.seed}_map_temperature_ascii.txt"
+    ascii_temperature_path = output_dir / f"seed_{args.seed}_ascii_map_temperature.txt"
     with open(ascii_temperature_path, "w") as f:
         f.write(ascii_temperature_map)
     logger.info(f"💾 ASCII temperature map saved: {ascii_temperature_path}")
@@ -313,30 +314,39 @@ Examples:
     logger.info(f"💾 Main map saved: {main_map_path}")
     generated_files += 1
 
-    # 3D visualization
-    logger.info("🎲 Generating 3D visualization...")
-    fig = plot_3d_map(map_data)
-    map_3d_path = output_dir / f"seed_{args.seed}_map_3d.png"
-    fig.savefig(map_3d_path, dpi=dpi, bbox_inches="tight")
-    fig.clear()
-    logger.info(f"💾 3D map saved: {map_3d_path}")
-    generated_files += 1
-
     # ASCII representation
     logger.info("📄 Generating ASCII map...")
     ascii_map = get_ascii_map(map_data)
-    ascii_path = output_dir / f"seed_{args.seed}_map_ascii.txt"
+    ascii_path = output_dir / f"seed_{args.seed}_ascii_map.txt"
     with open(ascii_path, "w") as f:
         f.write(ascii_map)
     logger.info(f"💾 ASCII map saved: {ascii_path}")
     generated_files += 1
 
-    # JSON data
-    logger.info("📦 Saving map data as JSON...")
-    json_path = output_dir / f"seed_{args.seed}_map_data.json"
-    map_data.save_to_json(str(json_path))
-    logger.info(f"💾 JSON data saved: {json_path}")
+    # ASCII elevation map
+    logger.info("📄 Generating ASCII elevation map...")
+    ascii_elevation_map = get_ascii_elevation_map(map_data)
+    ascii_elevation_path = output_dir / f"seed_{args.seed}_ascii_map_elevation.txt"
+    with open(ascii_elevation_path, "w") as f:
+        f.write(ascii_elevation_map)
+    logger.info(f"💾 ASCII elevation map saved: {ascii_elevation_path}")
     generated_files += 1
+
+    # 3D visualization
+    # logger.info("🎲 Generating 3D visualization...")
+    # fig = plot_3d_map(map_data)
+    # map_3d_path = output_dir / f"seed_{args.seed}_3d_map.png"
+    # fig.savefig(map_3d_path, dpi=dpi, bbox_inches="tight")
+    # fig.clear()
+    # logger.info(f"💾 3D map saved: {map_3d_path}")
+    # generated_files += 1
+
+    # JSON data
+    # logger.info("📦 Saving map data as JSON...")
+    # json_path = output_dir / f"seed_{args.seed}_map_data.json"
+    # map_data.save_to_json(str(json_path))
+    # logger.info(f"💾 JSON data saved: {json_path}")
+    # generated_files += 1
 
     logger.info("🎉 Map generation and visualization finished!")
     logger.info(f"📁 All outputs saved to: {output_dir}")

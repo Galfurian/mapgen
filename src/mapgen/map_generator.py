@@ -78,6 +78,7 @@ def generate_map(
         enable_roads (bool): Whether to generate road networks.
         enable_rivers (bool): Whether to generate rivers.
         enable_vegetation (bool): Whether to place climate-driven vegetation.
+        enable_accumulation (bool): Whether to compute water accumulation (runoff) map.
         min_river_length (int): Minimum length for rivers.
         max_rivers (int): Maximum number of rivers to generate.
         rainfall_threshold (float): Minimum rainfall for river sources.

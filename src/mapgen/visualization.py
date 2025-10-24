@@ -92,189 +92,6 @@ def _apply_curves_to_path(
     return curved_path
 
 
-def plot_base_terrain(ax: Axes, map_data: MapData) -> None:
-    """
-    Plot the base terrain layer with elevation-based shading.
-
-    Args:
-        ax (plt.Axes):
-            The matplotlib axes to plot on.
-        map_data (MapData):
-            The map data containing terrain and elevation.
-
-    """
-    rgb_values = np.zeros((map_data.height, map_data.width, 3))
-
-    for y in range(map_data.height):
-        for x in range(map_data.width):
-            tile = map_data.get_terrain(x, y)
-            # Compute shade factor based on elevation.
-            shade_factor = 0.5 + 0.5 * map_data.get_elevation(x, y)
-            # Generate shaded color.
-            shaded_color = tuple(c * shade_factor for c in tile.color)
-            # Replace with shaded color.
-            rgb_values[y, x, :] = shaded_color
-
-    ax.imshow(rgb_values)
-
-
-def plot_contour_lines(
-    ax: Axes,
-    map_data: MapData,
-    levels: int = 10,
-    colors: str = "k",
-    linewidths: float = 0.5,
-) -> None:
-    """
-    Plot elevation contour lines on the map.
-
-    Args:
-        ax (plt.Axes):
-            The matplotlib axes to plot on.
-        map_data (MapData):
-            The map data containing elevation.
-        levels (int):
-            Number of contour levels.
-        colors (str):
-            Color of the contour lines.
-        linewidths (float):
-            Width of the contour lines.
-
-    """
-    X, Y = np.meshgrid(
-        np.arange(map_data.width),
-        np.arange(map_data.height),
-    )
-    Z = np.array(map_data.elevation_map)
-    ax.contour(
-        X,
-        Y,
-        Z,
-        levels=levels,
-        colors=colors,
-        linewidths=linewidths,
-    )
-
-
-def plot_roads(
-    ax: Axes,
-    map_data: MapData,
-    color: str = "brown",
-    linewidth: float = 2,
-    zorder: int = 1,
-) -> None:
-    """
-    Plot roads on the map.
-
-    Args:
-        ax (plt.Axes):
-            The matplotlib axes to plot on.
-        map_data (MapData):
-            The map data containing roads.
-        color (str):
-            Color of the roads.
-        linewidth (float):
-            Width of the road lines.
-        zorder (int):
-            Z-order for layering.
-
-    """
-    elevation_map = np.array(map_data.elevation_map)
-    for road in map_data.roads:
-        path = road.path
-        curved_path = _apply_curves_to_path(path, elevation_map)
-        curved_x = [pos.x for pos in curved_path]
-        curved_y = [pos.y for pos in curved_path]
-        ax.plot(curved_x, curved_y, color=color, linewidth=linewidth, zorder=zorder)
-
-
-def plot_settlements(ax: Axes, map_data: MapData, zorder: int = 3) -> None:
-    """
-    Plot settlements with circles and labels on the map.
-
-    Args:
-        ax (plt.Axes):
-            The matplotlib axes to plot on.
-        map_data (MapData):
-            The map data containing settlements.
-        zorder (int):
-            Z-order for layering.
-
-    """
-    existing_texts: list[tuple[int, int]] = []
-    for settlement in map_data.settlements:
-        x = settlement.position.x
-        y = settlement.position.y
-        radius = settlement.radius
-
-        circle = patches.Circle(
-            (x, y),
-            radius,
-            facecolor="white",
-            edgecolor="black",
-            linewidth=1,
-            zorder=zorder,
-        )
-        ax.add_patch(circle)
-
-        font_size = int(radius * 6)
-
-        possible_positions = [
-            (x, y + 2),
-            (x, y - 2),
-            (x + 2, y),
-            (x - 2, y),
-            (x + 2, y + 2),
-            (x + 2, y - 2),
-            (x - 2, y + 2),
-            (x - 2, y - 2),
-        ]
-
-        possible_positions.sort(
-            key=lambda pos: ((pos[0] - x) ** 2 + (pos[1] - y) ** 2) ** 0.5
-        )
-
-        text_x, text_y = None, None
-        for pos in possible_positions:
-            if (
-                ((pos[0] - x) ** 2 + (pos[1] - y) ** 2) ** 0.5 > radius
-                and 0 <= pos[0] < map_data.width
-                and 0 <= pos[1] < map_data.height
-            ):
-                is_overlapping = False
-                for existing_text_x, existing_text_y in existing_texts:
-                    if (
-                        abs(pos[0] - existing_text_x) < font_size
-                        and abs(pos[1] - existing_text_y) < font_size
-                    ):
-                        is_overlapping = True
-                        break
-
-                if not is_overlapping:
-                    text_x, text_y = pos
-                    break
-
-        if text_x is not None and text_y is not None:
-            ax.text(
-                text_x,
-                text_y,
-                settlement.name,
-                color="white",
-                fontsize=font_size,
-                rotation=0,
-                bbox={
-                    "facecolor": "gray",
-                    "edgecolor": "none",
-                    "alpha": 0.7,
-                    "pad": 0.3,
-                },
-                ha="center",
-                va="center",
-                zorder=zorder,
-            )
-            existing_texts.append((text_x, text_y))
-
-
 def plot_map(
     map_data: MapData,
     enable_contours: bool = True,
@@ -296,14 +113,121 @@ def plot_map(
     """
     fig, ax = plt.subplots()
 
-    # Plot each layer in order
-    plot_base_terrain(ax, map_data)
+    # Plot base terrain layer with elevation-based shading
+    rgb_values = np.zeros((map_data.height, map_data.width, 3))
+
+    for y in range(map_data.height):
+        for x in range(map_data.width):
+            tile = map_data.get_terrain(x, y)
+            # Compute shade factor based on elevation.
+            shade_factor = 0.5 + 0.5 * map_data.get_elevation(x, y)
+            # Generate shaded color.
+            shaded_color = tuple(c * shade_factor for c in tile.color)
+            # Replace with shaded color.
+            rgb_values[y, x, :] = shaded_color
+
+    ax.imshow(rgb_values)
+
+    # Plot elevation contour lines
     if enable_contours:
-        plot_contour_lines(ax, map_data)
+        X, Y = np.meshgrid(
+            np.arange(map_data.width),
+            np.arange(map_data.height),
+        )
+        Z = np.array(map_data.elevation_map)
+        ax.contour(
+            X,
+            Y,
+            Z,
+            levels=10,
+            colors="k",
+            linewidths=0.5,
+        )
+
+    # Plot roads
     if enable_roads:
-        plot_roads(ax, map_data)
+        elevation_map = np.array(map_data.elevation_map)
+        for road in map_data.roads:
+            path = road.path
+            curved_path = _apply_curves_to_path(path, elevation_map)
+            curved_x = [pos.x for pos in curved_path]
+            curved_y = [pos.y for pos in curved_path]
+            ax.plot(curved_x, curved_y, color="brown", linewidth=2, zorder=1)
+
+    # Plot settlements with circles and labels
     if enable_settlements:
-        plot_settlements(ax, map_data)
+        existing_texts: list[tuple[int, int]] = []
+        for settlement in map_data.settlements:
+            x = settlement.position.x
+            y = settlement.position.y
+            radius = settlement.radius
+
+            circle = patches.Circle(
+                (x, y),
+                radius,
+                facecolor="white",
+                edgecolor="black",
+                linewidth=1,
+                zorder=3,
+            )
+            ax.add_patch(circle)
+
+            font_size = int(radius * 6)
+
+            possible_positions = [
+                (x, y + 2),
+                (x, y - 2),
+                (x + 2, y),
+                (x - 2, y),
+                (x + 2, y + 2),
+                (x + 2, y - 2),
+                (x - 2, y + 2),
+                (x - 2, y - 2),
+            ]
+
+            possible_positions.sort(
+                key=lambda pos: ((pos[0] - x) ** 2 + (pos[1] - y) ** 2) ** 0.5
+            )
+
+            text_x, text_y = None, None
+            for pos in possible_positions:
+                if (
+                    ((pos[0] - x) ** 2 + (pos[1] - y) ** 2) ** 0.5 > radius
+                    and 0 <= pos[0] < map_data.width
+                    and 0 <= pos[1] < map_data.height
+                ):
+                    is_overlapping = False
+                    for existing_text_x, existing_text_y in existing_texts:
+                        if (
+                            abs(pos[0] - existing_text_x) < font_size
+                            and abs(pos[1] - existing_text_y) < font_size
+                        ):
+                            is_overlapping = True
+                            break
+
+                    if not is_overlapping:
+                        text_x, text_y = pos
+                        break
+
+            if text_x is not None and text_y is not None:
+                ax.text(
+                    text_x,
+                    text_y,
+                    settlement.name,
+                    color="white",
+                    fontsize=font_size,
+                    rotation=0,
+                    bbox={
+                        "facecolor": "gray",
+                        "edgecolor": "none",
+                        "alpha": 0.7,
+                        "pad": 0.3,
+                    },
+                    ha="center",
+                    va="center",
+                    zorder=3,
+                )
+                existing_texts.append((text_x, text_y))
 
     # Configure axes
     ax.set_xticks([])
@@ -603,6 +527,48 @@ def get_ascii_temperature_map(map_data: MapData) -> str:
         line = ""
         for x in range(map_data.width):
             line += str(temperature_normalized[y, x])
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def get_ascii_elevation_map(map_data: MapData) -> str:
+    """
+    Generate an ASCII representation of the elevation map using digits 0-9.
+
+    Elevation values are normalized to a 0-9 scale where:
+    - 0 represents lowest elevations (deepest ocean)
+    - 9 represents highest elevations (mountain peaks)
+
+    This is useful for debugging and analyzing elevation patterns without
+    requiring graphical output.
+
+    Args:
+        map_data (MapData):
+            The map data containing the elevation map.
+
+    Returns:
+        str:
+            The ASCII elevation map as a string with digits 0-9.
+
+    Raises:
+        ValueError:
+            If elevation_map is not available in map_data.
+
+    """
+    if not map_data.elevation_map:
+        raise ValueError("Elevation map is not available in map_data")
+
+    elevation_array = np.array(map_data.elevation_map)
+    # Normalize elevation from -1.0 to 1.0 range to 0-9 scale
+    # First shift from [-1, 1] to [0, 2], then scale to [0, 9]
+    elevation_normalized = ((elevation_array + 1.0) * 4.5).astype(int)
+    elevation_normalized = np.clip(elevation_normalized, 0, 9)
+
+    lines = []
+    for y in range(map_data.height):
+        line = ""
+        for x in range(map_data.width):
+            line += str(elevation_normalized[y, x])
         lines.append(line)
     return "\n".join(lines)
 
