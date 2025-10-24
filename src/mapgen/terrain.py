@@ -3,6 +3,7 @@ import random
 
 import noise
 import numpy as np
+from scipy import ndimage
 
 from .map_data import MapData, PlacementMethod, Tile
 from .utils import generate_noise_grid
@@ -92,98 +93,45 @@ def generate_elevation_map(
     map_data.elevation_map = elevation_map.tolist()
 
 
-def smooth_terrain(
+def smooth_elevation_map(
     map_data: MapData,
-    iterations: int = 5,
+    iterations: int = 1,
+    sigma: float = 0.5,
 ) -> None:
     """
-    Smooth the terrain using cellular automata rules.
+    Smooth the elevation map using Gaussian filtering.
+
+    This function applies Gaussian blur to the elevation map to create smoother
+    terrain transitions. This should be called BEFORE assigning terrain tiles,
+    as the tiles are determined by elevation values.
 
     Args:
         map_data (MapData):
-            The map grid to smooth.
+            The map data containing the elevation map to smooth.
         iterations (int):
-            The number of smoothing iterations.
+            Number of smoothing passes to apply.
+        sigma (float):
+            Standard deviation for Gaussian kernel. Higher values create more
+            smoothing. Typical values: 0.3-1.0. Default 0.5 provides subtle
+            smoothing that removes noise while preserving terrain features.
+
+    Raises:
+        ValueError:
+            If elevation_map is not available in map_data.
 
     """
+    if not map_data.elevation_map:
+        raise ValueError("Elevation map is required for smoothing")
+
+    elevation = np.array(map_data.elevation_map)
+
     for _ in range(iterations):
-        new_grid_indices = [row[:] for row in map_data.grid]
-        for y in range(0, map_data.height):
-            for x in range(0, map_data.width):
-                new_tile_index = _get_smoothed_tile_index(map_data, x, y)
-                if new_tile_index is not None:
-                    new_grid_indices[y][x] = new_tile_index
-        map_data.grid = new_grid_indices
+        elevation = ndimage.gaussian_filter(elevation, sigma=sigma)
 
-
-def _get_smoothed_tile_index(
-    map_data: MapData,
-    x: int,
-    y: int,
-) -> int | None:
-    """
-    Get the smoothed tile index for a given position.
-
-    Args:
-        map_data (MapData):
-            The map data.
-        x (int):
-            The x coordinate.
-        y (int):
-            The y coordinate.
-
-    Returns:
-        int | None:
-            The new tile index or None if no change.
-
-    """
-    current_tile = map_data.get_terrain(x, y)
-
-    # Skip algorithm-based tiles (rivers, lakes should stay as placed by algorithms)
-    if current_tile.placement_method == PlacementMethod.ALGORITHM_BASED:
-        return None
-
-    # Skip obstacles (non-walkable tiles)
-    if not current_tile.walkable:
-        return None
-
-    # Get neighbor properties
-    neighbors = map_data.get_neighbor_tiles(
-        x,
-        y,
-        walkable_only=False,
-        include_diagonals=True,
+    map_data.elevation_map = elevation.tolist()
+    logger.debug(
+        f"Smoothed elevation map with {iterations} iterations (sigma={sigma})"
     )
-
-    # Count different neighbor types
-    nw_count = sum(1 for n in neighbors if not n.walkable)
-    mod_cost_count = sum(1 for n in neighbors if n.movement_cost > 1.0)
-    neg_elev_count = sum(1 for n in neighbors if n.elevation_influence < 0.0)
-    pos_elev_count = sum(1 for n in neighbors if n.elevation_influence > 0.5)
-
-    # Apply smoothing rules
-    if nw_count > 4:
-        candidates = [t for t in map_data.tiles if not t.walkable]
-        if candidates:
-            tile = max(candidates, key=lambda t: t.smoothing_priority)
-            return map_data.tiles.index(tile)
-    elif neg_elev_count > 4:
-        candidates = [t for t in map_data.tiles if t.elevation_influence < 0]
-        if candidates:
-            tile = max(candidates, key=lambda t: t.smoothing_priority)
-            return map_data.tiles.index(tile)
-    elif pos_elev_count > 3:
-        candidates = [t for t in map_data.tiles if t.elevation_influence > 0.5]
-        if candidates:
-            tile = max(candidates, key=lambda t: t.smoothing_priority)
-            return map_data.tiles.index(tile)
-    elif mod_cost_count > 4:
-        candidates = [t for t in map_data.tiles if 1.0 < t.movement_cost < 2.0]
-        if candidates:
-            tile = max(candidates, key=lambda t: t.smoothing_priority)
-            return map_data.tiles.index(tile)
-
-    return None
 
 
 def apply_terrain_features(

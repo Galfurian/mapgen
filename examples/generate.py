@@ -107,6 +107,12 @@ Examples:
         help="Number of smoothing iterations (default: 5)",
     )
     parser.add_argument(
+        "--smoothing-sigma",
+        type=float,
+        default=0.5,
+        help="Sigma value for smoothing (default: 0.5)",
+    )
+    parser.add_argument(
         "--settlement-density",
         type=float,
         default=0.002,
@@ -153,11 +159,6 @@ Examples:
         type=float,
         default=0.1,
         help="Strength of random variation in rainfall (default: 0.1)",
-    )
-    parser.add_argument(
-        "--disable-smoothing",
-        action="store_true",
-        help="Disable terrain smoothing",
     )
     parser.add_argument(
         "--disable-settlements",
@@ -219,11 +220,11 @@ Examples:
         persistence=args.persistence,
         lacunarity=args.lacunarity,
         smoothing_iterations=args.smoothing_iterations,
+        smoothing_sigma=args.smoothing_sigma,
         settlement_density=args.settlement_density,
         min_settlement_radius=args.min_settlement_radius,
         max_settlement_radius=args.max_settlement_radius,
         seed=args.seed,
-        enable_smoothing=not args.disable_smoothing,
         enable_settlements=not args.disable_settlements,
         enable_roads=not args.disable_roads,
         enable_rivers=not args.disable_rivers,

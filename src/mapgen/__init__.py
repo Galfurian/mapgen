@@ -3,8 +3,11 @@
 import logging
 
 from .map_data import MapData, Position, Settlement, Tile, PlacementMethod
-from .map_generator import generate_map, get_default_tiles, get_default_tile_collections
-from .tile_collections import TileCollections
+from .map_generator import generate_map
+from .tile_collections import (
+    TileCollections,
+    get_default_tile_collections,
+)
 from .visualization import (
     get_ascii_map,
     get_ascii_rainfall_map,
@@ -28,9 +31,7 @@ logger.setLevel(logging.INFO)
 if not logger.handlers:
     console_handler = logging.StreamHandler()
     # Create formatter.
-    formatter = logging.Formatter(
-        "[%(name)s] %(levelname)-6s: %(message)s"
-    )
+    formatter = logging.Formatter("[%(name)s] %(levelname)-6s: %(message)s")
     console_handler.setFormatter(formatter)
     # Add handler to logger.
     logger.addHandler(console_handler)
@@ -56,4 +57,3 @@ __all__ = [
     "plot_temperature_map",
     "plot_3d_map",
 ]
-

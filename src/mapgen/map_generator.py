@@ -9,8 +9,6 @@ import numpy as np
 
 from . import (
     MapData,
-    Tile,
-    PlacementMethod,
     flora,
     hydrology,
     roads,
@@ -18,7 +16,7 @@ from . import (
     settlements,
     terrain,
 )
-from .tile_collections import TileCollections
+from .tile_collections import get_default_tile_collections
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +30,11 @@ def generate_map(
     persistence: float = 0.5,
     lacunarity: float = 2.0,
     smoothing_iterations: int = 5,
+    smoothing_sigma: float = 0.5,
     settlement_density: float = 0.002,
     min_settlement_radius: float = 0.5,
     max_settlement_radius: float = 1.0,
     seed: Optional[int] = None,
-    enable_smoothing: bool = True,
     enable_settlements: bool = True,
     enable_roads: bool = True,
     enable_rivers: bool = True,
@@ -73,7 +71,6 @@ def generate_map(
         min_settlement_radius (float): Minimum settlement radius.
         max_settlement_radius (float): Maximum settlement radius.
         seed (int): Random seed for reproducible generation. If None, uses random seed.
-        enable_smoothing (bool): Whether to apply terrain smoothing.
         enable_settlements (bool): Whether to generate settlements.
         enable_roads (bool): Whether to generate road networks.
         enable_rivers (bool): Whether to generate rivers.
@@ -170,6 +167,17 @@ def generate_map(
     terrain_time = time.time() - terrain_start
     logger.debug(f"Elevation map generation completed in {terrain_time:.3f}s")
 
+    # Phase 1.5: Smooth elevation map
+    logger.debug("Smoothing elevation map")
+    smooth_start = time.time()
+    terrain.smooth_elevation_map(
+        map_data,
+        iterations=smoothing_iterations,
+        sigma=smoothing_sigma,
+    )
+    smooth_time = time.time() - smooth_start
+    logger.debug(f"Elevation smoothing completed in {smooth_time:.3f}s")
+
     # Phase 2: Generate rainfall map (provides climate data for vegetation and analysis)
     logger.debug("Generating rainfall map")
     rainfall_start = time.time()
@@ -226,17 +234,6 @@ def generate_map(
         rivers_time = time.time() - rivers_start
         logger.debug(f"River generation completed in {rivers_time:.3f}s")
 
-    # Phase 6: Smooth terrain
-    if enable_smoothing:
-        logger.debug("Smoothing terrain")
-        smooth_start = time.time()
-        terrain.smooth_terrain(
-            map_data,
-            smoothing_iterations,
-        )
-        smooth_time = time.time() - smooth_start
-        logger.debug(f"Terrain smoothing completed in {smooth_time:.3f}s")
-
     # Phase 7: Generate settlements
     if enable_settlements:
         logger.debug("Generating settlements")
@@ -264,359 +261,3 @@ def generate_map(
     logger.info(f"Map generation completed successfully in {total_time:.3f}s")
 
     return map_data
-
-
-def get_default_tiles() -> list[Tile]:
-    """
-    Create the catalog of tiles used for map generation.
-
-    Returns:
-        list[Tile]: List of Tile instances used in the map.
-    """
-    tiles = [
-        Tile(
-            name="sea",
-            description="Sea water terrain",
-            walkable=True,
-            movement_cost=2.0,
-            blocks_line_of_sight=False,
-            buildable=False,
-            habitability=0.0,
-            road_buildable=False,
-            elevation_penalty=0.0,
-            elevation_influence=-0.5,
-            smoothing_weight=1.0,
-            elevation_min=-1.0,
-            elevation_max=-0.5,
-            terrain_priority=1,
-            smoothing_priority=2,
-            symbol="~",
-            color=(0.2, 0.5, 1.0),
-            resources=[],
-            is_water=True,
-            is_salt_water=True,
-            is_flowing_water=False,
-        ),
-        Tile(
-            name="coast",
-            description="Coastal shoreline terrain",
-            walkable=True,
-            movement_cost=1.5,
-            blocks_line_of_sight=False,
-            buildable=True,
-            habitability=0.6,
-            road_buildable=True,
-            elevation_penalty=0.0,
-            elevation_influence=-0.2,
-            smoothing_weight=1.0,
-            elevation_min=-0.5,
-            elevation_max=0.0,
-            terrain_priority=2,
-            smoothing_priority=1,
-            symbol="c",
-            color=(0.9647, 0.8627, 0.7412),
-            resources=["fish", "salt"],
-        ),
-        Tile(
-            name="plains",
-            description="Open plains",
-            walkable=True,
-            movement_cost=1.0,
-            blocks_line_of_sight=False,
-            buildable=True,
-            habitability=0.9,
-            road_buildable=True,
-            elevation_penalty=0.0,
-            elevation_influence=0.0,
-            smoothing_weight=1.0,
-            elevation_min=0.0,
-            elevation_max=0.2,
-            terrain_priority=3,
-            smoothing_priority=0,
-            symbol=".",
-            color=(0.8, 0.9, 0.6),
-            resources=["grain", "herbs"],
-        ),
-        Tile(
-            name="forest",
-            description="Forest terrain",
-            walkable=True,
-            movement_cost=1.2,
-            blocks_line_of_sight=False,
-            buildable=True,
-            habitability=0.7,
-            road_buildable=True,
-            elevation_penalty=0.0,
-            elevation_influence=0.0,
-            smoothing_weight=1.0,
-            elevation_min=0.2,
-            elevation_max=0.5,
-            terrain_priority=4,
-            smoothing_priority=4,
-            symbol="F",
-            color=(0.2, 0.6, 0.2),
-            resources=["wood", "game"],
-        ),
-        Tile(
-            name="mountain",
-            description="Mountain terrain",
-            walkable=False,
-            movement_cost=1.0,
-            blocks_line_of_sight=True,
-            buildable=False,
-            habitability=0.1,
-            road_buildable=False,
-            elevation_penalty=0.0,
-            elevation_influence=1.0,
-            smoothing_weight=1.0,
-            elevation_min=0.5,
-            elevation_max=1.0,
-            terrain_priority=5,
-            smoothing_priority=3,
-            symbol="^",
-            color=(0.5, 0.4, 0.3),
-            resources=["stone", "ore"],
-        ),
-    ]
-    tiles.append(
-        Tile(
-            name="river",
-            description="Flowing river water",
-            walkable=True,
-            movement_cost=1.5,
-            blocks_line_of_sight=False,
-            buildable=False,
-            habitability=0.0,
-            road_buildable=False,
-            elevation_penalty=0.0,
-            elevation_influence=-0.3,
-            smoothing_weight=1.0,
-            elevation_min=-0.5,
-            elevation_max=1.0,
-            terrain_priority=1,
-            smoothing_priority=1,
-            symbol="R",
-            color=(0.1, 0.4, 0.9),
-            resources=["fish"],
-            is_water=True,
-            is_salt_water=False,
-            is_flowing_water=True,
-            placement_method=PlacementMethod.ALGORITHM_BASED,
-        )
-    )
-    return tiles
-
-
-def get_default_tile_collections() -> TileCollections:
-    """
-    Create organized tile collections for map generation.
-
-    This function returns tiles organized by placement method, separating
-    base terrain from vegetation and other features for better organization
-    and more realistic placement.
-
-    Returns:
-        TileCollections:
-            Organized tile collections with base_terrain, vegetation,
-            water_features, and infrastructure.
-
-    """
-    collections = TileCollections()
-
-    # Base terrain tiles (elevation-driven)
-    collections.base_terrain.extend(
-        [
-            Tile(
-                name="sea",
-                description="Sea water terrain",
-                walkable=True,
-                movement_cost=2.0,
-                blocks_line_of_sight=False,
-                buildable=False,
-                habitability=0.0,
-                road_buildable=False,
-                elevation_penalty=0.0,
-                elevation_influence=-0.5,
-                smoothing_weight=1.0,
-                elevation_min=-1.0,
-                elevation_max=-0.2,
-                terrain_priority=1,
-                smoothing_priority=2,
-                symbol="~",
-                color=(0.2, 0.5, 1.0),
-                resources=[],
-                is_water=True,
-                is_salt_water=True,
-                is_flowing_water=False,
-                placement_method=PlacementMethod.TERRAIN_BASED,
-            ),
-            Tile(
-                name="coast",
-                description="Coastal shoreline terrain",
-                walkable=True,
-                movement_cost=1.5,
-                blocks_line_of_sight=False,
-                buildable=True,
-                habitability=0.6,
-                road_buildable=True,
-                elevation_penalty=0.0,
-                elevation_influence=-0.2,
-                smoothing_weight=1.0,
-                elevation_min=-0.2,
-                elevation_max=0.1,
-                terrain_priority=2,
-                smoothing_priority=1,
-                symbol="c",
-                color=(0.9647, 0.8627, 0.7412),
-                resources=["fish", "salt"],
-                placement_method=PlacementMethod.TERRAIN_BASED,
-            ),
-            Tile(
-                name="plains",
-                description="Open plains",
-                walkable=True,
-                movement_cost=1.0,
-                blocks_line_of_sight=False,
-                buildable=True,
-                habitability=0.9,
-                road_buildable=True,
-                elevation_penalty=0.0,
-                elevation_influence=0.0,
-                smoothing_weight=1.0,
-                elevation_min=0.1,
-                elevation_max=0.5,
-                terrain_priority=3,
-                smoothing_priority=0,
-                symbol=".",
-                color=(0.8, 0.9, 0.6),
-                resources=["grain", "herbs"],
-                placement_method=PlacementMethod.TERRAIN_BASED,
-                can_host_vegetation=True,
-            ),
-            Tile(
-                name="mountain",
-                description="Mountain terrain",
-                walkable=False,
-                movement_cost=1.0,
-                blocks_line_of_sight=True,
-                buildable=False,
-                habitability=0.1,
-                road_buildable=False,
-                elevation_penalty=0.0,
-                elevation_influence=1.0,
-                smoothing_weight=1.0,
-                elevation_min=0.5,
-                elevation_max=1.0,
-                terrain_priority=5,
-                smoothing_priority=3,
-                symbol="^",
-                color=(0.5, 0.4, 0.3),
-                resources=["stone", "ore"],
-                placement_method=PlacementMethod.TERRAIN_BASED,
-            ),
-        ]
-    )
-
-    # Vegetation tiles (climate-driven)
-    collections.vegetation.extend(
-        [
-            Tile(
-                name="forest",
-                description="Dense forest with tall trees",
-                walkable=True,
-                movement_cost=1.2,
-                blocks_line_of_sight=False,
-                buildable=True,
-                habitability=0.7,
-                road_buildable=True,
-                elevation_penalty=0.0,
-                elevation_influence=0.0,
-                smoothing_weight=1.0,
-                elevation_min=0.0,
-                elevation_max=0.6,
-                terrain_priority=4,
-                smoothing_priority=4,
-                symbol="F",
-                color=(0.2, 0.6, 0.2),
-                resources=["wood", "game"],
-                placement_method=PlacementMethod.ALGORITHM_BASED,
-            ),
-            Tile(
-                name="grassland",
-                description="Grassy terrain with scattered vegetation",
-                walkable=True,
-                movement_cost=1.0,
-                blocks_line_of_sight=False,
-                buildable=True,
-                habitability=0.8,
-                road_buildable=True,
-                elevation_penalty=0.0,
-                elevation_influence=0.0,
-                smoothing_weight=1.0,
-                elevation_min=0.0,
-                elevation_max=0.4,
-                terrain_priority=3,
-                smoothing_priority=2,
-                symbol="g",
-                color=(0.6, 0.8, 0.4),
-                resources=["herbs", "game"],
-                placement_method=PlacementMethod.ALGORITHM_BASED,
-            ),
-            Tile(
-                name="desert",
-                description="Arid desert terrain",
-                walkable=True,
-                movement_cost=1.3,
-                blocks_line_of_sight=False,
-                buildable=True,
-                habitability=0.3,
-                road_buildable=True,
-                elevation_penalty=0.0,
-                elevation_influence=0.0,
-                smoothing_weight=1.0,
-                elevation_min=0.0,
-                elevation_max=0.5,
-                terrain_priority=3,
-                smoothing_priority=1,
-                symbol="d",
-                color=(0.9, 0.8, 0.5),
-                resources=[],
-                placement_method=PlacementMethod.ALGORITHM_BASED,
-            ),
-        ]
-    )
-
-    # Water features (algorithm-based)
-    collections.water_features.extend(
-        [
-            Tile(
-                name="river",
-                description="Flowing river water",
-                walkable=True,
-                movement_cost=1.5,
-                blocks_line_of_sight=False,
-                buildable=False,
-                habitability=0.0,
-                road_buildable=False,
-                elevation_penalty=0.0,
-                elevation_influence=-0.3,
-                smoothing_weight=1.0,
-                elevation_min=-0.5,
-                elevation_max=1.0,
-                terrain_priority=1,
-                smoothing_priority=1,
-                symbol="R",
-                color=(0.1, 0.4, 0.9),
-                resources=["fish"],
-                is_water=True,
-                is_salt_water=False,
-                is_flowing_water=True,
-                placement_method=PlacementMethod.ALGORITHM_BASED,
-            ),
-        ]
-    )
-
-    # Infrastructure tiles (currently empty, for future use)
-    # collections.infrastructure.extend([...])
-
-    return collections

@@ -156,12 +156,6 @@ class Tile(BaseModel):
         description="Additional pathfinding cost due to elevation changes.",
     )
     # Terrain generation
-    elevation_influence: float = Field(
-        description="How much this tile affects terrain elevation during generation.",
-    )
-    smoothing_weight: float = Field(
-        description="How much this tile participates in terrain smoothing algorithms.",
-    )
     elevation_min: float = Field(
         default=0.0,
         description="Minimum elevation for terrain generation.",
@@ -173,10 +167,6 @@ class Tile(BaseModel):
     terrain_priority: int = Field(
         default=0,
         description="Priority for terrain assignment (higher = preferred).",
-    )
-    smoothing_priority: int = Field(
-        default=0,
-        description="Priority for smoothing assignment (higher = preferred).",
     )
     diggable: bool = Field(
         default=False,
@@ -229,12 +219,9 @@ class Tile(BaseModel):
                 self.habitability,
                 self.road_buildable,
                 self.elevation_penalty,
-                self.elevation_influence,
-                self.smoothing_weight,
                 self.elevation_min,
                 self.elevation_max,
                 self.terrain_priority,
-                self.smoothing_priority,
                 self.diggable,
                 self.symbol,
                 self.color,
