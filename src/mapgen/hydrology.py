@@ -136,6 +136,13 @@ def generate_rainfall_map(
     humidity_factor = _compute_humidity_factor(humid_noise)
     orographic_factor = _compute_orographic_factor(elev_noise, map_data, width, height)
 
+    # Store temperature map for later use (normalized to 0-1)
+    temperature = temp_noise * 1.5
+    temperature_normalized = (temperature + 1.0) / 2.0  # Convert from [-1.5, 1.5] to [0, 1]
+    temperature_normalized = np.clip(temperature_normalized, 0.0, 1.0)
+    temperature_normalized = np.round(temperature_normalized, decimals=4)
+    map_data.temperature_map = temperature_normalized.tolist()
+
     # Combine factors with weights
     rainfall_map = (
         temp_factor * temp_weight

@@ -212,6 +212,11 @@ class Tile(BaseModel):
         default=PlacementMethod.TERRAIN_BASED,
         description="How this tile is placed on the map.",
     )
+    # Vegetation support
+    can_host_vegetation: bool = Field(
+        default=False,
+        description="Whether this base terrain tile can support vegetation growth.",
+    )
 
     def __hash__(self) -> int:
         """Return hash based on all tile properties."""
@@ -411,6 +416,16 @@ class MapData(BaseModel):
     def rainfall_map(self, value: list[list[float]]) -> None:
         """Set the rainfall map layer."""
         self.layers["rainfall"] = value
+
+    @property
+    def temperature_map(self) -> list[list[float]]:
+        """Get the temperature map layer."""
+        return self.layers.get("temperature", [])
+
+    @temperature_map.setter
+    def temperature_map(self, value: list[list[float]]) -> None:
+        """Set the temperature map layer."""
+        self.layers["temperature"] = value
 
     @property
     def accumulation_map(self) -> list[list[float]]:

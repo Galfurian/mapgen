@@ -16,11 +16,13 @@ from mapgen import (
     plot_elevation_map,
     plot_map,
     plot_rainfall_map,
+    plot_temperature_map,
     plot_3d_map,
     get_ascii_map,
+    get_ascii_rainfall_map,
+    get_ascii_temperature_map,
     logger,
 )
-from mapgen.visualization import get_ascii_rainfall_map
 
 
 def main() -> None:
@@ -291,6 +293,25 @@ Examples:
         with open(ascii_rainfall_path, "w") as f:
             f.write(ascii_rainfall_map)
         logger.info(f"💾 ASCII rainfall map saved: {ascii_rainfall_path}")
+        generated_files += 1
+
+    # Temperature map (available if temperature was generated)
+    if map_data.temperature_map:
+        logger.info("🌡️ Generating temperature map...")
+        fig = plot_temperature_map(map_data, title=f"Temperature Map (Seed: {args.seed})")
+        temperature_path = output_dir / f"seed_{args.seed}_layer_temperature.png"
+        fig.savefig(temperature_path, dpi=dpi, bbox_inches="tight")
+        fig.clear()
+        logger.info(f"💾 Temperature map saved: {temperature_path}")
+        generated_files += 1
+
+        logger.info("📄 Generating ASCII temperature map...")
+        ascii_temperature_map = get_ascii_temperature_map(map_data)
+        ascii_temperature_path = output_dir / f"seed_{args.seed}_map_temperature_ascii.txt"
+        with open(ascii_temperature_path, "w") as f:
+            f.write(ascii_temperature_map)
+        logger.info(f"💾 ASCII temperature map saved: {ascii_temperature_path}")
+        generated_files += 1
 
     # Main terrain map (always generated)
     logger.info("🖼️ Generating main terrain map...")

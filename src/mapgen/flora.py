@@ -154,10 +154,9 @@ def _place_forests(
     for y in range(height):
         for x in range(width):
             current_tile = map_data.get_terrain(x, y)
-            # Only place forests on buildable land that is NOT coast or water
-            if not current_tile.buildable or current_tile.is_water:
-                continue
-            if current_tile.name in ["coast", "sea"]:
+            
+            # Only place forests on base terrain that can host vegetation
+            if not current_tile.can_host_vegetation:
                 continue
 
             elevation = map_data.get_elevation(x, y)
@@ -195,31 +194,26 @@ def _place_forests(
         x, y = active_positions.pop(random.randint(0, len(active_positions) - 1))
 
         current_tile = map_data.get_terrain(x, y)
-        # Skip water, coast, and non-buildable tiles
-        if not current_tile.buildable or current_tile.is_water:
-            continue
-        if current_tile.name in ["coast", "sea"]:
+        
+        # Only place forests on base terrain that can host vegetation
+        if not current_tile.can_host_vegetation:
             continue
 
         elevation = map_data.get_elevation(x, y)
         rainfall = map_data.get_rainfall(x, y)
 
-        # Check if this position is suitable for forest (prefer inland, moderate elevation)
-        if (
-            elevation_min <= elevation <= elevation_max
-            and rainfall >= rainfall_threshold
-            and elevation >= 0.05  # Avoid very low elevations near coast
-        ):
+        # Check if this position is suitable for forest
+        if elevation_min <= elevation <= elevation_max and rainfall >= rainfall_threshold:
             map_data.set_terrain(x, y, forest_tile)
             tiles_placed += 1
 
             # Add neighbors to active positions for spreading
             for neighbor in map_data.get_neighbors(x, y, walkable_only=False):
                 neighbor_tile = map_data.get_terrain(neighbor.x, neighbor.y)
+                
+                # Only spread to tiles that can host vegetation
                 if (
-                    neighbor_tile.buildable
-                    and not neighbor_tile.is_water
-                    and neighbor_tile.name not in ["coast", "sea"]
+                    neighbor_tile.can_host_vegetation
                     and (neighbor.x, neighbor.y) not in active_positions
                 ):
                     # Probabilistic spreading based on rainfall
@@ -239,8 +233,8 @@ def _place_deserts(
     """
     Place deserts in arid regions.
 
-    Deserts are placed in areas with low rainfall. They are placed on suitable
-    base terrain tiles (plains, coast) where rainfall is below the threshold.
+    Deserts are placed in areas with low rainfall on base terrain that
+    supports vegetation (identified by the can_host_vegetation flag).
 
     Args:
         map_data (MapData):
@@ -267,11 +261,9 @@ def _place_deserts(
     for y in range(height):
         for x in range(width):
             current_tile = map_data.get_terrain(x, y)
-            # Only place deserts on buildable land that isn't already vegetation
-            if (
-                not current_tile.buildable
-                or current_tile.name in ["forest", "grassland"]
-            ):
+            
+            # Only place deserts on base terrain that can host vegetation
+            if not current_tile.can_host_vegetation:
                 continue
 
             rainfall = map_data.get_rainfall(x, y)
@@ -299,9 +291,9 @@ def _place_grasslands(
     """
     Place grasslands in moderate conditions.
 
-    Grasslands are placed on remaining buildable terrain that doesn't already
-    have vegetation (forests, deserts). They serve as a transition biome
-    between other vegetation types.
+    Grasslands are placed on base terrain that supports vegetation
+    (identified by the can_host_vegetation flag) where climate conditions
+    are moderate. They serve as a transition biome between forests and deserts.
 
     Args:
         map_data (MapData):
@@ -320,18 +312,17 @@ def _place_grasslands(
         for x in range(map_data.width):
             current_tile = map_data.get_terrain(x, y)
 
-            # Place grasslands on buildable terrain that doesn't have vegetation
-            if (
-                current_tile.buildable
-                and current_tile.name not in ["forest", "desert", "grassland"]
-            ):
-                elevation = map_data.get_elevation(x, y)
-                rainfall = map_data.get_rainfall(x, y)
+            # Place grasslands only on base terrain that can host vegetation
+            if not current_tile.can_host_vegetation:
+                continue
+                
+            elevation = map_data.get_elevation(x, y)
+            rainfall = map_data.get_rainfall(x, y)
 
-                # Grasslands prefer moderate conditions
-                if 0.0 <= elevation <= 0.4 and 0.3 <= rainfall <= 0.7:
-                    map_data.set_terrain(x, y, grassland_tile)
-                    tiles_placed += 1
+            # Grasslands prefer moderate conditions
+            if 0.0 <= elevation <= 0.4 and 0.3 <= rainfall <= 0.7:
+                map_data.set_terrain(x, y, grassland_tile)
+                tiles_placed += 1
 
     return tiles_placed
 

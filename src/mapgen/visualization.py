@@ -566,6 +566,47 @@ def get_ascii_rainfall_map(map_data: MapData) -> str:
     return "\n".join(lines)
 
 
+def get_ascii_temperature_map(map_data: MapData) -> str:
+    """
+    Generate an ASCII representation of the temperature map using digits 0-9.
+
+    Temperature values are normalized to a 0-9 scale where:
+    - 0 represents coldest temperatures
+    - 9 represents hottest temperatures
+
+    This is useful for debugging and analyzing temperature patterns without
+    requiring graphical output.
+
+    Args:
+        map_data (MapData):
+            The map data containing the temperature map.
+
+    Returns:
+        str:
+            The ASCII temperature map as a string with digits 0-9.
+
+    Raises:
+        ValueError:
+            If temperature_map is not available in map_data.
+
+    """
+    if not map_data.temperature_map:
+        raise ValueError("Temperature map is not available in map_data")
+
+    temperature_array = np.array(map_data.temperature_map)
+    # Normalize to 0-9 scale
+    temperature_normalized = (temperature_array * 9).astype(int)
+    temperature_normalized = np.clip(temperature_normalized, 0, 9)
+
+    lines = []
+    for y in range(map_data.height):
+        line = ""
+        for x in range(map_data.width):
+            line += str(temperature_normalized[y, x])
+        lines.append(line)
+    return "\n".join(lines)
+
+
 def plot_elevation_map(
     map_data: MapData,
     colormap: str = "terrain",
@@ -641,6 +682,49 @@ def plot_rainfall_map(
     # Add colorbar
     cbar = fig.colorbar(im, ax=ax, shrink=0.8, aspect=20)
     cbar.set_label("Rainfall Intensity")
+
+    ax.set_title(title)
+    ax.set_xlabel("X Coordinate")
+    ax.set_ylabel("Y Coordinate")
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    plt.tight_layout()
+    return fig
+
+
+def plot_temperature_map(
+    map_data: MapData,
+    colormap: str = "RdYlBu_r",
+    title: str = "Temperature Map",
+) -> Figure:
+    """
+    Plot the temperature map as a standalone visualization.
+
+    Args:
+        map_data (MapData):
+            The map data containing temperature.
+        colormap (str):
+            Matplotlib colormap for temperature coloring (default: RdYlBu_r for hot=red, cold=blue).
+        title (str):
+            Title for the plot.
+
+    Returns:
+        Figure:
+            The matplotlib figure containing the temperature map.
+
+    """
+    if not map_data.temperature_map:
+        raise ValueError("Map data missing temperature_map")
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    temperature_array = np.array(map_data.temperature_map)
+    im = ax.imshow(temperature_array, cmap=colormap, origin="upper")
+
+    # Add colorbar
+    cbar = fig.colorbar(im, ax=ax, shrink=0.8, aspect=20)
+    cbar.set_label("Temperature")
 
     ax.set_title(title)
     ax.set_xlabel("X Coordinate")
