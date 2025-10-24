@@ -3,9 +3,11 @@
 import logging
 
 from .map_data import MapData, Position, Settlement, Tile, PlacementMethod
-from .map_generator import generate_map, get_default_tiles
+from .map_generator import generate_map, get_default_tiles, get_default_tile_collections
+from .tile_collections import TileCollections
 from .visualization import (
     get_ascii_map,
+    get_ascii_rainfall_map,
     plot_base_terrain,
     plot_contour_lines,
     plot_elevation_map,
@@ -15,6 +17,7 @@ from .visualization import (
     plot_roads,
     plot_settlements,
 )
+from . import flora
 
 __version__ = "0.1.0"
 
@@ -36,11 +39,15 @@ if not logger.handlers:
 __all__ = [
     "MapData",
     "generate_map",
+    "get_default_tile_collections",
     "PlacementMethod",
     "Position",
     "Settlement",
     "Tile",
+    "TileCollections",
+    "flora",
     "get_ascii_map",
+    "get_ascii_rainfall_map",
     "logger",
     "plot_base_terrain",
     "plot_contour_lines",

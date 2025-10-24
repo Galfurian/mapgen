@@ -528,6 +528,44 @@ def get_ascii_map(map_data: MapData) -> str:
     return "\n".join(lines)
 
 
+def get_ascii_rainfall_map(map_data: MapData) -> str:
+    """
+    Generate an ASCII representation of the rainfall map using digits 0-9.
+
+    This visualization maps rainfall values to single digits where:
+    - 0 represents very dry areas (no rain)
+    - 9 represents very wet areas (maximum rainfall)
+
+    Args:
+        map_data (MapData):
+            The map data containing rainfall information.
+
+    Returns:
+        str:
+            The ASCII rainfall map as a string with digits 0-9.
+
+    Raises:
+        ValueError:
+            If rainfall_map is not available in map_data.
+
+    """
+    if not map_data.rainfall_map:
+        raise ValueError("Rainfall map is not available in map_data")
+
+    rainfall_array = np.array(map_data.rainfall_map)
+    # Normalize to 0-9 scale
+    rainfall_normalized = (rainfall_array * 9).astype(int)
+    rainfall_normalized = np.clip(rainfall_normalized, 0, 9)
+
+    lines = []
+    for y in range(map_data.height):
+        line = ""
+        for x in range(map_data.width):
+            line += str(rainfall_normalized[y, x])
+        lines.append(line)
+    return "\n".join(lines)
+
+
 def plot_elevation_map(
     map_data: MapData,
     colormap: str = "terrain",

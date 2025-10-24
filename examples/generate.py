@@ -20,6 +20,7 @@ from mapgen import (
     get_ascii_map,
     logger,
 )
+from mapgen.visualization import get_ascii_rainfall_map
 
 
 def main() -> None:
@@ -176,6 +177,23 @@ Examples:
         help="Disable river generation",
     )
     parser.add_argument(
+        "--disable-vegetation",
+        action="store_true",
+        help="Disable climate-driven vegetation placement",
+    )
+    parser.add_argument(
+        "--forest-coverage",
+        type=float,
+        default=0.15,
+        help="Target forest coverage ratio (default: 0.15)",
+    )
+    parser.add_argument(
+        "--desert-coverage",
+        type=float,
+        default=0.10,
+        help="Target desert coverage ratio (default: 0.10)",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -212,11 +230,14 @@ Examples:
         enable_settlements=not args.disable_settlements,
         enable_roads=not args.disable_roads,
         enable_rivers=not args.disable_rivers,
+        enable_vegetation=not args.disable_vegetation,
         sea_level=args.sea_level,
         rainfall_temp_weight=args.rainfall_temp_weight,
         rainfall_humidity_weight=args.rainfall_humidity_weight,
         rainfall_orographic_weight=args.rainfall_orographic_weight,
         rainfall_variation_strength=args.rainfall_variation_strength,
+        forest_coverage=args.forest_coverage,
+        desert_coverage=args.desert_coverage,
     )
 
     if map_data is None:
@@ -263,6 +284,13 @@ Examples:
         fig.clear()
         logger.info(f"💾 Rainfall map saved: {rainfall_path}")
         generated_files += 1
+
+        logger.info("📄 Generating ASCII rainfall map...")
+        ascii_rainfall_map = get_ascii_rainfall_map(map_data)
+        ascii_rainfall_path = output_dir / f"seed_{args.seed}_map_rainfall_ascii.txt"
+        with open(ascii_rainfall_path, "w") as f:
+            f.write(ascii_rainfall_map)
+        logger.info(f"💾 ASCII rainfall map saved: {ascii_rainfall_path}")
 
     # Main terrain map (always generated)
     logger.info("🖼️ Generating main terrain map...")

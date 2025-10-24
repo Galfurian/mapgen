@@ -238,6 +238,61 @@ def apply_terrain_features(
     )
 
 
+def apply_base_terrain(
+    map_data: MapData,
+    base_terrain_tiles: list[Tile],
+) -> None:
+    """
+    Apply base terrain tiles based on elevation map.
+
+    This function assigns only base terrain tiles (sea, coast, plains,
+    mountains) to each position on the map based on elevation values. It does
+    NOT place vegetation - that is handled separately by the flora module.
+
+    Base terrain forms the foundation of the map and represents the underlying
+    geological/topographical features before vegetation and other features are
+    added.
+
+    Args:
+        map_data (MapData):
+            The map data to modify. Must have an elevation_map.
+        base_terrain_tiles (list[Tile]):
+            List of base terrain tiles to use for placement. These should only
+            include elevation-driven tiles like sea, coast, plains, and
+            mountains.
+
+    Raises:
+        ValueError:
+            If elevation_map is not available in map_data or if no suitable
+            tiles are provided.
+
+    """
+    if not map_data.elevation_map:
+        raise ValueError("Elevation map is required for base terrain assignment")
+
+    if not base_terrain_tiles:
+        raise ValueError("No base terrain tiles provided")
+
+    # Sort by priority (highest first)
+    terrain_tiles = sorted(base_terrain_tiles, key=lambda t: t.terrain_priority, reverse=True)
+
+    logger.debug(f"Applying base terrain using {len(terrain_tiles)} tiles")
+
+    tiles_assigned = 0
+    for y in range(map_data.height):
+        for x in range(map_data.width):
+            if _apply_suitable_tile(map_data, terrain_tiles, x, y):
+                tiles_assigned += 1
+            else:
+                logger.warning(
+                    f"No suitable base terrain tile found for elevation {map_data.get_elevation(x, y):.3f} at ({x}, {y})"
+                )
+
+    logger.debug(
+        f"Assigned base terrain to {tiles_assigned}/{map_data.width * map_data.height} positions"
+    )
+
+
 def _apply_suitable_tile(
     map_data: MapData,
     terrain_tiles: list[Tile],
