@@ -234,73 +234,54 @@ def _merge_river_paths(paths: list, elevation: np.ndarray | None = None) -> list
     if len(paths) <= 1:
         return paths
 
-    # Build a set of all cells occupied by rivers (for quick lookup) Process
-    # from longest to shortest, so major rivers take priority Initialize list
-    # for merged paths.
+    # Build a set of all cells occupied by rivers (for quick lookup)
     merged_paths = []
-    # Set to track occupied cells.
     occupied_cells = set()
 
     # Process each path from longest to shortest.
     for path in paths:
         # Find where this path comes close to existing rivers.
         intersection_index = None
-        # Check each point in the path.
         for i, (y, x) in enumerate(path):
-            # Check if near existing river.
-            is_near_river = False
-
-            # Check the cell itself.
-            if (y, x) in occupied_cells:
-                is_near_river = True
-            else:
-                # Check adjacent cells (including diagonals).
-                for dy in [-1, 0, 1]:
-                    for dx in [-1, 0, 1]:
-                        if dy == 0 and dx == 0:
-                            continue
-                        if (y + dy, x + dx) in occupied_cells:
-                            is_near_river = True
-                            break
-                    if is_near_river:
-                        break
-
-            if is_near_river:
+            # Check if near existing river (cell or adjacent).
+            if _is_near_occupied(y, x, occupied_cells):
                 intersection_index = i
                 break
 
         # If intersection found, truncate path.
         if intersection_index is not None:
-            # Keep path up to intersection.
             truncated_path = path[:intersection_index]
-
-            # Calculate distance to start visible tiles.
             start_distance = max(5, len(truncated_path) // 5)
-            # Calculate number of visible tiles.
             visible_tiles = len(truncated_path) - start_distance
 
-            # Set minimum visible tiles.
             min_visible = 5
-            if elevation is not None and len(truncated_path) > 0:
+            if elevation is not None and truncated_path:
                 source_y, source_x = truncated_path[0]
                 source_elev = elevation[source_y, source_x]
-                # Scale from 5 (low elevation) to 15 (high elevation). Assuming
-                # elevation range is roughly -1 to 1
-                min_visible = int(5 + (source_elev + 1) * 5)
-                min_visible = max(5, min(15, min_visible))
+                min_visible = max(5, min(15, int(5 + (source_elev + 1) * 5)))
 
             if visible_tiles >= min_visible:
                 merged_paths.append(truncated_path)
-                # Add truncated path cells to occupied set.
-                for cell in truncated_path:
-                    occupied_cells.add(cell)
+                occupied_cells.update(truncated_path)
         else:
             # No intersection, keep entire path.
             merged_paths.append(path)
-            for cell in path:
-                occupied_cells.add(cell)
+            occupied_cells.update(path)
 
     return merged_paths
+
+
+def _is_near_occupied(y: int, x: int, occupied_cells: set) -> bool:
+    """Check if a cell or its neighbors are occupied."""
+    # Check the cell itself.
+    if (y, x) in occupied_cells:
+        return True
+    # Check adjacent cells (including diagonals).
+    for dy in [-1, 0, 1]:
+        for dx in [-1, 0, 1]:
+            if (y + dy, x + dx) in occupied_cells:
+                return True
+    return False
 
 
 def _trace_downhill_path(
