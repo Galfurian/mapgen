@@ -47,8 +47,8 @@ class TileCollections:
         """
         Get all tiles in a single flat list.
 
-        This property provides backward compatibility with code that expects
-        a flat list of tiles. Tiles are returned in the order: base terrain,
+        This property provides backward compatibility with code that expects a
+        flat list of tiles. Tiles are returned in the order: base terrain,
         vegetation, water features, infrastructure.
 
         Returns:
@@ -103,9 +103,9 @@ def get_default_tile_collections() -> TileCollections:
     """
     Create organized tile collections for map generation.
 
-    This function returns tiles organized by placement method, separating
-    base terrain from vegetation and other features for better organization
-    and more realistic placement.
+    This function returns tiles organized by placement method, separating base
+    terrain from vegetation and other features for better organization and more
+    realistic placement.
 
     Returns:
         TileCollections:
@@ -113,6 +113,7 @@ def get_default_tile_collections() -> TileCollections:
             water_features, and infrastructure.
 
     """
+    # Create a new TileCollections instance.
     collections = TileCollections()
 
     # Base terrain tiles (elevation-driven)
@@ -287,4 +288,5 @@ def get_default_tile_collections() -> TileCollections:
     # Infrastructure tiles (currently empty, for future use)
     # collections.infrastructure.extend([...])
 
+    # Return the populated collections.
     return collections
