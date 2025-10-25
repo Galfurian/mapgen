@@ -31,7 +31,7 @@ logger.setLevel(logging.INFO)
 if not logger.handlers:
     console_handler = logging.StreamHandler()
     # Create formatter.
-    formatter = logging.Formatter("[%(name)s] %(levelname)-6s: %(message)s")
+    formatter = logging.Formatter("%(name)-22s %(levelname)-8s : %(message)s")
     console_handler.setFormatter(formatter)
     # Add handler to logger.
     logger.addHandler(console_handler)

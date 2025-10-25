@@ -3,12 +3,11 @@ Hydrology utilities for mapgen: rainfall generation and accumulation (runoff) co
 """
 
 import logging
-import random
 
-import noise
 import numpy as np
+from collections import deque
 
-from .map_data import MapData, Position
+from .map_data import MapData
 from .utils import generate_noise_grid
 
 logger = logging.getLogger(__name__)
@@ -138,7 +137,9 @@ def generate_rainfall_map(
 
     # Store temperature map for later use (normalized to 0-1)
     temperature = temp_noise * 1.5
-    temperature_normalized = (temperature + 1.0) / 2.0  # Convert from [-1.5, 1.5] to [0, 1]
+    temperature_normalized = (
+        temperature + 1.0
+    ) / 2.0  # Convert from [-1.5, 1.5] to [0, 1]
     temperature_normalized = np.clip(temperature_normalized, 0.0, 1.0)
     temperature_normalized = np.round(temperature_normalized, decimals=4)
     map_data.temperature_map = temperature_normalized.tolist()
@@ -238,7 +239,6 @@ def generate_accumulation_map(map_data: MapData) -> None:
             tx, ty = flow_to[y, x]
             if (tx, ty) != (x, y):
                 in_degree[ty, tx] += 1
-    from collections import deque
 
     queue = deque()
     for y in range(height):

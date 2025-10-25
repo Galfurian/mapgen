@@ -1,4 +1,10 @@
-"""Data models for the map generator."""
+"""
+Data models for the map generator.
+
+This module defines the core data structures used throughout the map generation
+process, including tiles, positions, settlements, roads, and the main map data
+container.
+"""
 
 from __future__ import annotations
 
@@ -10,10 +16,10 @@ from pydantic import BaseModel, Field
 class PlacementMethod(Enum):
     """How tiles are placed on the map."""
 
-    TERRAIN_BASED = "terrain_based"  # Assigned based on elevation/climate rules
-    ALGORITHM_BASED = (
-        "algorithm_based"  # Assigned by specific algorithms (rivers, lakes, etc.)
-    )
+    # Assigned based on elevation/climate rules.
+    TERRAIN_BASED = "terrain_based"
+    # Assigned by specific algorithms (rivers, lakes, etc.)
+    ALGORITHM_BASED = "algorithm_based"
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,6 +71,7 @@ class Position:
         return abs(self.x - other.x) + abs(self.y - other.y)
 
     def __hash__(self) -> int:
+        """Return hash based on coordinates."""
         return hash((self.x, self.y))
 
 
@@ -304,8 +311,8 @@ class Settlement(BaseModel):
         """Calculate Euclidean distance to another position.
 
         Args:
-            other (Position):
-                The other position.
+            other (Settlement):
+                The other settlement.
 
         Returns:
             float:
@@ -425,7 +432,17 @@ class MapData(BaseModel):
         self.layers["accumulation"] = value
 
     def _get_tile_index(self, tile: Tile) -> int:
-        """Get the index of a tile, adding it if not present."""
+        """Get the index of a tile, adding it if not present.
+
+        Args:
+            tile (Tile):
+                The tile to find or add.
+
+        Returns:
+            int:
+                The index of the tile in the tiles list.
+
+        """
         if tile in self.tiles:
             return self.tiles.index(tile)
         self.tiles.append(tile)
@@ -455,7 +472,8 @@ class MapData(BaseModel):
 
         Returns:
             float:
-                The elevation at the coordinates (0.0 if elevation data not available).
+                The elevation at the coordinates (0.0 if elevation data not
+                available).
 
         Raises:
             IndexError:
@@ -537,13 +555,13 @@ class MapData(BaseModel):
         Get neighboring positions within map boundaries.
 
         Args:
-            x:
+            x (int):
                 The x coordinate.
-            y:
+            y (int):
                 The y coordinate.
-            walkable_only:
+            walkable_only (bool):
                 If True, only return walkable neighbors.
-            include_diagonals:
+            include_diagonals (bool):
                 If True, include diagonal neighbors (8 directions), otherwise
                 only cardinal directions (4 directions).
 
@@ -596,13 +614,13 @@ class MapData(BaseModel):
         Get neighboring tiles within map boundaries.
 
         Args:
-            x:
+            x (int):
                 The x coordinate.
-            y:
+            y (int):
                 The y coordinate.
-            walkable_only:
+            walkable_only (bool):
                 If True, only return walkable neighbors.
-            include_diagonals:
+            include_diagonals (bool):
                 If True, include diagonal neighbors (8 directions), otherwise
                 only cardinal directions (4 directions).
 
@@ -620,14 +638,16 @@ class MapData(BaseModel):
         """Get a row from the grid.
 
         Args:
-            key (int): The row index.
+            key (int):
+                The row index.
 
         Returns:
             list[Tile]:
                 The row of tiles.
 
         Raises:
-            IndexError: If key is out of bounds.
+            IndexError:
+                If key is out of bounds.
 
         """
         return [self.tiles[i] for i in self.grid[key]]
@@ -636,11 +656,14 @@ class MapData(BaseModel):
         """Set a row in the grid.
 
         Args:
-            key (int): The row index.
-            value (list[Tile]): The row of tiles to set.
+            key (int):
+                The row index.
+            value (list[Tile]):
+                The row of tiles to set.
 
         Raises:
-            IndexError: If key is out of bounds.
+            IndexError:
+                If key is out of bounds.
 
         """
         self.grid[key] = [self._get_tile_index(tile) for tile in value]
@@ -653,7 +676,8 @@ class MapData(BaseModel):
         """Save the map data to a JSON file.
 
         Args:
-            filepath (str): Path to the file where the map will be saved.
+            filepath (str):
+                Path to the file where the map will be saved.
 
         """
         with open(filepath, "w", encoding="utf-8") as f:
@@ -665,7 +689,8 @@ class MapData(BaseModel):
         Load map data from a JSON file.
 
         Args:
-            filepath (str): Path to the JSON file to load from.
+            filepath (str):
+                Path to the JSON file to load from.
 
         Returns:
             MapData:
@@ -692,7 +717,8 @@ class MapData(BaseModel):
 
         Returns:
             float:
-                The rainfall at the coordinates (0.0 if rainfall data not available).
+                The rainfall at the coordinates (0.0 if rainfall data not
+                available).
 
         Raises:
             IndexError:
@@ -716,24 +742,31 @@ class MapData(BaseModel):
                 List of tiles that match all the specified properties.
 
         Example:
-            # Find all flowing water tiles
-            flowing_water = map_data.find_tiles_by_properties(is_flowing_water=True)
+            # Find all flowing water tiles flowing_water =
+            map_data.find_tiles_by_properties(is_flowing_water=True)
 
-            # Find all walkable, buildable tiles
-            buildable_tiles = map_data.find_tiles_by_properties(
+            # Find all walkable, buildable tiles buildable_tiles =
+            map_data.find_tiles_by_properties(
                 walkable=True, buildable=True
             )
         """
+        # Initialize list for matching tiles.
         matching_tiles = []
+        # Check each tile.
         for tile in self.tiles:
+            # Assume tile matches initially.
             matches = True
+            # Check each property.
             for prop_name, prop_value in properties.items():
+                # If tile doesn't have the property, no match.
                 if not hasattr(tile, prop_name):
                     matches = False
                     break
+                # If property value doesn't match, no match.
                 if getattr(tile, prop_name) != prop_value:
                     matches = False
                     break
+            # If all properties match, add to list.
             if matches:
                 matching_tiles.append(tile)
         return matching_tiles
