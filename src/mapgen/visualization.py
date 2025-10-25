@@ -6,15 +6,19 @@ maps, including 2D plots, 3D terrain views, and ASCII representations of
 different map layers like elevation, rainfall, and temperature.
 """
 
+from typing import TYPE_CHECKING
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import patches
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from mpl_toolkits.mplot3d import Axes3D
 from scipy.interpolate import interp1d
 
 from .map_data import MapData, Position
+
+if TYPE_CHECKING:
+    from mpl_toolkits.mplot3d import Axes3D
 
 
 def _apply_curves_to_path(
@@ -105,6 +109,83 @@ def _apply_curves_to_path(
     return curved_path
 
 
+def _plot_settlements(ax: Axes, map_data: MapData) -> None:
+    """Plot settlements with circles and labels on the given axes."""
+    existing_texts: list[tuple[int, int]] = []
+    for settlement in map_data.settlements:
+        x = settlement.position.x
+        y = settlement.position.y
+        radius = settlement.radius
+
+        circle = patches.Circle(
+            (x, y),
+            radius,
+            facecolor="white",
+            edgecolor="black",
+            linewidth=1,
+            zorder=3,
+        )
+        ax.add_patch(circle)
+
+        font_size = int(radius * 6)
+
+        possible_positions = [
+            (x, y + 2),
+            (x, y - 2),
+            (x + 2, y),
+            (x - 2, y),
+            (x + 2, y + 2),
+            (x + 2, y - 2),
+            (x - 2, y + 2),
+            (x - 2, y - 2),
+        ]
+
+        possible_positions.sort(
+            key=lambda pos: ((pos[0] - x) ** 2 + (pos[1] - y) ** 2) ** 0.5
+        )
+
+        text_x, text_y = None, None
+        for pos in possible_positions:
+            distance = ((pos[0] - x) ** 2 + (pos[1] - y) ** 2) ** 0.5
+            if (
+                distance > radius
+                and 0 <= pos[0] < map_data.width
+                and 0 <= pos[1] < map_data.height
+            ):
+                is_overlapping = False
+                for existing_text_x, existing_text_y in existing_texts:
+                    if (
+                        abs(pos[0] - existing_text_x) < font_size
+                        and abs(pos[1] - existing_text_y) < font_size
+                    ):
+                        is_overlapping = True
+                        break
+
+                if not is_overlapping:
+                    text_x, text_y = pos
+                    break
+
+        if text_x is not None and text_y is not None:
+            ax.text(
+                text_x,
+                text_y,
+                settlement.name,
+                color="white",
+                fontsize=font_size,
+                rotation=0,
+                bbox={
+                    "facecolor": "gray",
+                    "edgecolor": "none",
+                    "alpha": 0.7,
+                    "pad": 0.3,
+                },
+                ha="center",
+                va="center",
+                zorder=3,
+            )
+            existing_texts.append((text_x, text_y))
+
+
 def plot_map(
     map_data: MapData,
     enable_contours: bool = True,
@@ -175,78 +256,7 @@ def plot_map(
 
     # Plot settlements with circles and labels
     if enable_settlements:
-        existing_texts: list[tuple[int, int]] = []
-        for settlement in map_data.settlements:
-            x = settlement.position.x
-            y = settlement.position.y
-            radius = settlement.radius
-
-            circle = patches.Circle(
-                (x, y),
-                radius,
-                facecolor="white",
-                edgecolor="black",
-                linewidth=1,
-                zorder=3,
-            )
-            ax.add_patch(circle)
-
-            font_size = int(radius * 6)
-
-            possible_positions = [
-                (x, y + 2),
-                (x, y - 2),
-                (x + 2, y),
-                (x - 2, y),
-                (x + 2, y + 2),
-                (x + 2, y - 2),
-                (x - 2, y + 2),
-                (x - 2, y - 2),
-            ]
-
-            possible_positions.sort(
-                key=lambda pos: ((pos[0] - x) ** 2 + (pos[1] - y) ** 2) ** 0.5
-            )
-
-            text_x, text_y = None, None
-            for pos in possible_positions:
-                if (
-                    ((pos[0] - x) ** 2 + (pos[1] - y) ** 2) ** 0.5 > radius
-                    and 0 <= pos[0] < map_data.width
-                    and 0 <= pos[1] < map_data.height
-                ):
-                    is_overlapping = False
-                    for existing_text_x, existing_text_y in existing_texts:
-                        if (
-                            abs(pos[0] - existing_text_x) < font_size
-                            and abs(pos[1] - existing_text_y) < font_size
-                        ):
-                            is_overlapping = True
-                            break
-
-                    if not is_overlapping:
-                        text_x, text_y = pos
-                        break
-
-            if text_x is not None and text_y is not None:
-                ax.text(
-                    text_x,
-                    text_y,
-                    settlement.name,
-                    color="white",
-                    fontsize=font_size,
-                    rotation=0,
-                    bbox={
-                        "facecolor": "gray",
-                        "edgecolor": "none",
-                        "alpha": 0.7,
-                        "pad": 0.3,
-                    },
-                    ha="center",
-                    va="center",
-                    zorder=3,
-                )
-                existing_texts.append((text_x, text_y))
+        _plot_settlements(ax, map_data)
 
     # Configure axes
     ax.set_xticks([])
