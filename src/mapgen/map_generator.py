@@ -9,7 +9,6 @@ hydrology, vegetation, settlements, and infrastructure in the correct order.
 import logging
 import random
 import time
-from typing import Optional
 
 import numpy as np
 
@@ -17,14 +16,49 @@ from . import (
     MapData,
     flora,
     hydrology,
-    roads,
     rivers,
+    roads,
     settlements,
     terrain,
 )
 from .tile_collections import get_default_tile_collections
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_map_parameters(
+    width: int,
+    height: int,
+    padding: int,
+    scale: float,
+    octaves: int,
+    persistence: float,
+    lacunarity: float,
+    smoothing_iterations: int,
+    settlement_density: float,
+    min_settlement_radius: float,
+    max_settlement_radius: float,
+    sea_level: float,
+) -> None:
+    """Validate all map generation parameters."""
+    validations = [
+        (width <= 0, f"Width must be positive, got {width}"),
+        (height <= 0, f"Height must be positive, got {height}"),
+        (padding < 0, f"Padding must be non-negative, got {padding}"),
+        (scale <= 0, f"Scale must be positive, got {scale}"),
+        (octaves < 1, f"Octaves must be at least 1, got {octaves}"),
+        (not (0.0 < persistence < 1.0), f"Persistence must be between 0 and 1, got {persistence}"),
+        (lacunarity <= 1.0, f"Lacunarity must be greater than 1, got {lacunarity}"),
+        (smoothing_iterations < 0, f"Smoothing iterations must be non-negative, got {smoothing_iterations}"),
+        (not (0.0 <= settlement_density <= 1.0), f"Settlement density must be between 0 and 1, got {settlement_density}"),
+        (min_settlement_radius <= 0, f"Minimum settlement radius must be positive, got {min_settlement_radius}"),
+        (max_settlement_radius <= 0, f"Maximum settlement radius must be positive, got {max_settlement_radius}"),
+        (min_settlement_radius > max_settlement_radius, f"Minimum settlement radius ({min_settlement_radius}) cannot be greater than maximum ({max_settlement_radius})"),
+        (not (-1.0 <= sea_level <= 1.0), f"Sea level must be between -1 and 1, got {sea_level}"),
+    ]
+    for condition, message in validations:
+        if condition:
+            raise ValueError(message)
 
 
 def generate_map(
@@ -40,7 +74,7 @@ def generate_map(
     settlement_density: float = 0.002,
     min_settlement_radius: float = 0.5,
     max_settlement_radius: float = 1.0,
-    seed: Optional[int] = None,
+    seed: int | None = None,
     enable_settlements: bool = True,
     enable_roads: bool = True,
     enable_rivers: bool = True,
@@ -124,48 +158,14 @@ def generate_map(
     Raises:
         ValueError:
             If any parameter has an invalid value.
+
     """
-    # Validate map dimensions.
-    if width <= 0:
-        raise ValueError(f"Width must be positive, got {width}")
-    if height <= 0:
-        raise ValueError(f"Height must be positive, got {height}")
-    if padding < 0:
-        raise ValueError(f"Padding must be non-negative, got {padding}")
-    # Validate noise parameters.
-    if scale <= 0:
-        raise ValueError(f"Scale must be positive, got {scale}")
-    if octaves < 1:
-        raise ValueError(f"Octaves must be at least 1, got {octaves}")
-    if not (0.0 < persistence < 1.0):
-        raise ValueError(f"Persistence must be between 0 and 1, got {persistence}")
-    if lacunarity <= 1.0:
-        raise ValueError(f"Lacunarity must be greater than 1, got {lacunarity}")
-    # Validate smoothing parameters.
-    if smoothing_iterations < 0:
-        raise ValueError(
-            f"Smoothing iterations must be non-negative, got {smoothing_iterations}"
-        )
-    # Validate settlement parameters.
-    if not (0.0 <= settlement_density <= 1.0):
-        raise ValueError(
-            f"Settlement density must be between 0 and 1, got {settlement_density}"
-        )
-    if min_settlement_radius <= 0:
-        raise ValueError(
-            f"Minimum settlement radius must be positive, got {min_settlement_radius}"
-        )
-    if max_settlement_radius <= 0:
-        raise ValueError(
-            f"Maximum settlement radius must be positive, got {max_settlement_radius}"
-        )
-    if min_settlement_radius > max_settlement_radius:
-        raise ValueError(
-            f"Minimum settlement radius ({min_settlement_radius}) cannot be greater than maximum ({max_settlement_radius})"
-        )
-    # Validate sea level.
-    if not (-1.0 <= sea_level <= 1.0):
-        raise ValueError(f"Sea level must be between -1 and 1, got {sea_level}")
+    # Validate parameters
+    _validate_map_parameters(
+        width, height, padding, scale, octaves, persistence, lacunarity,
+        smoothing_iterations, settlement_density, min_settlement_radius,
+        max_settlement_radius, sea_level
+    )
 
     # Record start time for performance measurement.
     start_time = time.time()
