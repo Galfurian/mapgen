@@ -1,10 +1,8 @@
 """
 River generation using simple rainfall-based flow simulation.
 
-Simple approach:
-1. Find river sources: high elevation + high rainfall
-2. Flow downhill from each source
-3. Place river tiles along the paths
+Simple approach: 1. Find river sources: high elevation + high rainfall 2. Flow
+downhill from each source 3. Place river tiles along the paths
 """
 
 import logging
@@ -27,10 +25,10 @@ def generate_rivers(
     Generate rivers by tracing water flow from mountain sources.
 
     SIMPLE APPROACH:
-    1. Find sources: cells with high elevation AND high rainfall
-    2. Trace downhill from each source to the sea
-    3. Keep only the longest 10% of rivers
-    4. Place rivers continuously along those paths
+        1. Find sources: cells with high elevation AND high rainfall
+        2. Trace downhill from each source to the sea
+        3. Keep only the longest 10% of rivers
+        4. Place rivers continuously along those paths
 
     That's it. No complex erosion, no confusing thresholds.
 
@@ -38,8 +36,8 @@ def generate_rivers(
         map_data (MapData):
             The map data.
         min_source_elevation (float):
-            Elevation percentile for river sources (0.6 = top 40% of elevations).
-            Lower values = more rivers on smaller hills too.
+            Elevation percentile for river sources (0.6 = top 40% of
+            elevations). Lower values = more rivers on smaller hills too.
         min_source_rainfall (float):
             Minimum rainfall percentile for sources (0.5 = top 50%).
         min_river_length (int):
@@ -56,7 +54,7 @@ def generate_rivers(
     elevation = np.array(map_data.elevation_map, dtype=np.float32)
     rainfall = np.array(map_data.rainfall_map, dtype=np.float32)
 
-    # Find potential river sources (high elevation + high rainfall)
+    # Identify potential river sources.
     sources_mask = _find_river_sources(
         elevation,
         rainfall,
@@ -72,7 +70,7 @@ def generate_rivers(
 
     logger.debug(f"Found {num_sources} potential river sources")
 
-    # Trace paths from each source
+    # Trace downhill paths from sources.
     all_paths = _trace_all_river_paths(
         elevation,
         sources_mask,
@@ -81,15 +79,15 @@ def generate_rivers(
     )
     logger.debug(f"Traced {len(all_paths)} river paths (min length {min_river_length})")
 
-    # Keep only the longest 10% of rivers (major rivers only!)
+    # Filter to keep only major rivers.
     all_paths = _select_major_rivers(all_paths)
     logger.debug(f"Keeping only {len(all_paths)} longest rivers (top 10%)")
 
-    # Merge rivers when they meet (tributary behavior)
+    # Merge tributary rivers.
     all_paths = _merge_river_paths(all_paths, elevation)
     logger.debug(f"After merging: {len(all_paths)} independent river systems")
 
-    # Place river tiles along paths
+    # Place river tiles on the map.
     rivers_placed = _place_river_tiles(map_data, all_paths, sea_level)
     logger.debug(f"Placed {rivers_placed} river tiles")
 
@@ -104,8 +102,8 @@ def _find_river_sources(
     """
     Find potential river sources based on elevation and rainfall.
 
-    Uses PERCENTILE approach so mountains of all heights can have rivers!
-    A source must be in the top X% of elevations AND have good rainfall.
+    Uses PERCENTILE approach so mountains of all heights can have rivers! A
+    source must be in the top X% of elevations AND have good rainfall.
 
     Args:
         elevation (np.ndarray):
@@ -124,20 +122,20 @@ def _find_river_sources(
             Boolean mask of potential source locations.
 
     """
-    # Calculate rainfall threshold
+    # Determine rainfall threshold.
     rain_threshold = np.percentile(rainfall[rainfall > 0], 100 * min_source_rainfall)
 
-    # Calculate elevation threshold using PERCENTILE (not absolute value!)
-    # This ensures all mountain ranges get rivers, regardless of absolute height
+    # Identify land areas above sea level.
     land_mask = elevation > sea_level
     if np.any(land_mask):
+        # Calculate elevation percentile threshold.
         elevation_percentile = np.percentile(
             elevation[land_mask], 100 * min_source_elevation
         )
     else:
         elevation_percentile = sea_level
 
-    # Find cells that meet both criteria
+    # Create mask for cells meeting both criteria.
     sources_mask = (
         (elevation >= elevation_percentile)
         & (rainfall >= rain_threshold)
@@ -171,9 +169,12 @@ def _trace_all_river_paths(
             List of paths (each path is a list of (y, x) coordinates).
 
     """
+    # Get coordinates of all sources.
     source_coords = np.argwhere(sources_mask)
+    # Initialize list for all paths.
     all_paths = []
 
+    # Trace path from each source.
     for sy, sx in source_coords:
         path = _trace_downhill_path(elevation, sy, sx, sea_level)
         if len(path) >= min_river_length:
@@ -200,10 +201,10 @@ def _select_major_rivers(paths: list, top_fraction: float = 0.1) -> list:
     if not paths:
         return []
 
-    # Sort by length (longest first)
+    # Sort paths by length descending.
     paths.sort(key=len, reverse=True)
 
-    # Keep top fraction (at least 1 river)
+    # Calculate number of rivers to keep.
     num_to_keep = max(1, int(len(paths) * top_fraction))
     return paths[:num_to_keep]
 
@@ -212,8 +213,8 @@ def _merge_river_paths(paths: list, elevation: np.ndarray | None = None) -> list
     """
     Merge rivers when they meet each other.
 
-    When a river comes close to another river, it becomes a tributary.
-    We truncate the shorter river at the meeting point.
+    When a river comes close to another river, it becomes a tributary. We
+    truncate the shorter river at the meeting point.
 
     This prevents rivers from being too close to each other.
 
@@ -231,23 +232,27 @@ def _merge_river_paths(paths: list, elevation: np.ndarray | None = None) -> list
     if len(paths) <= 1:
         return paths
 
-    # Build a set of all cells occupied by rivers (for quick lookup)
-    # Process from longest to shortest, so major rivers take priority
+    # Build a set of all cells occupied by rivers (for quick lookup) Process
+    # from longest to shortest, so major rivers take priority Initialize list
+    # for merged paths.
     merged_paths = []
+    # Set to track occupied cells.
     occupied_cells = set()
 
+    # Process each path from longest to shortest.
     for path in paths:
-        # Find where this path comes close to existing rivers
+        # Find where this path comes close to existing rivers.
         intersection_index = None
+        # Check each point in the path.
         for i, (y, x) in enumerate(path):
-            # Check if this cell or any adjacent cell is already occupied
+            # Check if near existing river.
             is_near_river = False
 
-            # Check the cell itself
+            # Check the cell itself.
             if (y, x) in occupied_cells:
                 is_near_river = True
             else:
-                # Check adjacent cells (including diagonals)
+                # Check adjacent cells (including diagonals).
                 for dy in [-1, 0, 1]:
                     for dx in [-1, 0, 1]:
                         if dy == 0 and dx == 0:
@@ -262,33 +267,33 @@ def _merge_river_paths(paths: list, elevation: np.ndarray | None = None) -> list
                 intersection_index = i
                 break
 
-        # If river meets another river, truncate at meeting point
+        # If intersection found, truncate path.
         if intersection_index is not None:
-            # Keep path up to (but not including) the intersection
+            # Keep path up to intersection.
             truncated_path = path[:intersection_index]
 
-            # Calculate how many tiles would actually be visible
+            # Calculate distance to start visible tiles.
             start_distance = max(5, len(truncated_path) // 5)
+            # Calculate number of visible tiles.
             visible_tiles = len(truncated_path) - start_distance
 
-            # Minimum visible tiles: scale with source elevation if available
-            # Higher mountains = expect longer rivers (5-15 tiles minimum)
+            # Set minimum visible tiles.
             min_visible = 5
             if elevation is not None and len(truncated_path) > 0:
                 source_y, source_x = truncated_path[0]
                 source_elev = elevation[source_y, source_x]
-                # Scale from 5 (low elevation) to 15 (high elevation)
-                # Assuming elevation range is roughly -1 to 1
+                # Scale from 5 (low elevation) to 15 (high elevation). Assuming
+                # elevation range is roughly -1 to 1
                 min_visible = int(5 + (source_elev + 1) * 5)
                 min_visible = max(5, min(15, min_visible))
 
             if visible_tiles >= min_visible:
                 merged_paths.append(truncated_path)
-                # Add truncated path cells to occupied set
+                # Add truncated path cells to occupied set.
                 for cell in truncated_path:
                     occupied_cells.add(cell)
         else:
-            # No intersection - keep entire path
+            # No intersection, keep entire path.
             merged_paths.append(path)
             for cell in path:
                 occupied_cells.add(cell)
@@ -323,20 +328,25 @@ def _trace_downhill_path(
 
     """
     height, width = elevation.shape
+    # Initialize path with start position.
     path = [(start_y, start_x)]
+    # Track visited positions to avoid loops.
     visited = {(start_y, start_x)}
 
     y, x = start_y, start_x
 
+    # Loop until we stop flowing.
     while True:
-        # Stop at sea level
+        # Stop at sea level.
         if elevation[y, x] <= sea_level:
             break
 
-        # Find lowest neighbor
+        # Initialize lowest elevation.
         lowest_elev = elevation[y, x]
+        # Initialize lowest position.
         lowest_pos = None
 
+        # Check all 8 neighbors.
         for dy, dx in [
             (-1, 0),
             (1, 0),
@@ -353,16 +363,16 @@ def _trace_downhill_path(
                     lowest_elev = elevation[ny, nx]
                     lowest_pos = (ny, nx)
 
-        # No lower neighbor - we're at a sink
+        # Stop if no lower neighbor.
         if lowest_pos is None:
             break
 
-        # Move to lowest neighbor
+        # Move to lowest neighbor.
         y, x = lowest_pos
         path.append((y, x))
         visited.add((y, x))
 
-        # Prevent infinite loops
+        # Prevent infinite loops.
         if len(path) > 1000:
             break
 
@@ -392,7 +402,7 @@ def _place_river_tiles(
             Number of river tiles placed.
 
     """
-    # Find river tile
+    # Find river tile in catalog.
     river_tiles = map_data.find_tiles_by_properties(
         is_water=True,
         is_salt_water=False,
@@ -403,33 +413,38 @@ def _place_river_tiles(
         logger.warning("No river tiles found in tile catalog")
         return 0
 
+    # Use the first river tile.
     river_tile = river_tiles[0]
 
-    # Place rivers continuously along all paths
+    # Initialize counter.
     rivers_placed = 0
+    # Process each river path.
     for path in paths:
-        # DON'T place at source (mountain tops should not have visible rivers!)
-        # Place rivers starting from partway down the mountain
+        # Calculate start distance for visible rivers.
         start_distance = max(5, len(path) // 5)  # Skip first 20% or at least 5 cells
 
+        # Place tiles along the path.
         for i, (y, x) in enumerate(path):
-            # Skip the source area (mountain tops)
+            # Skip source area.
             if i < start_distance:
                 continue
 
-            # Don't place rivers in the sea
+            # Get elevation at position.
             elevation = map_data.get_elevation(x, y)
+            # Skip sea areas.
             if elevation <= sea_level:
                 continue
 
+            # Get current terrain tile.
             current_tile = map_data.get_terrain(x, y)
 
-            # Don't replace salt water
+            # Skip salt water.
             if current_tile.is_water and current_tile.is_salt_water:
                 continue
 
-            # Place river
+            # Place river tile.
             map_data.set_terrain(x, y, river_tile)
+            # Increment counter.
             rivers_placed += 1
 
     return rivers_placed
