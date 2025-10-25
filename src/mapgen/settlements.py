@@ -1,4 +1,11 @@
-"""Settlement generation module."""
+"""
+Settlement generation module for procedural map generation.
+
+This module handles the generation and placement of settlements on the map.
+It includes functions for finding suitable locations, generating settlement
+names, and ensuring settlements do not overlap while respecting terrain
+constraints and density parameters.
+"""
 
 import logging
 import random
@@ -96,8 +103,10 @@ def _is_position_suitable_for_settlement(
     """Check if a position is suitable for settlement placement.
 
     Args:
-        map_data: The terrain map grid.
-        position: The position to check.
+        map_data (MapData):
+            The terrain map grid.
+        position (Position):
+            The position to check.
 
     Returns:
         bool:
@@ -110,7 +119,9 @@ def _is_position_suitable_for_settlement(
     if not map_data.is_valid_position(position.x, position.y):
         raise ValueError(f"Position {position} is out of bounds")
 
+    # Get the tile at the position.
     tile = map_data.get_terrain(position.x, position.y)
+    # Check if the tile allows settlement building.
     return tile.can_build_settlement
 
 
@@ -124,13 +135,13 @@ def _does_settlement_overlaps(
     Check if a potential settlement overlaps with existing settlements.
 
     Args:
-        map_data:
+        map_data (MapData):
             The terrain map grid.
-        position:
+        position (Position):
             The position of the potential settlement.
-        min_radius:
+        min_radius (float):
             The radius of the potential settlement.
-        max_radius:
+        max_radius (float):
             The maximum possible radius for settlements.
 
     Returns:
@@ -146,6 +157,7 @@ def _does_settlement_overlaps(
         raise ValueError(f"Settlement radius must be non-negative, got {min_radius}")
     if max_radius < 0:
         raise ValueError(f"Maximum radius must be non-negative, got {max_radius}")
+    # Check distance to each existing settlement.
     for existing in map_data.settlements:
         distance = position.distance_to(existing.position)
         if distance < min_radius + max_radius:
@@ -161,9 +173,12 @@ def _create_settlement(
     """Create a new settlement at the specified position.
 
     Args:
-        position: The position of the settlement.
-        min_radius: The minimum radius for the settlement.
-        max_radius: The maximum radius for the settlement.
+        position (Position):
+            The position of the settlement.
+        min_radius (float):
+            The minimum radius for the settlement.
+        max_radius (float):
+            The maximum radius for the settlement.
 
     Returns:
         Settlement:
@@ -182,8 +197,11 @@ def _create_settlement(
             f"Minimum radius ({min_radius}) cannot be greater than maximum radius ({max_radius})"
         )
 
+    # Generate a random radius within the range.
     radius = random.uniform(min_radius, max_radius)
+    # Generate a name for the settlement.
     name = _generate_settlement_name()
+    # Calculate connectivity based on radius.
     connectivity = int(radius * 5)
 
     return Settlement(
@@ -200,15 +218,17 @@ def _find_suitable_settlement_positions(
     """Find all positions on the map that are suitable for settlement placement.
 
     Args:
-        map_data: The terrain map grid.
+        map_data (MapData):
+            The terrain map grid.
 
     Returns:
-        List[Position]:
+        list[Position]:
             List of positions suitable for settlements.
 
     """
     suitable_positions = []
 
+    # Iterate over all positions on the map.
     for y in range(map_data.height):
         for x in range(map_data.width):
             position = Position(x=x, y=y)
@@ -229,23 +249,27 @@ def _place_settlements_at_positions(
     Place settlements at suitable positions with given constraints.
 
     Args:
-        map_data:
+        map_data (MapData):
             The terrain map grid.
-        positions:
+        positions (list[Position]):
             List of positions to consider for settlement placement.
-        settlement_density:
+        settlement_density (float):
             The probability of placing a settlement at each position.
-        min_radius:
+        min_radius (float):
             The minimum radius for settlements.
-        max_radius:
+        max_radius (float):
             The maximum radius for settlements.
 
     """
+    # Attempt to place a settlement at each suitable position.
     for position in positions:
+        # Skip if random chance doesn't allow placement.
         if random.random() >= settlement_density:
             continue
+        # Skip if settlement would overlap with existing ones.
         if _does_settlement_overlaps(map_data, position, min_radius, max_radius):
             continue
+        # Add the new settlement to the map.
         map_data.settlements.append(
             _create_settlement(
                 position,
