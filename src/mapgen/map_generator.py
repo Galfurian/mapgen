@@ -1,4 +1,10 @@
-"""Map generation functions."""
+"""
+Map generation functions for procedural fantasy maps.
+
+This module provides the main entry point for generating complete procedural
+fantasy maps. It orchestrates all generation phases including terrain,
+hydrology, vegetation, settlements, and infrastructure in the correct order.
+"""
 
 import logging
 import random
@@ -54,50 +60,79 @@ def generate_map(
     Generate a complete procedural fantasy map.
 
     This function orchestrates all map generation steps in the correct sequence:
-    terrain generation, hydrological features, vegetation placement, settlements,
-    and roads.
+    terrain generation, hydrological features, vegetation placement,
+    settlements, and roads.
 
     Args:
-        width (int): The width of the map.
-        height (int): The height of the map.
-        padding (int): Padding around edges.
-        scale (float): Noise scale for terrain generation.
-        octaves (int): Number of noise octaves.
-        persistence (float): Noise persistence.
-        lacunarity (float): Noise lacunarity.
-        smoothing_iterations (int): Number of terrain smoothing iterations.
-        settlement_density (float): Density of settlements (0.0 to 1.0).
-        min_settlement_radius (float): Minimum settlement radius.
-        max_settlement_radius (float): Maximum settlement radius.
-        seed (int): Random seed for reproducible generation. If None, uses random seed.
-        enable_settlements (bool): Whether to generate settlements.
-        enable_roads (bool): Whether to generate road networks.
-        enable_rivers (bool): Whether to generate rivers.
-        enable_vegetation (bool): Whether to place climate-driven vegetation.
-        min_source_elevation (float): Minimum elevation for river sources (0.0-1.0).
-        min_source_rainfall (float): Minimum rainfall percentile for sources (0.0-1.0).
-        min_river_length (int): Minimum path length to place a river.
-        sea_level (float): Elevation level for sea (controls land/sea ratio, -1.0 to 1.0).
-        rainfall_temp_weight (float): Weight for temperature influence on rainfall (0.0 to 1.0).
-        rainfall_humidity_weight (float): Weight for humidity influence on rainfall (0.0 to 1.0).
-        rainfall_orographic_weight (float): Weight for orographic influence on rainfall (0.0 to 1.0).
-        rainfall_variation_strength (float): Strength of random variation in rainfall (0.0 to 1.0).
-        forest_coverage (float): Target forest coverage ratio (0.0 to 1.0).
-        desert_coverage (float): Target desert coverage ratio (0.0 to 1.0).
+        width (int):
+            The width of the map.
+        height (int):
+            The height of the map.
+        padding (int):
+            Padding around edges.
+        scale (float):
+            Noise scale for terrain generation.
+        octaves (int):
+            Number of noise octaves.
+        persistence (float):
+            Noise persistence.
+        lacunarity (float):
+            Noise lacunarity.
+        smoothing_iterations (int):
+            Number of terrain smoothing iterations.
+        settlement_density (float):
+            Density of settlements (0.0 to 1.0).
+        min_settlement_radius (float):
+            Minimum settlement radius.
+        max_settlement_radius (float):
+            Maximum settlement radius.
+        seed (int):
+            Random seed for reproducible generation. If None, uses random seed.
+        enable_settlements (bool):
+            Whether to generate settlements.
+        enable_roads (bool):
+            Whether to generate road networks.
+        enable_rivers (bool):
+            Whether to generate rivers.
+        enable_vegetation (bool):
+            Whether to place climate-driven vegetation.
+        min_source_elevation (float):
+            Minimum elevation for river sources (0.0-1.0).
+        min_source_rainfall (float):
+            Minimum rainfall percentile for sources (0.0-1.0).
+        min_river_length (int):
+            Minimum path length to place a river.
+        sea_level (float):
+            Elevation level for sea (controls land/sea ratio, -1.0 to 1.0).
+        rainfall_temp_weight (float):
+            Weight for temperature influence on rainfall (0.0 to 1.0).
+        rainfall_humidity_weight (float):
+            Weight for humidity influence on rainfall (0.0 to 1.0).
+        rainfall_orographic_weight (float):
+            Weight for orographic influence on rainfall (0.0 to 1.0).
+        rainfall_variation_strength (float):
+            Strength of random variation in rainfall (0.0 to 1.0).
+        forest_coverage (float):
+            Target forest coverage ratio (0.0 to 1.0).
+        desert_coverage (float):
+            Target desert coverage ratio (0.0 to 1.0).
 
     Returns:
-        MapData: The generated map data.
+        MapData:
+            The generated map data.
 
     Raises:
-        ValueError: If any parameter has an invalid value.
+        ValueError:
+            If any parameter has an invalid value.
     """
-    # Validate input parameters
+    # Validate map dimensions.
     if width <= 0:
         raise ValueError(f"Width must be positive, got {width}")
     if height <= 0:
         raise ValueError(f"Height must be positive, got {height}")
     if padding < 0:
         raise ValueError(f"Padding must be non-negative, got {padding}")
+    # Validate noise parameters.
     if scale <= 0:
         raise ValueError(f"Scale must be positive, got {scale}")
     if octaves < 1:
@@ -106,10 +141,12 @@ def generate_map(
         raise ValueError(f"Persistence must be between 0 and 1, got {persistence}")
     if lacunarity <= 1.0:
         raise ValueError(f"Lacunarity must be greater than 1, got {lacunarity}")
+    # Validate smoothing parameters.
     if smoothing_iterations < 0:
         raise ValueError(
             f"Smoothing iterations must be non-negative, got {smoothing_iterations}"
         )
+    # Validate settlement parameters.
     if not (0.0 <= settlement_density <= 1.0):
         raise ValueError(
             f"Settlement density must be between 0 and 1, got {settlement_density}"
@@ -126,23 +163,26 @@ def generate_map(
         raise ValueError(
             f"Minimum settlement radius ({min_settlement_radius}) cannot be greater than maximum ({max_settlement_radius})"
         )
+    # Validate sea level.
     if not (-1.0 <= sea_level <= 1.0):
         raise ValueError(f"Sea level must be between -1 and 1, got {sea_level}")
 
+    # Record start time for performance measurement.
     start_time = time.time()
     logger.info(f"Starting map generation: {width}*{height}")
 
-    # Set random seed for reproducible generation
+    # Set up random seed for reproducible results.
     if seed is None:
         seed = random.randint(0, 1_000_000)
     random.seed(seed)
     np.random.seed(seed)
     logger.debug(f"Using random seed: {seed}")
 
-    # Get tile collections (new organized approach)
+    # Retrieve organized tile collections.
     tile_collections = get_default_tile_collections()
 
     logger.debug("Initializing map data")
+    # Create the map data object with tiles and empty grid.
     map_data = MapData(
         tiles=tile_collections.all_tiles,
         grid=[[0 for _ in range(width)] for _ in range(height)],
@@ -175,7 +215,8 @@ def generate_map(
     smooth_time = time.time() - smooth_start
     logger.debug(f"Elevation smoothing completed in {smooth_time:.3f}s")
 
-    # Phase 2: Generate rainfall map (provides climate data for vegetation and analysis)
+    # Phase 2: Generate rainfall map (provides climate data for vegetation and
+    # analysis)
     logger.debug("Generating rainfall map")
     rainfall_start = time.time()
     hydrology.generate_rainfall_map(
