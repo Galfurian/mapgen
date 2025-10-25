@@ -1,8 +1,10 @@
 """
-River generation using simple rainfall-based flow simulation.
+River generation utilities for the map generator.
 
-Simple approach: 1. Find river sources: high elevation + high rainfall 2. Flow
-downhill from each source 3. Place river tiles along the paths
+This module implements a simple rainfall-based flow simulation for generating
+rivers. The approach involves finding sources at high elevation with high
+rainfall, tracing downhill paths, and placing river tiles along the longest
+paths.
 """
 
 import logging
