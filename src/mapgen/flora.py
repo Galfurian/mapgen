@@ -154,24 +154,25 @@ def _place_forests(
     for y in range(height):
         for x in range(width):
             current_tile = map_data.get_terrain(x, y)
-            
-            # Only place forests on base terrain that can host vegetation
+
+            # Skip tiles that cannot host vegetation
             if not current_tile.can_host_vegetation:
                 continue
 
             elevation = map_data.get_elevation(x, y)
             rainfall = map_data.get_rainfall(x, y)
 
-            # Calculate suitability based on rainfall and elevation
-            # Forests prefer moderate-to-high elevation with high rainfall
-            if elevation_min <= elevation <= elevation_max:
-                if rainfall >= rainfall_threshold:
-                    # Strongly prefer elevations between 0.15 and 0.45
-                    # Use a bell curve centered at 0.3
-                    elevation_factor = max(0.0, 1.0 - ((elevation - 0.3) / 0.25) ** 2)
-                    suitability[y, x] = rainfall * elevation_factor
-
-    # Find seed points (highest suitability)
+            # Calculate suitability for suitable elevation and rainfall
+            if (
+                elevation_min <= elevation <= elevation_max
+                and rainfall >= rainfall_threshold
+            ):
+                # Strongly prefer elevations between 0.15 and 0.45
+                # Use a bell curve centered at 0.3
+                elevation_factor = max(0.0, 1.0 - ((elevation - 0.3) / 0.25) ** 2)
+                suitability[y, x] = (
+                    rainfall * elevation_factor
+                )  # Find seed points (highest suitability)
     num_seeds = max(1, target_tiles // 50)
     seed_positions = []
 
@@ -194,24 +195,27 @@ def _place_forests(
         x, y = active_positions.pop(random.randint(0, len(active_positions) - 1))
 
         current_tile = map_data.get_terrain(x, y)
-        
-        # Only place forests on base terrain that can host vegetation
+
+        # Skip tiles that cannot host vegetation
         if not current_tile.can_host_vegetation:
             continue
 
         elevation = map_data.get_elevation(x, y)
         rainfall = map_data.get_rainfall(x, y)
 
-        # Check if this position is suitable for forest
-        if elevation_min <= elevation <= elevation_max and rainfall >= rainfall_threshold:
+        # Place forest if conditions are suitable
+        if (
+            elevation_min <= elevation <= elevation_max
+            and rainfall >= rainfall_threshold
+        ):
             map_data.set_terrain(x, y, forest_tile)
             tiles_placed += 1
 
-            # Add neighbors to active positions for spreading
+            # Add suitable neighbors to active positions for spreading
             for neighbor in map_data.get_neighbors(x, y, walkable_only=False):
                 neighbor_tile = map_data.get_terrain(neighbor.x, neighbor.y)
-                
-                # Only spread to tiles that can host vegetation
+
+                # Spread to vegetation-hosting tiles not already active
                 if (
                     neighbor_tile.can_host_vegetation
                     and (neighbor.x, neighbor.y) not in active_positions
@@ -261,7 +265,7 @@ def _place_deserts(
     for y in range(height):
         for x in range(width):
             current_tile = map_data.get_terrain(x, y)
-            
+
             # Only place deserts on base terrain that can host vegetation
             if not current_tile.can_host_vegetation:
                 continue
@@ -315,7 +319,7 @@ def _place_grasslands(
             # Place grasslands only on base terrain that can host vegetation
             if not current_tile.can_host_vegetation:
                 continue
-                
+
             elevation = map_data.get_elevation(x, y)
             rainfall = map_data.get_rainfall(x, y)
 
