@@ -1,4 +1,10 @@
-"""Road generation module."""
+"""
+Road generation module for procedural map generation.
+
+This module handles the generation of road networks connecting settlements.
+It uses A* pathfinding to create efficient routes between settlements,
+ensuring realistic transportation infrastructure on the map.
+"""
 
 import heapq
 import logging
@@ -18,19 +24,18 @@ def generate_roads(
     Args:
         map_data (MapData):
             The map grid.
-        noise_map (np.ndarray):
-            The elevation map.
 
     """
     if not map_data.settlements:
         logger.warning("No settlements to connect; skipping road generation.")
         return
 
-    # Shuffle settlements to randomize connection order
+    # Shuffle settlements to randomize connection order.
     shuffled_settlements = random.sample(
         map_data.settlements, len(map_data.settlements)
     )
 
+    # Connect each settlement to the nearest unconnected one.
     for settlement in shuffled_settlements:
         # Find nearest settlement worth connecting.
         nearest = _find_nearest_settlement_worth_connecting(
@@ -59,7 +64,10 @@ def generate_roads(
             )
         )
 
-        logger.debug(f"Connected {settlement.name} to {nearest.name} with a road.")
+    num_road_tiles = sum([len(road.path) for road in map_data.roads])
+
+    logger.debug(f"Traced {len(map_data.roads)} roads")
+    logger.info(f"Placed {num_road_tiles} road tiles")
 
 
 def _reconstruct_path(
@@ -72,11 +80,11 @@ def _reconstruct_path(
     Args:
         current (Position):
             The current position.
-        came_from (Dict[Position, Position]):
+        came_from (dict[Position, Position]):
             The came_from dictionary.
 
     Returns:
-        List[Position]:
+        list[Position]:
             The reconstructed path.
 
     """
@@ -123,8 +131,9 @@ def _a_star_search(
     start_node = (start, 0.0, heuristic(start, goal))
     open_set.append(start_node)
 
+    # Main A* loop.
     while open_set:
-        # Find the node with the lowest total estimated cost
+        # Find the node with the lowest total estimated cost.
         current = min(open_set, key=lambda x: x[2])
         current_pos, current_cost, _current_heuristic = current
 
@@ -134,6 +143,7 @@ def _a_star_search(
         open_set.remove(current)
         closed_set.add(current_pos)
 
+        # Explore neighbors.
         for neighbor in map_data.get_neighbors(current_pos.x, current_pos.y):
             if neighbor in closed_set:
                 continue
@@ -141,10 +151,10 @@ def _a_star_search(
             tile = map_data.get_terrain(neighbor.x, neighbor.y)
             tentative_cost = current_cost + tile.pathfinding_cost
 
-            # Check if neighbor is already in open set
+            # Check if neighbor is already in open set.
             existing_node = next((n for n in open_set if n[0] == neighbor), None)
             if existing_node:
-                # If this path is better, update the node
+                # If this path is better, update the node.
                 if tentative_cost < existing_node[1]:
                     idx = open_set.index(existing_node)
                     open_set[idx] = (
@@ -154,7 +164,7 @@ def _a_star_search(
                     )
                     came_from[neighbor] = current_pos
             else:
-                # Add new node to open set
+                # Add new node to open set.
                 open_set.append(
                     (
                         neighbor,
@@ -177,11 +187,11 @@ def _shortest_path_distance(
     roads.
 
     Args:
-        map_data:
+        map_data (MapData):
             The map data.
-        start_name:
+        start_name (str):
             Name of starting settlement.
-        end_name:
+        end_name (str):
             Name of ending settlement.
 
     Returns:
@@ -189,11 +199,15 @@ def _shortest_path_distance(
             The shortest distance, or None if no path exists.
 
     """
+    # Create a dictionary of settlements by name.
     settlements = {s.name: s for s in map_data.settlements}
+    # Initialize distances to infinity.
     dist = {name: float("inf") for name in settlements}
     dist[start_name] = 0.0
+    # Priority queue for Dijkstra.
     pq = [(0.0, start_name)]
 
+    # Dijkstra's algorithm loop.
     while pq:
         d, u = heapq.heappop(pq)
         if d > dist[u]:
@@ -226,11 +240,11 @@ def _find_nearest_settlement_worth_connecting(
     paths.
 
     Args:
-        settlement:
+        settlement (Settlement):
             The settlement to connect from.
-        settlements:
+        settlements (list[Settlement]):
             All settlements.
-        map_data:
+        map_data (MapData):
             The map data containing existing roads.
 
     Returns:
@@ -238,14 +252,20 @@ def _find_nearest_settlement_worth_connecting(
             The nearest settlement worth connecting to, or None.
 
     """
+    # Initialize variables for nearest settlement.
     nearest = None
     min_dist = float("inf")
+    # Check each other settlement.
     for other in settlements:
         if other.name == settlement.name:
             continue
+        # Calculate direct distance.
         direct_dist = settlement.distance_to(other)
+        # Get shortest path distance via roads.
         path_dist = _shortest_path_distance(map_data, settlement.name, other.name)
+        # If direct is better or no path exists.
         if path_dist is None or path_dist > direct_dist:
+            # Update if closer.
             if direct_dist < min_dist:
                 min_dist = direct_dist
                 nearest = other
