@@ -1,5 +1,8 @@
 """
-Hydrology utilities for mapgen: rainfall generation and accumulation (runoff) computation.
+Hydrology utilities for the map generator.
+
+This module provides functions for generating rainfall maps based on climate
+factors and computing water accumulation (runoff) using elevation data.
 """
 
 import logging
@@ -29,9 +32,9 @@ def generate_rainfall_map(
     Generate a rainfall map based on climate and elevation factors.
 
     Rainfall is higher in areas with:
-    - High humidity
-    - Moderate temperatures (not too hot/cold)
-    - Orographic effects (elevation gradients)
+        - High humidity
+        - Moderate temperatures (not too hot/cold)
+        - Orographic effects (elevation gradients)
 
     Args:
         map_data (MapData):
@@ -65,8 +68,8 @@ def generate_rainfall_map(
         )
         return
 
-    # Generate noise grids for different climate factors
-    # Temperature noise: Creates large-scale latitudinal climate zones (poles vs equator)
+    # Generate noise grids for different climate factors. Temperature noise:
+    # Creates large-scale latitudinal climate zones (poles vs equator)
     # - scale: 100.0 (continental-scale patterns, similar to terrain)
     # - octaves: 4 (moderate detail for climate zones)
     # - persistence: 0.6 (medium detail retention across octaves)
@@ -201,14 +204,16 @@ def generate_accumulation_map(map_data: MapData) -> None:
     """
     Generate water accumulation (runoff) map for the given map data.
 
-    This function computes water accumulation based on elevation and rainfall data,
-    then stores the result in map_data.accumulation_map.
+    This function computes water accumulation based on elevation and rainfall
+    data, then stores the result in map_data.accumulation_map.
 
     Args:
-        map_data (MapData): The map data containing elevation and rainfall information.
+        map_data (MapData):
+            The map data containing elevation and rainfall information.
 
     Raises:
-        ValueError: If elevation_map is not available in map_data.
+        ValueError:
+            If elevation_map is not available in map_data.
     """
     if not map_data.elevation_map:
         raise ValueError("Elevation map is required for accumulation computation")
@@ -221,6 +226,8 @@ def generate_accumulation_map(map_data: MapData) -> None:
     )
 
     height, width = elevation.shape
+
+    # Compute flow directions: each cell flows to the lowest neighbor
     flow_to = np.full((height, width, 2), -1, dtype=int)
     in_degree = np.zeros((height, width), dtype=int)
     for y in range(height):
@@ -234,21 +241,28 @@ def generate_accumulation_map(map_data: MapData) -> None:
                         min_elev = elevation[ny, nx]
                         min_pos = (nx, ny)
             flow_to[y, x] = min_pos
+
+    # Build in-degree for topological sort (cells with no inflow first)
     for y in range(height):
         for x in range(width):
             tx, ty = flow_to[y, x]
             if (tx, ty) != (x, y):
                 in_degree[ty, tx] += 1
 
+    # Initialize queue with cells that have no incoming flow
     queue = deque()
     for y in range(height):
         for x in range(width):
             if in_degree[y, x] == 0:
                 queue.append((x, y))
+
+    # Initialize accumulation with local rainfall
     accumulation = np.zeros((height, width))
     for y in range(height):
         for x in range(width):
             accumulation[y, x] = rainfall[y, x]
+
+    # Process cells in topological order to accumulate flow
     while queue:
         x, y = queue.popleft()
         tx, ty = flow_to[y, x]
