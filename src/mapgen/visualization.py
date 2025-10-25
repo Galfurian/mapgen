@@ -1,4 +1,10 @@
-"""Visualization module for maps."""
+"""
+Visualization utilities for the map generator.
+
+This module provides functions for creating various visualizations of generated
+maps, including 2D plots, 3D terrain views, and ASCII representations of
+different map layers like elevation, rainfall, and temperature.
+"""
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,7 +27,7 @@ def _apply_curves_to_path(
     Apply curves to a path based on elevation.
 
     Args:
-        path (List[Position]):
+        path (list[Position]):
             The path to curve.
         elevation_map (np.ndarray):
             The elevation map.
@@ -31,13 +37,14 @@ def _apply_curves_to_path(
             Smoothing factor.
 
     Returns:
-        List[Position]:
+        list[Position]:
             The curved path.
 
     """
     if len(path) <= 2:
         return path
 
+    # Extract coordinates and compute cumulative distances along the path
     x = np.array([p.x for p in path])
     y = np.array([p.y for p in path])
     distances = np.cumsum(np.sqrt(np.diff(x) ** 2 + np.diff(y) ** 2))
@@ -46,6 +53,7 @@ def _apply_curves_to_path(
     total_distance = distances[-1]
     control_point_distances = np.linspace(0, total_distance, num=num_control_points)
 
+    # Interpolate control points along the path
     control_points_x = interp1d(distances, x, kind="linear")(
         control_point_distances
     ).astype(float)
@@ -53,6 +61,7 @@ def _apply_curves_to_path(
         control_point_distances
     ).astype(float)
 
+    # Adjust intermediate control points based on elevation gradients
     for i in range(1, num_control_points - 1):
         cx, cy = round(control_points_x[i]), round(control_points_y[i])
         left_x = max(0, cx - 1)
@@ -60,9 +69,11 @@ def _apply_curves_to_path(
         top_y = max(0, cy - 1)
         bottom_y = min(elevation_map.shape[0] - 1, cy + 1)
 
+        # Compute local elevation gradients
         gradient_x = (elevation_map[cy, right_x] - elevation_map[cy, left_x]) / 2
         gradient_y = (elevation_map[bottom_y, cx] - elevation_map[top_y, cx]) / 2
 
+        # Adjust smoothing based on elevation difference to next control point
         elevation_diff = abs(
             elevation_map[cy, cx]
             - elevation_map[int(control_points_y[i + 1]), int(control_points_x[i + 1])]
@@ -72,6 +83,7 @@ def _apply_curves_to_path(
         control_points_x[i] += adjusted_smoothing_factor * gradient_x
         control_points_y[i] += adjusted_smoothing_factor * gradient_y
 
+    # Create cubic spline interpolators for smooth curves
     f_x = interp1d(
         control_point_distances,
         control_points_x,
@@ -83,6 +95,7 @@ def _apply_curves_to_path(
         kind="cubic",
     )
 
+    # Generate new path points using the smoothed curves
     new_path_distances = np.linspace(0, total_distance, num=len(path))
     new_x = f_x(new_path_distances)
     new_y = f_y(new_path_distances)
@@ -105,6 +118,12 @@ def plot_map(
     Args:
         map_data (MapData):
             The map data to visualize.
+        enable_contours (bool):
+            Whether to show elevation contours.
+        enable_roads (bool):
+            Whether to show roads.
+        enable_settlements (bool):
+            Whether to show settlements.
 
     Returns:
         Figure:
@@ -260,7 +279,8 @@ def plot_3d_map(
         enable_legend (bool):
             Whether to show the legend (default: False for cleaner 3D view).
         colormap (str):
-            Matplotlib colormap for terrain coloring (e.g., 'terrain', 'viridis').
+            Matplotlib colormap for terrain coloring (e.g., 'terrain',
+            'viridis').
         elevation_scale (float):
             Scale factor for elevation exaggeration (1.0 = realistic).
 
@@ -457,8 +477,8 @@ def get_ascii_rainfall_map(map_data: MapData) -> str:
     Generate an ASCII representation of the rainfall map using digits 0-9.
 
     This visualization maps rainfall values to single digits where:
-    - 0 represents very dry areas (no rain)
-    - 9 represents very wet areas (maximum rainfall)
+        - 0 represents very dry areas (no rain)
+        - 9 represents very wet areas (maximum rainfall)
 
     Args:
         map_data (MapData):
@@ -495,8 +515,8 @@ def get_ascii_temperature_map(map_data: MapData) -> str:
     Generate an ASCII representation of the temperature map using digits 0-9.
 
     Temperature values are normalized to a 0-9 scale where:
-    - 0 represents coldest temperatures
-    - 9 represents hottest temperatures
+        - 0 represents coldest temperatures
+        - 9 represents hottest temperatures
 
     This is useful for debugging and analyzing temperature patterns without
     requiring graphical output.
@@ -536,8 +556,8 @@ def get_ascii_elevation_map(map_data: MapData) -> str:
     Generate an ASCII representation of the elevation map using digits 0-9.
 
     Elevation values are normalized to a 0-9 scale where:
-    - 0 represents lowest elevations (deepest ocean)
-    - 9 represents highest elevations (mountain peaks)
+        - 0 represents lowest elevations (deepest ocean)
+        - 9 represents highest elevations (mountain peaks)
 
     This is useful for debugging and analyzing elevation patterns without
     requiring graphical output.
@@ -559,8 +579,8 @@ def get_ascii_elevation_map(map_data: MapData) -> str:
         raise ValueError("Elevation map is not available in map_data")
 
     elevation_array = np.array(map_data.elevation_map)
-    # Normalize elevation from -1.0 to 1.0 range to 0-9 scale
-    # First shift from [-1, 1] to [0, 2], then scale to [0, 9]
+    # Normalize elevation from -1.0 to 1.0 range to 0-9 scale First shift from
+    # [-1, 1] to [0, 2], then scale to [0, 9]
     elevation_normalized = ((elevation_array + 1.0) * 4.5).astype(int)
     elevation_normalized = np.clip(elevation_normalized, 0, 9)
 
@@ -671,7 +691,8 @@ def plot_temperature_map(
         map_data (MapData):
             The map data containing temperature.
         colormap (str):
-            Matplotlib colormap for temperature coloring (default: RdYlBu_r for hot=red, cold=blue).
+            Matplotlib colormap for temperature coloring (default: RdYlBu_r for
+            hot=red, cold=blue).
         title (str):
             Title for the plot.
 
