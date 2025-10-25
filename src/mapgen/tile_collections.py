@@ -8,7 +8,7 @@ separation of concerns.
 
 from dataclasses import dataclass, field
 
-from .map_data import Tile, PlacementMethod
+from .map_data import PlacementMethod, Tile
 
 
 @dataclass

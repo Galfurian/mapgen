@@ -157,6 +157,7 @@ ignore = [
     "TRY301",  # raise-within-try (appropriate for input validation)
 
     # Style preferences
+    "G004",    # f-string logging
     "FBT",     # Boolean positional arg issues
     "PLR0913", # Too many arguments
     "PLR0915", # Too many statements

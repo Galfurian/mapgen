@@ -180,12 +180,12 @@ def _place_forests(
         if suitability.max() <= 0:
             break
         y_max, x_max = np.unravel_index(suitability.argmax(), suitability.shape)
-        seed_positions.append((x_max, y_max))
+        seed_positions.append((int(x_max), int(y_max)))
         # Zero out nearby area to spread seeds
-        y_start = max(0, y_max - 10)
-        y_end = min(height, y_max + 10)
-        x_start = max(0, x_max - 10)
-        x_end = min(width, x_max + 10)
+        y_start = max(0, int(y_max) - 10)
+        y_end = min(height, int(y_max) + 10)
+        x_start = max(0, int(x_max) - 10)
+        x_end = min(width, int(x_max) + 10)
         suitability[y_start:y_end, x_start:x_end] = 0
 
     # Grow forests from seeds using BFS-like spreading

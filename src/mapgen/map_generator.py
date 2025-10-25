@@ -47,14 +47,35 @@ def _validate_map_parameters(
         (padding < 0, f"Padding must be non-negative, got {padding}"),
         (scale <= 0, f"Scale must be positive, got {scale}"),
         (octaves < 1, f"Octaves must be at least 1, got {octaves}"),
-        (not (0.0 < persistence < 1.0), f"Persistence must be between 0 and 1, got {persistence}"),
+        (
+            not (0.0 < persistence < 1.0),
+            f"Persistence must be between 0 and 1, got {persistence}",
+        ),
         (lacunarity <= 1.0, f"Lacunarity must be greater than 1, got {lacunarity}"),
-        (smoothing_iterations < 0, f"Smoothing iterations must be non-negative, got {smoothing_iterations}"),
-        (not (0.0 <= settlement_density <= 1.0), f"Settlement density must be between 0 and 1, got {settlement_density}"),
-        (min_settlement_radius <= 0, f"Minimum settlement radius must be positive, got {min_settlement_radius}"),
-        (max_settlement_radius <= 0, f"Maximum settlement radius must be positive, got {max_settlement_radius}"),
-        (min_settlement_radius > max_settlement_radius, f"Minimum settlement radius ({min_settlement_radius}) cannot be greater than maximum ({max_settlement_radius})"),
-        (not (-1.0 <= sea_level <= 1.0), f"Sea level must be between -1 and 1, got {sea_level}"),
+        (
+            smoothing_iterations < 0,
+            f"Smoothing iterations must be non-negative, got {smoothing_iterations}",
+        ),
+        (
+            not (0.0 <= settlement_density <= 1.0),
+            f"Settlement density must be between 0 and 1, got {settlement_density}",
+        ),
+        (
+            min_settlement_radius <= 0,
+            f"Minimum settlement radius must be positive, got {min_settlement_radius}",
+        ),
+        (
+            max_settlement_radius <= 0,
+            f"Maximum settlement radius must be positive, got {max_settlement_radius}",
+        ),
+        (
+            min_settlement_radius > max_settlement_radius,
+            f"Minimum settlement radius ({min_settlement_radius}) cannot be greater than maximum ({max_settlement_radius})",
+        ),
+        (
+            not (-1.0 <= sea_level <= 1.0),
+            f"Sea level must be between -1 and 1, got {sea_level}",
+        ),
     ]
     for condition, message in validations:
         if condition:
@@ -162,9 +183,18 @@ def generate_map(
     """
     # Validate parameters
     _validate_map_parameters(
-        width, height, padding, scale, octaves, persistence, lacunarity,
-        smoothing_iterations, settlement_density, min_settlement_radius,
-        max_settlement_radius, sea_level
+        width,
+        height,
+        padding,
+        scale,
+        octaves,
+        persistence,
+        lacunarity,
+        smoothing_iterations,
+        settlement_density,
+        min_settlement_radius,
+        max_settlement_radius,
+        sea_level,
     )
 
     # Record start time for performance measurement.

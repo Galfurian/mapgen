@@ -8,8 +8,9 @@ container.
 
 from __future__ import annotations
 
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
+
 from pydantic import BaseModel, Field
 
 
@@ -749,6 +750,7 @@ class MapData(BaseModel):
             map_data.find_tiles_by_properties(
                 walkable=True, buildable=True
             )
+
         """
         # Initialize list for matching tiles.
         matching_tiles = []

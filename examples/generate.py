@@ -1,4 +1,3 @@
-# This file was renamed from full_generation.py to generate.py for clarity and consistency.
 #!/usr/bin/env python3
 """
 Complete MapGen workflow - generates a fantasy map with configurable features and all available visualizations.
@@ -13,16 +12,15 @@ from pathlib import Path
 
 from mapgen import (
     generate_map,
+    get_ascii_elevation_map,
+    get_ascii_map,
+    get_ascii_rainfall_map,
+    get_ascii_temperature_map,
+    logger,
     plot_elevation_map,
     plot_map,
     plot_rainfall_map,
     plot_temperature_map,
-    plot_3d_map,
-    get_ascii_map,
-    get_ascii_rainfall_map,
-    get_ascii_temperature_map,
-    get_ascii_elevation_map,
-    logger,
 )
 
 
@@ -259,17 +257,13 @@ Examples:
         desert_coverage=args.desert_coverage,
     )
 
-    if map_data is None:
-        logger.error("❌ Map generation failed!")
-        return
-
     logger.info("✅ Map generation succeeded!")
-    logger.info(f"📐 Map size: {map_data.width}×{map_data.height}")
+    logger.info(f"📐 Map size: {map_data.width}x{map_data.height}")
     logger.info(f"🏘️ Settlements: {len(map_data.settlements)}")
     logger.info(f"🛣️ Roads: {len(map_data.roads)}")
 
     # Count terrain types
-    terrain_counts = {}
+    terrain_counts: dict[str, int] = {}
     for y in range(map_data.height):
         for x in range(map_data.width):
             tile = map_data.get_terrain(x, y)

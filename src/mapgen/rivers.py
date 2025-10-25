@@ -236,7 +236,7 @@ def _merge_river_paths(paths: list, elevation: np.ndarray | None = None) -> list
 
     # Build a set of all cells occupied by rivers (for quick lookup)
     merged_paths = []
-    occupied_cells = set()
+    occupied_cells: set[tuple[int, int]] = set()
 
     # Process each path from longest to shortest.
     for path in paths:
@@ -271,7 +271,7 @@ def _merge_river_paths(paths: list, elevation: np.ndarray | None = None) -> list
     return merged_paths
 
 
-def _is_near_occupied(y: int, x: int, occupied_cells: set) -> bool:
+def _is_near_occupied(y: int, x: int, occupied_cells: set[tuple[int, int]]) -> bool:
     """Check if a cell or its neighbors are occupied."""
     # Check the cell itself.
     if (y, x) in occupied_cells:

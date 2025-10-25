@@ -8,9 +8,7 @@ topographical maps.
 """
 
 import logging
-import random
 
-import noise
 import numpy as np
 from scipy import ndimage
 

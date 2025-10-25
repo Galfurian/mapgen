@@ -3,8 +3,6 @@
 import os
 import tempfile
 
-import pytest
-
 from mapgen import generate_map
 from mapgen.map_data import MapData, Tile
 
@@ -142,9 +140,9 @@ def test_map_data_many_tiles() -> None:
     # Create a grid with all unique tiles (10 rows x 10 cols = 100 tiles)
     grid = []
     tile_index = 0
-    for row in range(10):
+    for _ in range(10):
         grid_row = []
-        for col in range(10):
+        for _ in range(10):
             grid_row.append(tile_index)
             tile_index += 1
         grid.append(grid_row)

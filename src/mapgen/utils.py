@@ -42,6 +42,7 @@ def generate_noise_grid(
     Returns:
         np.ndarray:
             2D array of noise values.
+
     """
     # Generate random offsets to ensure unique noise patterns for each
     # generation.

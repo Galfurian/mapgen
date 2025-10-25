@@ -2,24 +2,24 @@
 
 import logging
 
-from .map_data import MapData, Position, Settlement, Tile, PlacementMethod
+from . import flora
+from .map_data import MapData, PlacementMethod, Position, Settlement, Tile
 from .map_generator import generate_map
 from .tile_collections import (
     TileCollections,
     get_default_tile_collections,
 )
 from .visualization import (
+    get_ascii_elevation_map,
     get_ascii_map,
     get_ascii_rainfall_map,
     get_ascii_temperature_map,
-    get_ascii_elevation_map,
+    plot_3d_map,
     plot_elevation_map,
     plot_map,
     plot_rainfall_map,
     plot_temperature_map,
-    plot_3d_map,
 )
-from . import flora
 
 __version__ = "0.1.0"
 
@@ -38,22 +38,22 @@ if not logger.handlers:
 
 __all__ = [
     "MapData",
-    "generate_map",
-    "get_default_tile_collections",
     "PlacementMethod",
     "Position",
     "Settlement",
     "Tile",
     "TileCollections",
     "flora",
+    "generate_map",
+    "get_ascii_elevation_map",
     "get_ascii_map",
     "get_ascii_rainfall_map",
     "get_ascii_temperature_map",
-    "get_ascii_elevation_map",
+    "get_default_tile_collections",
     "logger",
+    "plot_3d_map",
     "plot_elevation_map",
     "plot_map",
     "plot_rainfall_map",
     "plot_temperature_map",
-    "plot_3d_map",
 ]
