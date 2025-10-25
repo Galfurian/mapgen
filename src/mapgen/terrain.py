@@ -1,3 +1,12 @@
+"""
+Terrain generation utilities for procedural map generation.
+
+This module provides functions for generating and processing elevation maps,
+applying terrain features, and assigning base terrain tiles based on elevation
+data. It handles the core terrain generation logic for creating realistic
+topographical maps.
+"""
+
 import logging
 import random
 
@@ -53,18 +62,19 @@ def generate_elevation_map(
         base=0,
     )
 
-    # Normalize to full -1 to 1 range
+    # Normalize the elevation map to the range -1 to 1.
     min_val = np.min(elevation_map)
     max_val = np.max(elevation_map)
     if max_val > min_val:
         elevation_map = (elevation_map - min_val) / (max_val - min_val) * 2 - 1
 
-    # Apply sea level adjustment to control land/sea ratio
+    # Adjust the elevation map based on sea level to control land/sea ratio.
     if sea_level != 0.0:
         shifted = elevation_map - sea_level
         sea_mask = shifted < 0
         land_mask = shifted >= 0
 
+        # Adjust sea areas to the range -1 to 0.
         if np.any(sea_mask):
             sea_min = np.min(shifted[sea_mask])
             sea_max = 0.0
@@ -75,6 +85,7 @@ def generate_elevation_map(
             else:
                 shifted[sea_mask] = -1
 
+        # Adjust land areas to the range 0 to 1.
         if np.any(land_mask):
             land_min = 0.0
             land_max = np.max(shifted[land_mask])
@@ -87,9 +98,10 @@ def generate_elevation_map(
 
         elevation_map = shifted
 
-    # Round to 4 decimal places
+    # Round the elevation values to 4 decimal places for precision.
     elevation_map = np.round(elevation_map, decimals=4)
 
+    # Store the processed elevation map in the map data.
     map_data.elevation_map = elevation_map.tolist()
 
 
@@ -125,6 +137,7 @@ def smooth_elevation_map(
 
     elevation = np.array(map_data.elevation_map)
 
+    # Apply Gaussian smoothing for the specified number of iterations.
     for _ in range(iterations):
         elevation = ndimage.gaussian_filter(elevation, sigma=sigma)
 
@@ -156,7 +169,7 @@ def apply_terrain_features(
     if not map_data.elevation_map:
         raise ValueError("Elevation map is required for terrain feature assignment")
 
-    # Pre-filter terrain-based tiles and sort by priority (highest first)
+    # Filter and sort terrain-based tiles by priority.
     terrain_tiles = [
         tile
         for tile in map_data.tiles
@@ -172,6 +185,7 @@ def apply_terrain_features(
     logger.debug(f"Applying terrain features using {len(terrain_tiles)} terrain tiles")
 
     tiles_assigned = 0
+    # Iterate over each position on the map and assign a suitable tile.
     for y in range(map_data.height):
         for x in range(map_data.width):
             if _apply_suitable_tile(map_data, terrain_tiles, x, y):
@@ -221,12 +235,13 @@ def apply_base_terrain(
     if not base_terrain_tiles:
         raise ValueError("No base terrain tiles provided")
 
-    # Sort by priority (highest first)
+    # Sort terrain tiles by priority.
     terrain_tiles = sorted(base_terrain_tiles, key=lambda t: t.terrain_priority, reverse=True)
 
     logger.debug(f"Applying base terrain using {len(terrain_tiles)} tiles")
 
     tiles_assigned = 0
+    # Iterate over each position on the map and assign a suitable tile.
     for y in range(map_data.height):
         for x in range(map_data.width):
             if _apply_suitable_tile(map_data, terrain_tiles, x, y):
@@ -250,14 +265,16 @@ def _apply_suitable_tile(
     """
     Apply the most suitable terrain tile for the given position.
 
-    Tiles are selected based on elevation range compatibility and terrain priority.
-    The highest priority tile that matches the elevation range is chosen.
+    Tiles are selected based on elevation range compatibility and terrain
+    priority. The highest priority tile that matches the elevation range is
+    chosen.
 
     Args:
         map_data (MapData):
             The map data containing elevation information.
         terrain_tiles (list[Tile]):
-            Pre-filtered list of terrain-based tiles, sorted by priority descending.
+            Pre-filtered list of terrain-based tiles, sorted by priority
+            descending.
         x (int):
             The x coordinate of the position.
         y (int):
@@ -268,19 +285,22 @@ def _apply_suitable_tile(
             True if a suitable tile was assigned, False otherwise.
 
     """
+    # Get the elevation at the current position.
     elevation = map_data.get_elevation(x, y)
 
-    # Find all tiles that can accommodate this elevation
+    # Find tiles that match the elevation range.
     suitable_tiles = [
         tile
         for tile in terrain_tiles
         if tile.elevation_min <= elevation <= tile.elevation_max
     ]
 
+    # If no tiles match, return False.
     if not suitable_tiles:
         return False
 
-    # The first tile in the pre-sorted list is the highest priority suitable one
+    # Select the highest priority suitable tile.
     chosen_tile = suitable_tiles[0]
+    # Assign the chosen tile to the position.
     map_data.set_terrain(x, y, chosen_tile)
     return True
