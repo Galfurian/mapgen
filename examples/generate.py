@@ -181,6 +181,24 @@ Examples:
         help="Disable climate-driven vegetation placement",
     )
     parser.add_argument(
+        "--min-source-elevation",
+        type=float,
+        default=0.6,
+        help="Minimum elevation for river sources - higher = only tallest mountains (default: 0.6)",
+    )
+    parser.add_argument(
+        "--min-source-rainfall",
+        type=float,
+        default=0.5,
+        help="Minimum rainfall percentile for river sources (default: 0.5)",
+    )
+    parser.add_argument(
+        "--min-river-length",
+        type=int,
+        default=10,
+        help="Minimum path length to place a river (default: 10)",
+    )
+    parser.add_argument(
         "--forest-coverage",
         type=float,
         default=0.15,
@@ -229,6 +247,9 @@ Examples:
         enable_roads=not args.disable_roads,
         enable_rivers=not args.disable_rivers,
         enable_vegetation=not args.disable_vegetation,
+        min_source_elevation=args.min_source_elevation,
+        min_source_rainfall=args.min_source_rainfall,
+        min_river_length=args.min_river_length,
         sea_level=args.sea_level,
         rainfall_temp_weight=args.rainfall_temp_weight,
         rainfall_humidity_weight=args.rainfall_humidity_weight,

@@ -39,10 +39,9 @@ def generate_map(
     enable_roads: bool = True,
     enable_rivers: bool = True,
     enable_vegetation: bool = True,
-    min_river_length: int = 15,
-    max_rivers: int = 3,
-    rainfall_threshold: float = 0.8,
-    elevation_threshold: float = 0.6,
+    min_source_elevation: float = 0.6,
+    min_source_rainfall: float = 0.5,
+    min_river_length: int = 10,
     sea_level: float = 0.0,
     rainfall_temp_weight: float = 0.3,
     rainfall_humidity_weight: float = 0.4,
@@ -75,11 +74,9 @@ def generate_map(
         enable_roads (bool): Whether to generate road networks.
         enable_rivers (bool): Whether to generate rivers.
         enable_vegetation (bool): Whether to place climate-driven vegetation.
-        enable_accumulation (bool): Whether to compute water accumulation (runoff) map.
-        min_river_length (int): Minimum length for rivers.
-        max_rivers (int): Maximum number of rivers to generate.
-        rainfall_threshold (float): Minimum rainfall for river sources.
-        elevation_threshold (float): Minimum elevation for river sources.
+        min_source_elevation (float): Minimum elevation for river sources (0.0-1.0).
+        min_source_rainfall (float): Minimum rainfall percentile for sources (0.0-1.0).
+        min_river_length (int): Minimum path length to place a river.
         sea_level (float): Elevation level for sea (controls land/sea ratio, -1.0 to 1.0).
         rainfall_temp_weight (float): Weight for temperature influence on rainfall (0.0 to 1.0).
         rainfall_humidity_weight (float): Weight for humidity influence on rainfall (0.0 to 1.0).
@@ -220,16 +217,16 @@ def generate_map(
         vegetation_time = time.time() - vegetation_start
         logger.debug(f"Vegetation placement completed in {vegetation_time:.3f}s")
 
-    # Phase 5: Generate rivers
+    # Phase 5: Generate rivers using simple downhill flow
     if enable_rivers:
         logger.debug("Generating rivers")
         rivers_start = time.time()
         rivers.generate_rivers(
             map_data,
+            min_source_elevation=min_source_elevation,
+            min_source_rainfall=min_source_rainfall,
             min_river_length=min_river_length,
-            max_rivers=max_rivers,
-            rainfall_threshold=rainfall_threshold,
-            elevation_threshold=elevation_threshold,
+            sea_level=sea_level,
         )
         rivers_time = time.time() - rivers_start
         logger.debug(f"River generation completed in {rivers_time:.3f}s")
