@@ -6,9 +6,9 @@ factors and computing water accumulation (runoff) using elevation data.
 """
 
 import logging
+from collections import deque
 
 import numpy as np
-from collections import deque
 
 from .map_data import MapData
 from .utils import generate_noise_grid
@@ -214,6 +214,7 @@ def generate_accumulation_map(map_data: MapData) -> None:
     Raises:
         ValueError:
             If elevation_map is not available in map_data.
+
     """
     if not map_data.elevation_map:
         raise ValueError("Elevation map is required for accumulation computation")
@@ -236,10 +237,11 @@ def generate_accumulation_map(map_data: MapData) -> None:
             min_pos = (x, y)
             for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 nx, ny = x + dx, y + dy
-                if 0 <= nx < width and 0 <= ny < height:
-                    if elevation[ny, nx] < min_elev:
-                        min_elev = elevation[ny, nx]
-                        min_pos = (nx, ny)
+                if not (0 <= nx < width and 0 <= ny < height):
+                    continue
+                if elevation[ny, nx] < min_elev:
+                    min_elev = elevation[ny, nx]
+                    min_pos = (nx, ny)
             flow_to[y, x] = min_pos
 
     # Build in-degree for topological sort (cells with no inflow first)
@@ -250,17 +252,12 @@ def generate_accumulation_map(map_data: MapData) -> None:
                 in_degree[ty, tx] += 1
 
     # Initialize queue with cells that have no incoming flow
-    queue = deque()
-    for y in range(height):
-        for x in range(width):
-            if in_degree[y, x] == 0:
-                queue.append((x, y))
+    queue = deque(
+        (x, y) for y in range(height) for x in range(width) if in_degree[y, x] == 0
+    )
 
     # Initialize accumulation with local rainfall
-    accumulation = np.zeros((height, width))
-    for y in range(height):
-        for x in range(width):
-            accumulation[y, x] = rainfall[y, x]
+    accumulation = rainfall.copy()
 
     # Process cells in topological order to accumulate flow
     while queue:
