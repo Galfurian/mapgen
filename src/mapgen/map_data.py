@@ -307,6 +307,10 @@ class Settlement(BaseModel):
     connectivity: int = Field(
         description="Road connectivity factor (higher = more likely to have roads).",
     )
+    is_harbor: bool = Field(
+        default=False,
+        description="Whether this settlement is a harbor.",
+    )
 
     def distance_to(self, other: Settlement) -> float:
         """Calculate Euclidean distance to another position.

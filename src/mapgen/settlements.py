@@ -65,11 +65,14 @@ def generate_settlements(
         max_radius,
     )
 
+    # Designate harbors
+    _designate_harbors(map_data)
+
 
 def _generate_settlement_name() -> str:
     """Generate a random fantasy settlement name.
 
-    Returns:
+    Returns
         str:
             A randomly generated settlement name.
 
@@ -160,7 +163,7 @@ def _does_settlement_overlaps(
     # Check distance to each existing settlement.
     for existing in map_data.settlements:
         distance = position.distance_to(existing.position)
-        if distance < min_radius + max_radius:
+        if distance < pow(min_radius + max_radius, 6):
             return True
     return False
 
@@ -277,3 +280,113 @@ def _place_settlements_at_positions(
                 max_radius,
             )
         )
+
+
+def _designate_harbors(map_data: MapData) -> None:
+    """
+    Designate settlements as harbors by moving coastal ones closer to water
+    or electing inland ones to become harbors.
+
+    Args:
+        map_data (MapData):
+            The map data containing settlements and terrain.
+
+    """
+    # Find coastal settlements (those adjacent to water)
+    coastal_settlements = []
+    for settlement in map_data.settlements:
+        pos = settlement.position
+        neighbors = map_data.get_neighbors(pos.x, pos.y, include_diagonals=True)
+        for neighbor in neighbors:
+            if map_data.get_terrain(neighbor.x, neighbor.y).is_salt_water:
+                coastal_settlements.append(settlement)
+                break
+
+    if coastal_settlements:
+        # Move coastal settlements closer to the coast
+        for settlement in coastal_settlements:
+            _move_settlement_closer_to_coast(map_data, settlement)
+            settlement.is_harbor = True
+    else:
+        # Elect some settlements to be harbors by moving them to the coast
+        num_harbors = min(3, len(map_data.settlements) // 2)  # Up to 3 or half
+        candidates = sorted(
+            map_data.settlements, key=lambda s: s.connectivity, reverse=True
+        )[:num_harbors]
+        for settlement in candidates:
+            _move_settlement_to_coast(map_data, settlement)
+            settlement.is_harbor = True
+
+
+def _move_settlement_closer_to_coast(map_data: MapData, settlement: Settlement) -> None:
+    """
+    Move a coastal settlement closer to the water if possible.
+
+    Args:
+        map_data (MapData):
+            The map data.
+        settlement (Settlement):
+            The settlement to move.
+
+    """
+    pos = settlement.position
+    # Find direction to nearest water
+    nearest_water = None
+    min_dist = float("inf")
+    for y in range(map_data.height):
+        for x in range(map_data.width):
+            if map_data.get_terrain(x, y).is_salt_water:
+                dist = ((x - pos.x) ** 2 + (y - pos.y) ** 2) ** 0.5
+                if dist < min_dist:
+                    min_dist = dist
+                    nearest_water = Position(x, y)
+
+    if nearest_water:
+        # Move towards the water by 1 tile
+        dx = nearest_water.x - pos.x
+        dy = nearest_water.y - pos.y
+        dist = (dx**2 + dy**2) ** 0.5
+        if dist > 0:
+            new_x = pos.x + int(dx / dist)
+            new_y = pos.y + int(dy / dist)
+            new_pos = Position(new_x, new_y)
+            if (
+                map_data.is_valid_position(new_x, new_y)
+                and map_data.get_terrain(new_x, new_y).can_build_settlement
+                and not _does_settlement_overlaps(
+                    map_data, new_pos, settlement.radius, settlement.radius
+                )
+            ):
+                settlement.position = new_pos
+
+
+def _move_settlement_to_coast(map_data: MapData, settlement: Settlement) -> None:
+    """
+    Move a settlement to the nearest coastal position.
+
+    Args:
+        map_data (MapData):
+            The map data.
+        settlement (Settlement):
+            The settlement to move.
+
+    """
+    pos = settlement.position
+    # Find nearest coastal position (buildable with water neighbor)
+    nearest_coast = None
+    min_dist = float("inf")
+    for y in range(map_data.height):
+        for x in range(map_data.width):
+            if map_data.get_terrain(x, y).can_build_settlement:
+                neighbors = map_data.get_neighbors(x, y, include_diagonals=True)
+                has_water = any(
+                    map_data.get_terrain(n.x, n.y).is_salt_water for n in neighbors
+                )
+                if has_water:
+                    dist = ((x - pos.x) ** 2 + (y - pos.y) ** 2) ** 0.5
+                    if dist < min_dist:
+                        min_dist = dist
+                        nearest_coast = Position(x, y)
+
+    if nearest_coast:
+        settlement.position = nearest_coast

@@ -55,6 +55,12 @@ def generate_roads(
         if path is None:
             logger.debug(f"No path found between {settlement.name} and {nearest.name}")
             continue
+        # Check if road already exists
+        if _road_exists(map_data, settlement.name, nearest.name):
+            logger.debug(
+                f"Road between {settlement.name} and {nearest.name} already exists"
+            )
+            continue
         # Add the road to the map data.
         map_data.roads.append(
             Road(
@@ -63,7 +69,7 @@ def generate_roads(
                 path=path,
             )
         )
-        
+
         logger.debug(
             f"Connected {settlement.name} to {nearest.name} with road of length {len(path)}"
         )
@@ -100,87 +106,48 @@ def _reconstruct_path(
     return path
 
 
-def _a_star_search(
+def _find_nearest_settlement_worth_connecting(
+    settlement: Settlement,
+    settlements: list[Settlement],
     map_data: MapData,
-    start: Position,
-    goal: Position,
-) -> list[Position] | None:
+) -> Settlement | None:
     """
-    Perform A* search.
+    Find the nearest settlement that can be connected with a reasonable path.
 
     Args:
+        settlement (Settlement):
+            The settlement to connect from.
+        settlements (list[Settlement]):
+            All settlements.
         map_data (MapData):
-            The map grid.
-        start (Position):
-            The start position.
-        goal (Position):
-            The goal position.
+            The map data containing existing roads.
 
     Returns:
-        list[Position] | None:
-            The path if found, None otherwise.
+        Settlement | None:
+            The nearest settlement that can be connected, or None.
 
     """
+    # Get candidates: settlements sorted by direct distance
+    candidates = sorted(
+        [s for s in settlements if s.name != settlement.name],
+        key=lambda s: settlement.distance_to(s),
+    )[
+        :5
+    ]  # Top 5 nearest
 
-    def heuristic(a: Position, b: Position) -> float:
-        return a.manhattan_distance_to(b)
-
-    # Priority queue of (position, cost_so_far, total_estimated_cost)
-    open_set: list[tuple[Position, float, float]] = []
-    # Set of positions already evaluated
-    closed_set = set()
-    # Dictionary mapping position to its predecessor in the path
-    came_from: dict[Position, Position] = {}
-
-    start_node = (start, 0.0, heuristic(start, goal))
-    open_set.append(start_node)
-
-    # Main A* loop.
-    while open_set:
-        # Find the node with the lowest total estimated cost.
-        current = min(open_set, key=lambda x: x[2])
-        current_pos, current_cost, _current_heuristic = current
-
-        if current_pos == goal:
-            return _reconstruct_path(current_pos, came_from)
-
-        open_set.remove(current)
-        closed_set.add(current_pos)
-
-        # Explore neighbors.
-        for neighbor in map_data.get_neighbors(current_pos.x, current_pos.y):
-            if neighbor in closed_set:
-                continue
-
-            tile = map_data.get_terrain(neighbor.x, neighbor.y)
-            if tile.is_water:
-                continue
-            tentative_cost = current_cost + tile.pathfinding_cost
-
-            # Check if neighbor is already in open set.
-            existing_node = next((n for n in open_set if n[0] == neighbor), None)
-            if existing_node:
-                # If this path is better, update the node.
-                if tentative_cost < existing_node[1]:
-                    idx = open_set.index(existing_node)
-                    open_set[idx] = (
-                        neighbor,
-                        tentative_cost,
-                        tentative_cost + heuristic(neighbor, goal),
-                    )
-                    came_from[neighbor] = current_pos
-            else:
-                # Add new node to open set.
-                open_set.append(
-                    (
-                        neighbor,
-                        tentative_cost,
-                        tentative_cost + heuristic(neighbor, goal),
-                    )
-                )
-                came_from[neighbor] = current_pos
-
-    return None
+    best = None
+    best_path_length = float("inf")
+    for other in candidates:
+        # Check if already connected via roads
+        path_dist = _shortest_path_distance(map_data, settlement.name, other.name)
+        if path_dist is not None and path_dist <= settlement.distance_to(other) * 0.6:
+            continue
+        # Compute actual path
+        path = _a_star_search(map_data, settlement.position, other.position)
+        if path and len(path) < best_path_length:
+            best = other
+            best_path_length = len(path)
+    return best
 
 
 def _shortest_path_distance(
@@ -236,43 +203,108 @@ def _shortest_path_distance(
     return dist[end_name]
 
 
-def _find_nearest_settlement_worth_connecting(
-    settlement: Settlement,
-    settlements: list[Settlement],
+def _a_star_search(
     map_data: MapData,
-) -> Settlement | None:
+    start: Position,
+    goal: Position,
+) -> list[Position] | None:
     """
-    Find the nearest settlement where direct connection is better than existing
-    paths.
+    Perform A* search.
 
     Args:
-        settlement (Settlement):
-            The settlement to connect from.
-        settlements (list[Settlement]):
-            All settlements.
         map_data (MapData):
-            The map data containing existing roads.
+            The map grid.
+        start (Position):
+            The start position.
+        goal (Position):
+            The goal position.
 
     Returns:
-        Settlement | None:
-            The nearest settlement worth connecting to, or None.
+        list[Position] | None:
+            The path if found, None otherwise.
 
     """
-    # Initialize variables for nearest settlement.
-    nearest = None
-    min_dist = float("inf")
-    # Check each other settlement.
-    for other in settlements:
-        if other.name == settlement.name:
-            continue
-        # Calculate direct distance.
-        direct_dist = settlement.distance_to(other)
-        # Get shortest path distance via roads.
-        path_dist = _shortest_path_distance(map_data, settlement.name, other.name)
-        # If direct is significantly better or no path exists.
-        if path_dist is None or direct_dist < path_dist * 0.5:
-            # Update if closer.
-            if direct_dist < min_dist:
-                min_dist = direct_dist
-                nearest = other
-    return nearest
+
+    def heuristic(a: Position, b: Position) -> float:
+        return a.manhattan_distance_to(b)
+
+    # Priority queue of (position, cost_so_far, total_estimated_cost)
+    open_set: list[tuple[Position, float, float]] = []
+    # Set of positions already evaluated
+    closed_set = set()
+    # Dictionary mapping position to its predecessor in the path
+    came_from: dict[Position, Position] = {}
+
+    start_node = (start, 0.0, heuristic(start, goal))
+    open_set.append(start_node)
+
+    # Main A* loop.
+    while open_set:
+        # Find the node with the lowest total estimated cost.
+        current = min(open_set, key=lambda x: x[2])
+        current_pos, current_cost, _current_heuristic = current
+
+        if current_pos == goal:
+            return _reconstruct_path(current_pos, came_from)
+
+        open_set.remove(current)
+        closed_set.add(current_pos)
+
+        # Explore neighbors.
+        for neighbor in map_data.get_neighbors(current_pos.x, current_pos.y):
+            if neighbor in closed_set:
+                continue
+
+            tile = map_data.get_terrain(neighbor.x, neighbor.y)
+            if tile.is_salt_water:
+                continue
+            tentative_cost = current_cost + tile.pathfinding_cost
+
+            # Check if neighbor is already in open set.
+            existing_node = next((n for n in open_set if n[0] == neighbor), None)
+            if existing_node:
+                # If this path is better, update the node.
+                if tentative_cost < existing_node[1]:
+                    idx = open_set.index(existing_node)
+                    open_set[idx] = (
+                        neighbor,
+                        tentative_cost,
+                        tentative_cost + heuristic(neighbor, goal),
+                    )
+                    came_from[neighbor] = current_pos
+            else:
+                # Add new node to open set.
+                open_set.append(
+                    (
+                        neighbor,
+                        tentative_cost,
+                        tentative_cost + heuristic(neighbor, goal),
+                    )
+                )
+                came_from[neighbor] = current_pos
+
+    return None
+
+
+def _road_exists(map_data: MapData, start_name: str, end_name: str) -> bool:
+    """
+    Check if a road exists between two settlements.
+
+    Args:
+        map_data (MapData):
+            The map data.
+        start_name (str):
+            Name of the start settlement.
+        end_name (str):
+            Name of the end settlement.
+
+    Returns:
+        bool:
+            True if a road exists, False otherwise.
+
+    """
+    return any(
+        (road.start_settlement == start_name and road.end_settlement == end_name)
+        or (road.start_settlement == end_name and road.end_settlement == start_name)
+        for road in map_data.roads
+    )

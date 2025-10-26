@@ -120,9 +120,9 @@ def _plot_settlements(ax: Axes, map_data: MapData) -> None:
         circle = patches.Circle(
             (x, y),
             radius,
-            facecolor="white",
+            facecolor="blue" if settlement.is_harbor else "white",
             edgecolor="black",
-            linewidth=1,
+            linewidth=0.5,
             zorder=3,
         )
         ax.add_patch(circle)
@@ -247,7 +247,18 @@ def plot_map(
     # Plot roads
     if enable_roads:
         elevation_map = np.array(map_data.elevation_map)
-        road_colors = ['red', 'blue', 'green', 'orange', 'purple', 'cyan', 'magenta', 'yellow', 'black', 'gray']
+        road_colors = [
+            "red",
+            "blue",
+            "green",
+            "orange",
+            "purple",
+            "cyan",
+            "magenta",
+            "yellow",
+            "black",
+            "gray",
+        ]
         for i, road in enumerate(map_data.roads):
             path = road.path
             curved_path = _apply_curves_to_path(path, elevation_map)
@@ -395,7 +406,18 @@ def plot_3d_map(
 
     # Add roads as 3D lines
     if enable_roads and map_data.roads:
-        road_colors = ['red', 'blue', 'green', 'orange', 'purple', 'cyan', 'magenta', 'yellow', 'black', 'gray']
+        road_colors = [
+            "red",
+            "blue",
+            "green",
+            "orange",
+            "purple",
+            "cyan",
+            "magenta",
+            "yellow",
+            "black",
+            "gray",
+        ]
         for i, road in enumerate(map_data.roads):
             if len(road.path) > 1:
                 road_x = [pos.x for pos in road.path]
