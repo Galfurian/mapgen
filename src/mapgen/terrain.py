@@ -256,7 +256,7 @@ def apply_base_terrain(
 
 def classify_water_bodies(
     map_data: MapData,
-    max_lake_size: int = 500,
+    max_lake_size: int | None = None,
 ) -> None:
     """
     Classify water bodies as either salt water (seas/oceans) or fresh water (lakes).
@@ -274,9 +274,10 @@ def classify_water_bodies(
     Args:
         map_data (MapData):
             The map data containing terrain information.
-        max_lake_size (int):
+        max_lake_size (int | None):
             Maximum size for edge-connected water bodies to be classified as lakes.
-            Larger edge-connected bodies remain as salt water seas. Default 500.
+            Larger edge-connected bodies remain as salt water seas.
+            If None, automatically calculated as 0.5% of map area (minimum 50).
 
     """
     if not map_data.elevation_map:
@@ -284,6 +285,11 @@ def classify_water_bodies(
         return
 
     height, width = len(map_data.elevation_map), len(map_data.elevation_map[0])
+
+    # Calculate max_lake_size if not provided
+    if max_lake_size is None:
+        # Use 1% of total map area as threshold, minimum 100
+        max_lake_size = max(100, int(width * height * 0.01))
 
     # Create a binary mask of water tiles
     water_mask = np.zeros((height, width), dtype=bool)

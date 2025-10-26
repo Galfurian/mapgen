@@ -211,8 +211,8 @@ Examples:
     parser.add_argument(
         "--max-lake-size",
         type=int,
-        default=500,
-        help="Maximum size for edge-connected water bodies to be classified as lakes (default: 500)",
+        default=None,
+        help="Maximum size for edge-connected water bodies to be classified as lakes (default: auto-calculated)",
     )
     parser.add_argument(
         "-v",

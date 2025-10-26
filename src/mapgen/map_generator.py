@@ -111,7 +111,7 @@ def generate_map(
     rainfall_variation_strength: float = 0.1,
     forest_coverage: float = 0.15,
     desert_coverage: float = 0.10,
-    max_lake_size: int = 500,
+    max_lake_size: int | None = None,
 ) -> MapData:
     """
     Generate a complete procedural fantasy map.
@@ -173,9 +173,10 @@ def generate_map(
             Target forest coverage ratio (0.0 to 1.0).
         desert_coverage (float):
             Target desert coverage ratio (0.0 to 1.0).
-        max_lake_size (int):
+        max_lake_size (int | None):
             Maximum size for edge-connected water bodies to be classified as lakes.
-            Larger edge-connected bodies remain as salt water seas. Default 500.
+            Larger edge-connected bodies remain as salt water seas.
+            If None, automatically calculated based on map size.
 
     Returns:
         MapData:
