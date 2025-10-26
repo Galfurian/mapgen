@@ -21,187 +21,6 @@ if TYPE_CHECKING:
     from mpl_toolkits.mplot3d import Axes3D
 
 
-def _apply_curves_to_path(
-    path: list[Position],
-    elevation_map: np.ndarray,
-    num_control_points: int = 5,
-    smoothing_factor: float = 0.5,
-    control_func: Callable[[Position], bool] | None = None,
-) -> list[Position]:
-    """
-    Apply curves to a path based on elevation.
-
-    Args:
-        path (list[Position]):
-            The path to curve.
-        elevation_map (np.ndarray):
-            The elevation map.
-        num_control_points (int):
-            Number of control points.
-        smoothing_factor (float):
-            Smoothing factor.
-        control_func (Callable[[Position], bool] | None):
-            Optional function to control where curving is allowed.
-            If provided, curving adjustments are only applied if the new position
-            satisfies the control function. Defaults to None (no restrictions).
-
-    Returns:
-        list[Position]:
-            The curved path.
-
-    """
-    if len(path) <= 2:
-        return path
-
-    # Extract coordinates and compute cumulative distances along the path
-    x = np.array([p.x for p in path])
-    y = np.array([p.y for p in path])
-    distances = np.cumsum(np.sqrt(np.diff(x) ** 2 + np.diff(y) ** 2))
-    distances = np.insert(distances, 0, 0)
-
-    total_distance = distances[-1]
-    control_point_distances = np.linspace(0, total_distance, num=num_control_points)
-
-    # Interpolate control points along the path
-    control_points_x = interp1d(distances, x, kind="linear")(
-        control_point_distances
-    ).astype(float)
-    control_points_y = interp1d(distances, y, kind="linear")(
-        control_point_distances
-    ).astype(float)
-
-    # Adjust intermediate control points based on elevation gradients
-    for i in range(1, num_control_points - 1):
-        cx, cy = round(control_points_x[i]), round(control_points_y[i])
-        left_x = max(0, cx - 1)
-        right_x = min(elevation_map.shape[1] - 1, cx + 1)
-        top_y = max(0, cy - 1)
-        bottom_y = min(elevation_map.shape[0] - 1, cy + 1)
-
-        # Compute local elevation gradients
-        gradient_x = (elevation_map[cy, right_x] - elevation_map[cy, left_x]) / 2
-        gradient_y = (elevation_map[bottom_y, cx] - elevation_map[top_y, cx]) / 2
-
-        # Adjust smoothing based on elevation difference to next control point
-        elevation_diff = abs(
-            elevation_map[cy, cx]
-            - elevation_map[int(control_points_y[i + 1]), int(control_points_x[i + 1])]
-        )
-        adjusted_smoothing_factor = smoothing_factor * (1 + elevation_diff)
-
-        adjusted_x = control_points_x[i] + adjusted_smoothing_factor * gradient_x
-        adjusted_y = control_points_y[i] + adjusted_smoothing_factor * gradient_y
-        new_pos = Position(round(adjusted_x), round(adjusted_y))
-
-        if control_func is not None and not control_func(new_pos):
-            continue
-
-        if (
-            0 <= new_pos.x < elevation_map.shape[1]
-            and 0 <= new_pos.y < elevation_map.shape[0]
-        ):
-            control_points_x[i] = adjusted_x
-            control_points_y[i] = adjusted_y
-
-    # Create cubic spline interpolators for smooth curves
-    f_x = interp1d(
-        control_point_distances,
-        control_points_x,
-        kind="cubic",
-    )
-    f_y = interp1d(
-        control_point_distances,
-        control_points_y,
-        kind="cubic",
-    )
-
-    # Generate new path points using the smoothed curves
-    new_path_distances = np.linspace(0, total_distance, num=len(path))
-    new_x = f_x(new_path_distances)
-    new_y = f_y(new_path_distances)
-    curved_path = [
-        Position(x=round(x), y=round(y)) for x, y in zip(new_x, new_y, strict=True)
-    ]
-    return curved_path
-
-
-def _plot_settlements(ax: Axes, map_data: MapData) -> None:
-    """Plot settlements with circles and labels on the given axes."""
-    existing_texts: list[tuple[int, int]] = []
-    for settlement in map_data.settlements:
-        x = settlement.position.x
-        y = settlement.position.y
-        radius = settlement.radius
-
-        circle = patches.Circle(
-            (x, y),
-            radius,
-            facecolor="blue" if settlement.is_harbor else "white",
-            edgecolor="black",
-            linewidth=0.5,
-            zorder=3,
-        )
-        ax.add_patch(circle)
-
-        font_size = int(radius * 6)
-
-        possible_positions = [
-            (x, y + 2),
-            (x, y - 2),
-            (x + 2, y),
-            (x - 2, y),
-            (x + 2, y + 2),
-            (x + 2, y - 2),
-            (x - 2, y + 2),
-            (x - 2, y - 2),
-        ]
-
-        possible_positions.sort(
-            key=lambda pos: ((pos[0] - x) ** 2 + (pos[1] - y) ** 2) ** 0.5
-        )
-
-        text_x, text_y = None, None
-        for pos in possible_positions:
-            distance = ((pos[0] - x) ** 2 + (pos[1] - y) ** 2) ** 0.5
-            if (
-                distance > radius
-                and 0 <= pos[0] < map_data.width
-                and 0 <= pos[1] < map_data.height
-            ):
-                is_overlapping = False
-                for existing_text_x, existing_text_y in existing_texts:
-                    if (
-                        abs(pos[0] - existing_text_x) < font_size
-                        and abs(pos[1] - existing_text_y) < font_size
-                    ):
-                        is_overlapping = True
-                        break
-
-                if not is_overlapping:
-                    text_x, text_y = pos
-                    break
-
-        if text_x is not None and text_y is not None:
-            ax.text(
-                text_x,
-                text_y,
-                settlement.name,
-                color="white",
-                fontsize=font_size,
-                rotation=0,
-                bbox={
-                    "facecolor": "gray",
-                    "edgecolor": "none",
-                    "alpha": 0.7,
-                    "pad": 0.3,
-                },
-                ha="center",
-                va="center",
-                zorder=3,
-            )
-            existing_texts.append((text_x, text_y))
-
-
 def plot_map(
     map_data: MapData,
     enable_contours: bool = True,
@@ -279,65 +98,107 @@ def plot_map(
             "gray",
         ]
         for i, road in enumerate(map_data.roads):
-            path = road.path
-            curved_path = _apply_curves_to_path(
-                path,
-                elevation_map,
-                control_func=lambda pos: not map_data.get_terrain(
-                    pos.x, pos.y
-                ).is_salt_water,
-            )
-            curved_x = [pos.x for pos in curved_path]
-            curved_y = [pos.y for pos in curved_path]
-            color = road_colors[i % len(road_colors)]
+            # Get original path coordinates.
+            x_coords = [pos.x for pos in road.path]
+            y_coords = [pos.y for pos in road.path]
+            # Plot the curved road.
             ax.plot(
-                curved_x,
-                curved_y,
-                color=color,
-                linewidth=1.25,
+                x_coords,
+                y_coords,
+                linewidth=1,
                 linestyle="--",
                 zorder=1,
             )
 
     # Plot water routes
     if enable_water_routes:
-        elevation_map = np.array(map_data.elevation_map)
-        water_route_colors = [
-            "cyan",
-            "blue",
-            "navy",
-            "teal",
-            "deepskyblue",
-            "royalblue",
-            "steelblue",
-            "dodgerblue",
-            "lightblue",
-            "powderblue",
-        ]
         for i, water_route in enumerate(map_data.water_routes):
-            path = water_route.path
-            curved_path = _apply_curves_to_path(
-                path,
-                elevation_map,
-                control_func=lambda pos: map_data.get_terrain(
-                    pos.x, pos.y
-                ).is_salt_water,
-            )
-            curved_x = [pos.x for pos in curved_path]
-            curved_y = [pos.y for pos in curved_path]
-            color = water_route_colors[i % len(water_route_colors)]
+            # Get original path coordinates.
+            x_coords = [pos.x for pos in water_route.path]
+            y_coords = [pos.y for pos in water_route.path]
             ax.plot(
-                curved_x,
-                curved_y,
-                color=color,
-                linewidth=1.25,
+                x_coords,
+                y_coords,
+                linewidth=1,
                 linestyle="-.",
                 zorder=1,
             )
 
     # Plot settlements with circles and labels
     if enable_settlements:
-        _plot_settlements(ax, map_data)
+        existing_texts: list[tuple[int, int]] = []
+        for settlement in map_data.settlements:
+            x = settlement.position.x
+            y = settlement.position.y
+            radius = settlement.radius
+
+            circle = patches.Circle(
+                (x, y),
+                radius,
+                facecolor="blue" if settlement.is_harbor else "white",
+                edgecolor="black",
+                linewidth=0.5,
+                zorder=3,
+            )
+            ax.add_patch(circle)
+
+            font_size = int(radius * 6)
+
+            possible_positions = [
+                (x, y + 2),
+                (x, y - 2),
+                (x + 2, y),
+                (x - 2, y),
+                (x + 2, y + 2),
+                (x + 2, y - 2),
+                (x - 2, y + 2),
+                (x - 2, y - 2),
+            ]
+
+            possible_positions.sort(
+                key=lambda pos: ((pos[0] - x) ** 2 + (pos[1] - y) ** 2) ** 0.5
+            )
+
+            text_x, text_y = None, None
+            for pos in possible_positions:
+                distance = ((pos[0] - x) ** 2 + (pos[1] - y) ** 2) ** 0.5
+                if (
+                    distance > radius
+                    and 0 <= pos[0] < map_data.width
+                    and 0 <= pos[1] < map_data.height
+                ):
+                    is_overlapping = False
+                    for existing_text_x, existing_text_y in existing_texts:
+                        if (
+                            abs(pos[0] - existing_text_x) < font_size
+                            and abs(pos[1] - existing_text_y) < font_size
+                        ):
+                            is_overlapping = True
+                            break
+
+                    if not is_overlapping:
+                        text_x, text_y = pos
+                        break
+
+            if text_x is not None and text_y is not None:
+                ax.text(
+                    text_x,
+                    text_y,
+                    settlement.name,
+                    color="white",
+                    fontsize=font_size,
+                    rotation=0,
+                    bbox={
+                        "facecolor": "gray",
+                        "edgecolor": "none",
+                        "alpha": 0.7,
+                        "pad": 0.3,
+                    },
+                    ha="center",
+                    va="center",
+                    zorder=3,
+                )
+                existing_texts.append((text_x, text_y))
 
     # Configure axes
     ax.set_xticks([])
