@@ -140,9 +140,7 @@ def smooth_elevation_map(
         elevation = ndimage.gaussian_filter(elevation, sigma=sigma)
 
     map_data.elevation_map = elevation.tolist()
-    logger.debug(
-        f"Smoothed elevation map with {iterations} iterations (sigma={sigma})"
-    )
+    logger.debug(f"Smoothed elevation map with {iterations} iterations (sigma={sigma})")
 
 
 def apply_terrain_features(
@@ -234,7 +232,9 @@ def apply_base_terrain(
         raise ValueError("No base terrain tiles provided")
 
     # Sort terrain tiles by priority.
-    terrain_tiles = sorted(base_terrain_tiles, key=lambda t: t.terrain_priority, reverse=True)
+    terrain_tiles = sorted(
+        base_terrain_tiles, key=lambda t: t.terrain_priority, reverse=True
+    )
 
     logger.debug(f"Applying base terrain using {len(terrain_tiles)} tiles")
 
@@ -252,6 +252,102 @@ def apply_base_terrain(
     logger.debug(
         f"Assigned base terrain to {tiles_assigned}/{map_data.width * map_data.height} positions"
     )
+
+
+def classify_water_bodies(
+    map_data: MapData,
+    max_lake_size: int = 500,
+) -> None:
+    """
+    Classify water bodies as either salt water (seas/oceans) or fresh water (lakes).
+
+    This function identifies connected water regions and classifies them based on:
+    1. Connection to map edges
+    2. Size threshold for edge-connected bodies
+
+    Classification rules:
+    - Isolated water bodies (not touching edges): always become lakes
+    - Edge-connected water bodies:
+      - ≤ max_lake_size: become lakes (fresh water)
+      - > max_lake_size: remain as seas (salt water)
+
+    Args:
+        map_data (MapData):
+            The map data containing terrain information.
+        max_lake_size (int):
+            Maximum size for edge-connected water bodies to be classified as lakes.
+            Larger edge-connected bodies remain as salt water seas. Default 500.
+
+    """
+    if not map_data.elevation_map:
+        logger.warning("No elevation map available for water body classification")
+        return
+
+    height, width = len(map_data.elevation_map), len(map_data.elevation_map[0])
+
+    # Create a binary mask of water tiles
+    water_mask = np.zeros((height, width), dtype=bool)
+    for y in range(height):
+        for x in range(width):
+            tile = map_data.get_terrain(x, y)
+            water_mask[y, x] = tile.is_water
+
+    # Find connected components (water bodies)
+    labeled_mask, num_features = ndimage.label(water_mask)
+
+    logger.debug(f"Found {num_features} water bodies")
+
+    # Analyze each water body
+    for label in range(1, num_features + 1):
+        # Get all positions in this water body
+        body_positions = np.where(labeled_mask == label)
+        body_size = len(body_positions[0])
+
+        # Check if this body touches any map edge
+        touches_edge = (
+            np.min(body_positions[0]) == 0  # top edge
+            or np.max(body_positions[0]) == height - 1  # bottom edge
+            or np.min(body_positions[1]) == 0  # left edge
+            or np.max(body_positions[1]) == width - 1  # right edge
+        )
+
+        # Classify water bodies:
+        # - Isolated water bodies: always become lakes
+        # - Edge-connected water bodies:
+        #   - ≤ max_lake_size: lakes (fresh water)
+        #   - > max_lake_size: seas (salt water)
+        if not touches_edge:
+            # Any isolated water body becomes a lake
+            is_lake = True
+        else:
+            # Edge-connected water bodies: smaller ones become lakes
+            is_lake = body_size <= max_lake_size
+
+        if is_lake:
+            # Convert to fresh water (lake)
+            lake_tile = None
+            for tile in map_data.tiles:
+                if tile.name == "lake":
+                    lake_tile = tile
+                    break
+
+            if lake_tile is None:
+                logger.warning(
+                    "Lake tile not found in tile collection, skipping lake conversion"
+                )
+            else:
+                for pos_idx in range(len(body_positions[0])):
+                    y, x = body_positions[0][pos_idx], body_positions[1][pos_idx]
+                    map_data.set_terrain(x, y, lake_tile)
+
+            logger.debug(
+                f"Classified water body {label} as lake (size: {body_size} tiles)"
+            )
+        else:
+            classification = "sea" if body_size > max_lake_size else "lake"
+            logger.debug(
+                f"Water body {label} remains as {classification} (size: {body_size} tiles)"
+            )
 
 
 def _apply_suitable_tile(

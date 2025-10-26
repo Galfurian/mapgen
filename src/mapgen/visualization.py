@@ -268,7 +268,7 @@ def plot_map(
             curved_x = [pos.x for pos in curved_path]
             curved_y = [pos.y for pos in curved_path]
             color = road_colors[i % len(road_colors)]
-            ax.plot(curved_x, curved_y, color=color, linewidth=1.5, zorder=1)
+            ax.plot(curved_x, curved_y, color=color, linewidth=1.25, linestyle="--", zorder=1)
 
     # Plot water routes
     if enable_water_routes:
@@ -291,7 +291,7 @@ def plot_map(
             curved_x = [pos.x for pos in curved_path]
             curved_y = [pos.y for pos in curved_path]
             color = water_route_colors[i % len(water_route_colors)]
-            ax.plot(curved_x, curved_y, color=color, linewidth=2, linestyle="--", zorder=1)
+            ax.plot(curved_x, curved_y, color=color, linewidth=1.25, linestyle="-.", zorder=1)
 
     # Plot settlements with circles and labels
     if enable_settlements:

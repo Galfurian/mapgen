@@ -238,8 +238,8 @@ def _a_star_water(
                 continue
 
             tile = map_data.get_terrain(neighbor.x, neighbor.y)
-            # Only allow water tiles for water routes
-            if not tile.is_water:
+            # Only allow salt water tiles for water routes (seas/oceans, not lakes)
+            if not (tile.is_water and tile.is_salt_water):
                 continue
             tentative_cost = current_cost + 1.0  # Simple cost
 

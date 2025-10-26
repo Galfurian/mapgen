@@ -209,6 +209,12 @@ Examples:
         help="Target desert coverage ratio (default: 0.10)",
     )
     parser.add_argument(
+        "--max-lake-size",
+        type=int,
+        default=500,
+        help="Maximum size for edge-connected water bodies to be classified as lakes (default: 500)",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -255,6 +261,7 @@ Examples:
         rainfall_variation_strength=args.rainfall_variation_strength,
         forest_coverage=args.forest_coverage,
         desert_coverage=args.desert_coverage,
+        max_lake_size=args.max_lake_size,
     )
 
     logger.info("✅ Map generation succeeded!")

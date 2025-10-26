@@ -111,6 +111,7 @@ def generate_map(
     rainfall_variation_strength: float = 0.1,
     forest_coverage: float = 0.15,
     desert_coverage: float = 0.10,
+    max_lake_size: int = 500,
 ) -> MapData:
     """
     Generate a complete procedural fantasy map.
@@ -172,6 +173,9 @@ def generate_map(
             Target forest coverage ratio (0.0 to 1.0).
         desert_coverage (float):
             Target desert coverage ratio (0.0 to 1.0).
+        max_lake_size (int):
+            Maximum size for edge-connected water bodies to be classified as lakes.
+            Larger edge-connected bodies remain as salt water seas. Default 500.
 
     Returns:
         MapData:
@@ -275,6 +279,13 @@ def generate_map(
     terrain.apply_base_terrain(map_data, tile_collections.base_terrain)
     features_time = time.time() - features_start
     logger.debug(f"Base terrain applied in {features_time:.3f}s")
+
+    # Phase 3.5: Classify water bodies (seas vs lakes)
+    logger.debug("Classifying water bodies as seas or lakes")
+    water_classify_start = time.time()
+    terrain.classify_water_bodies(map_data, max_lake_size=max_lake_size)
+    water_classify_time = time.time() - water_classify_start
+    logger.debug(f"Water bodies classified in {water_classify_time:.3f}s")
 
     # Phase 4: Place vegetation (climate-driven)
     if enable_vegetation:
