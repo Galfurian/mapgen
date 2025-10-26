@@ -149,6 +149,8 @@ def _a_star_search(
                 continue
 
             tile = map_data.get_terrain(neighbor.x, neighbor.y)
+            if tile.is_water:
+                continue
             tentative_cost = current_cost + tile.pathfinding_cost
 
             # Check if neighbor is already in open set.
