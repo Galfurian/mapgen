@@ -114,7 +114,8 @@ def _curve_road_path(
     """
     Aggressively simplify the path by trying to interpolate directly to the
     farthest valid end point, falling back to closer points if invalid. Uses
-    Bezier curves for smooth bends.
+    Bezier curves for smooth bends. Tries both forward and backward directions
+    and chooses the one with fewer points.
 
     Args:
         path (list[Position]):
@@ -130,16 +131,54 @@ def _curve_road_path(
     if len(path) <= 2:
         return path
 
-    result = [path[0]]
+    # Try curving in forward direction
+    forward_path = _curve_road_path_direction(path, map_data, reverse=False)
+    
+    # Try curving in backward direction
+    backward_path = _curve_road_path_direction(path, map_data, reverse=True)
+    
+    # Return the one with fewer points
+    return forward_path if len(forward_path) <= len(backward_path) else backward_path
+
+
+def _curve_road_path_direction(
+    path: list[Position],
+    map_data: MapData,
+    reverse: bool = False,
+) -> list[Position]:
+    """
+    Aggressively simplify the path in one direction by trying to interpolate 
+    directly to the farthest valid end point, falling back to closer points if invalid.
+
+    Args:
+        path (list[Position]):
+            The path to simplify and curve.
+        map_data (MapData):
+            The map data containing elevation and terrain.
+        reverse (bool):
+            Whether to process the path in reverse order.
+
+    Returns:
+        list[Position]:
+            The simplified, curved path.
+
+    """
+    if len(path) <= 2:
+        return path
+
+    # Work on a copy and potentially reverse it
+    work_path = path[::-1] if reverse else path[:]
+    
+    result = [work_path[0]]
     current_idx = 0
 
-    while current_idx < len(path) - 1:
-        start = path[current_idx]
+    while current_idx < len(work_path) - 1:
+        start = work_path[current_idx]
         found = False
 
         # Try farthest end first
-        for end_idx in range(len(path) - 1, current_idx, -1):
-            end = path[end_idx]
+        for end_idx in range(len(work_path) - 1, current_idx, -1):
+            end = work_path[end_idx]
 
             # Compute control point
             control = compute_terrain_control_point(start, end, map_data)
@@ -158,10 +197,11 @@ def _curve_road_path(
         # No valid jump: add next point
         if not found:
             current_idx += 1
-            if current_idx < len(path):
-                result.append(path[current_idx])
+            if current_idx < len(work_path):
+                result.append(work_path[current_idx])
 
-    return result
+    # If we reversed, we need to reverse the result back
+    return result[::-1] if reverse else result
 
 
 def _find_nearest_settlement_worth_connecting(

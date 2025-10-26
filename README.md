@@ -87,22 +87,24 @@ Container for all map data including terrain, settlements, roads, and visualizat
 - `save_to_json(filepath: str)`: Save map data to a JSON file
 - `load_from_json(filepath: str) -> MapData`: Load map data from a JSON file (class method)
 
-## Examples
+## Web Interface
 
-The `examples/full_generation.py` script provides a comprehensive demonstration of MapGen's capabilities:
+MapGen includes an interactive web interface built with Streamlit:
 
 ```bash
-# Generate a basic map with all features
-python examples/full_generation.py --output map.png
+# Install with web interface
+pip install -e ".[web]"
 
-# Generate all visualizations (terrain, elevation, rainfall, 3D)
-python examples/full_generation.py --all-visualizations --output-dir visualizations/
-
-# Generate terrain only (disable settlements and roads)
-python examples/full_generation.py --disable-settlements --disable-roads --output terrain_only.png
+# Run the web interface
+streamlit run web/app.py
 ```
 
-See `python examples/full_generation.py --help` for all available options.
+The web interface provides:
+
+- Interactive parameter tuning with sliders
+- Real-time map generation and visualization
+- Save/load functionality for maps
+- Map statistics and metrics
 
 ## Development
 
