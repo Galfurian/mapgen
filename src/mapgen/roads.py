@@ -11,7 +11,7 @@ import logging
 import random
 
 from .map_data import MapData, Position, Road, Settlement
-from .utils import compute_terrain_control_point, quadratic_bezier_points
+from .utils import a_star_search, compute_terrain_control_point, quadratic_bezier_points
 
 logger = logging.getLogger(__name__)
 
@@ -39,23 +39,17 @@ def generate_roads(
     # Connect each settlement to the nearest unconnected one.
     for settlement in shuffled_settlements:
         # Find nearest settlement worth connecting.
-        nearest = _find_nearest_settlement_worth_connecting(
+        result = _find_nearest_settlement_worth_connecting(
             settlement,
             map_data.settlements,
             map_data,
         )
-        if not nearest:
+        if not result:
             logger.debug(f"No unconnected settlements found for {settlement.name}")
             continue
-        # Find the path between settlements.
-        path = _a_star_search(
-            map_data,
-            settlement.position,
-            nearest.position,
-        )
-        if path is None:
-            logger.debug(f"No path found between {settlement.name} and {nearest.name}")
-            continue
+
+        # Unpack result.
+        nearest, path = result
 
         # Curve the path for more natural road appearance
         path = _curve_road_path(path, map_data)
@@ -85,30 +79,32 @@ def generate_roads(
     logger.info(f"Placed {num_road_tiles} road tiles")
 
 
-def _reconstruct_path(
-    current: Position,
-    came_from: dict[Position, Position],
-) -> list[Position]:
+def _road_placement_validation(map_data: MapData, pos: Position) -> bool:
     """
-    Reconstruct the path from A* search.
+    This function checks if a road can be placed at the given position.
 
     Args:
-        current (Position):
-            The current position.
-        came_from (dict[Position, Position]):
-            The came_from dictionary.
+        map_data (MapData):
+            The map data.
+        pos (Position):
+            The position to validate.
 
     Returns:
-        list[Position]:
-            The reconstructed path.
-
+        bool:
+            True if a road can be placed, False otherwise.
     """
-    path = [current]
-    while current in came_from:
-        current = came_from[current]
-        path.append(current)
-    path.reverse()
-    return path
+    # First, check if position is within map bounds.
+    if not map_data.is_valid_position(pos.x, pos.y):
+        return False
+    # Then, check terrain type.
+    terrain = map_data.get_terrain(pos.x, pos.y)
+    if not terrain.is_walkable:
+        return False
+    if terrain.is_salt_water:
+        return False
+    if terrain.is_water and not terrain.is_flowing_water:
+        return False
+    return True
 
 
 def _curve_road_path(
@@ -172,7 +168,7 @@ def _find_nearest_settlement_worth_connecting(
     settlement: Settlement,
     settlements: list[Settlement],
     map_data: MapData,
-) -> Settlement | None:
+) -> tuple[Settlement, list[Position]] | None:
     """
     Find the nearest settlement that can be connected with a reasonable path.
 
@@ -185,19 +181,20 @@ def _find_nearest_settlement_worth_connecting(
             The map data containing existing roads.
 
     Returns:
-        Settlement | None:
-            The nearest settlement that can be connected, or None.
+        tuple[Settlement, list[Position]] | None:
+            The nearest settlement and its path, or None.
 
     """
     # Get candidates: settlements sorted by direct distance
     candidates = sorted(
         [s for s in settlements if s.name != settlement.name],
         key=lambda s: settlement.distance_to(s),
-    )[
-        :5
-    ]  # Top 5 nearest
+    )
+    # Only consider top 5 nearest.
+    candidates = candidates[:5]
 
     best = None
+    best_path = None
     best_path_length = float("inf")
     for other in candidates:
         # Check if already connected via roads
@@ -205,11 +202,19 @@ def _find_nearest_settlement_worth_connecting(
         if path_dist is not None and path_dist <= settlement.distance_to(other) * 0.6:
             continue
         # Compute actual path
-        path = _a_star_search(map_data, settlement.position, other.position)
+        path = a_star_search(
+            map_data,
+            settlement.position,
+            other.position,
+            _road_placement_validation,
+        )
         if path and len(path) < best_path_length:
             best = other
+            best_path = path
             best_path_length = len(path)
-    return best
+    if best is not None and best_path is not None:
+        return (best, best_path)
+    return None
 
 
 def _shortest_path_distance(
@@ -265,90 +270,6 @@ def _shortest_path_distance(
     return dist[end_name]
 
 
-def _a_star_search(
-    map_data: MapData,
-    start: Position,
-    goal: Position,
-) -> list[Position] | None:
-    """
-    Perform A* search.
-
-    Args:
-        map_data (MapData):
-            The map grid.
-        start (Position):
-            The start position.
-        goal (Position):
-            The goal position.
-
-    Returns:
-        list[Position] | None:
-            The path if found, None otherwise.
-
-    """
-
-    def heuristic(a: Position, b: Position) -> float:
-        return a.manhattan_distance_to(b)
-
-    # Priority queue of (position, cost_so_far, total_estimated_cost)
-    open_set: list[tuple[Position, float, float]] = []
-    # Set of positions already evaluated
-    closed_set = set()
-    # Dictionary mapping position to its predecessor in the path
-    came_from: dict[Position, Position] = {}
-
-    start_node = (start, 0.0, heuristic(start, goal))
-    open_set.append(start_node)
-
-    # Main A* loop.
-    while open_set:
-        # Find the node with the lowest total estimated cost.
-        current = min(open_set, key=lambda x: x[2])
-        current_pos, current_cost, _current_heuristic = current
-
-        if current_pos == goal:
-            return _reconstruct_path(current_pos, came_from)
-
-        open_set.remove(current)
-        closed_set.add(current_pos)
-
-        # Explore neighbors.
-        for neighbor in map_data.get_neighbors(current_pos.x, current_pos.y):
-            if neighbor in closed_set:
-                continue
-
-            if _road_placement_validation(map_data, neighbor) is False:
-                continue
-
-            tile = map_data.get_terrain(neighbor.x, neighbor.y)
-            tentative_cost = current_cost + tile.pathfinding_cost
-
-            # Check if neighbor is already in open set.
-            existing_node = next((n for n in open_set if n[0] == neighbor), None)
-            if existing_node:
-                # If this path is better, update the node.
-                if tentative_cost < existing_node[1]:
-                    idx = open_set.index(existing_node)
-                    open_set[idx] = (
-                        neighbor,
-                        tentative_cost,
-                        tentative_cost + heuristic(neighbor, goal),
-                    )
-                    came_from[neighbor] = current_pos
-            else:
-                # Add new node to open set.
-                open_set.append(
-                    (
-                        neighbor,
-                        tentative_cost,
-                        tentative_cost + heuristic(neighbor, goal),
-                    )
-                )
-                came_from[neighbor] = current_pos
-
-    return None
-
-
 def _road_exists(map_data: MapData, start_name: str, end_name: str) -> bool:
     """
     Check if a road exists between two settlements.
@@ -371,29 +292,3 @@ def _road_exists(map_data: MapData, start_name: str, end_name: str) -> bool:
         or (road.start_settlement == end_name and road.end_settlement == start_name)
         for road in map_data.roads
     )
-
-
-def _road_placement_validation(map_data: MapData, pos: Position) -> bool:
-    """
-    This function checks if a road can be placed at the given position.
-
-    Args:
-        map_data (MapData):
-            The map data.
-        pos (Position):
-            The position to validate.
-
-    Returns:
-        bool:
-            True if a road can be placed, False otherwise.
-    """
-    # First, check if position is within map bounds.
-    if not map_data.is_valid_position(pos.x, pos.y):
-        return False
-    # Then, check terrain type.
-    terrain = map_data.get_terrain(pos.x, pos.y)
-    if terrain.is_salt_water:
-        return False
-    if terrain.is_water and not terrain.is_flowing_water:
-        return False
-    return True

@@ -6,6 +6,7 @@ noise generation utilities and geometric calculations.
 """
 
 import random
+from typing import Callable
 
 import noise
 import numpy as np
@@ -95,15 +96,15 @@ def quadratic_bezier_points(
 
 
 def compute_terrain_control_point(
-    start: Position, 
-    end: Position, 
+    start: Position,
+    end: Position,
     map_data: MapData,
     control_factor: float = 2.0,
-    invert_gradients: bool = False
+    invert_gradients: bool = False,
 ) -> Position:
     """
     Compute a control point for Bezier curves based on terrain gradients.
-    
+
     This function analyzes the terrain (elevation/depth) gradients at the midpoint
     between start and end positions to create natural-looking curves that follow
     the landscape contours.
@@ -123,7 +124,7 @@ def compute_terrain_control_point(
     elevation_map = map_data.elevation_map
     grad_x = 0.0
     grad_y = 0.0
-    
+
     if 0 <= int(mid_x) < len(elevation_map[0]) and 0 <= int(mid_y) < len(elevation_map):
         current_elev = elevation_map[int(mid_y)][int(mid_x)]
         left_elev = (
@@ -148,7 +149,7 @@ def compute_terrain_control_point(
         )
         grad_x = (right_elev - left_elev) / 2
         grad_y = (bottom_elev - top_elev) / 2
-        
+
         if invert_gradients:
             grad_x = -grad_x
             grad_y = -grad_y
@@ -156,3 +157,106 @@ def compute_terrain_control_point(
     control_x = mid_x + control_factor * grad_x
     control_y = mid_y + control_factor * grad_y
     return Position(round(control_x), round(control_y))
+
+
+def a_star_search(
+    map_data: MapData,
+    start: Position,
+    goal: Position,
+    position_validator: Callable[[MapData, Position], bool],
+) -> list[Position] | None:
+    """
+    Perform A* search with configurable validation.
+
+    Args:
+        map_data (MapData): The map grid.
+        start (Position): The start position.
+        goal (Position): The goal position.
+        position_validator (callable): Function to validate if a position is traversable.
+
+    Returns:
+        list[Position] | None: The path if found, None otherwise.
+    """
+
+    def heuristic(a: Position, b: Position) -> float:
+        return a.manhattan_distance_to(b)
+
+    # Priority queue of (position, cost_so_far, total_estimated_cost)
+    open_set: list[tuple[Position, float, float]] = []
+    # Set of positions already evaluated
+    closed_set = set()
+    # Dictionary mapping position to its predecessor in the path
+    came_from: dict[Position, Position] = {}
+
+    start_node = (start, 0.0, heuristic(start, goal))
+    open_set.append(start_node)
+
+    # Main A* loop.
+    while open_set:
+        # Find the node with the lowest total estimated cost.
+        current = min(open_set, key=lambda x: x[2])
+        current_pos, current_cost, _current_heuristic = current
+
+        if current_pos == goal:
+            return _reconstruct_path(current_pos, came_from)
+
+        open_set.remove(current)
+        closed_set.add(current_pos)
+
+        # Explore neighbors.
+        for neighbor in map_data.get_neighbors(current_pos.x, current_pos.y):
+            if neighbor in closed_set:
+                continue
+
+            if not position_validator(map_data, neighbor):
+                continue
+
+            tile = map_data.get_terrain(neighbor.x, neighbor.y)
+            tentative_cost = current_cost + tile.pathfinding_cost
+
+            # Check if neighbor is already in open set.
+            existing_node = next((n for n in open_set if n[0] == neighbor), None)
+            if existing_node:
+                # If this path is better, update the node.
+                if tentative_cost < existing_node[1]:
+                    idx = open_set.index(existing_node)
+                    open_set[idx] = (
+                        neighbor,
+                        tentative_cost,
+                        tentative_cost + heuristic(neighbor, goal),
+                    )
+                    came_from[neighbor] = current_pos
+            else:
+                # Add new node to open set.
+                open_set.append(
+                    (
+                        neighbor,
+                        tentative_cost,
+                        tentative_cost + heuristic(neighbor, goal),
+                    )
+                )
+                came_from[neighbor] = current_pos
+
+    return None
+
+
+def _reconstruct_path(
+    current: Position,
+    came_from: dict[Position, Position],
+) -> list[Position]:
+    """
+    Reconstruct the path from A* search.
+
+    Args:
+        current (Position): The current position.
+        came_from (dict[Position, Position]): The came_from dictionary.
+
+    Returns:
+        list[Position]: The reconstructed path.
+    """
+    path = [current]
+    while current in came_from:
+        current = came_from[current]
+        path.append(current)
+    path.reverse()
+    return path

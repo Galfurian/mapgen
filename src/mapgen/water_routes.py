@@ -10,6 +10,7 @@ import heapq
 import logging
 
 from .map_data import MapData, Position, Settlement, WaterRoute
+from .utils import a_star_search, compute_terrain_control_point, quadratic_bezier_points
 from .utils import compute_terrain_control_point, quadratic_bezier_points
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,9 @@ def generate_water_routes(map_data: MapData) -> None:
             continue
 
         # Find the path
-        path = _a_star_water(map_data, start_water, goal_water)
+        path = a_star_search(
+            map_data, start_water, goal_water, _water_route_placement_validation
+        )
         if path is None:
             logger.debug(
                 f"No water path found between {harbor.name} and {nearest.name}"
@@ -113,7 +116,9 @@ def _find_nearest_harbor_worth_connecting(
         if not start_water or not goal_water:
             continue
         # Compute actual water path
-        path = _a_star_water(map_data, start_water, goal_water)
+        path = a_star_search(
+            map_data, start_water, goal_water, _water_route_placement_validation
+        )
         if path and len(path) < best_path_length:
             best = other
             best_path_length = len(path)
@@ -201,82 +206,6 @@ def _find_nearest_water_tile(map_data: MapData, position: Position) -> Position 
     return nearest
 
 
-def _a_star_water(
-    map_data: MapData, start: Position, goal: Position
-) -> list[Position] | None:
-    """
-    Perform A* search for water routes, allowing water tiles.
-
-    Args:
-        map_data (MapData):
-            The map grid.
-        start (Position):
-            The start position.
-        goal (Position):
-            The goal position.
-
-    Returns:
-        list[Position] | None:
-            The path if found, None otherwise.
-
-    """
-
-    def heuristic(a: Position, b: Position) -> float:
-        return a.manhattan_distance_to(b)
-
-    open_set: list[tuple[Position, float, float]] = []
-    closed_set = set()
-    came_from: dict[Position, Position] = {}
-
-    start_node = (start, 0.0, heuristic(start, goal))
-    open_set.append(start_node)
-
-    while open_set:
-        current = min(open_set, key=lambda x: x[2])
-        current_pos, current_cost, _ = current
-
-        if current_pos == goal:
-            return _reconstruct_path(current_pos, came_from)
-
-        open_set.remove(current)
-        closed_set.add(current_pos)
-
-        for neighbor in map_data.get_neighbors(
-            current_pos.x, current_pos.y, walkable_only=False
-        ):
-            if neighbor in closed_set:
-                continue
-
-            # Only allow salt water tiles for water routes.
-            if not _water_route_placement_validation(map_data, neighbor):
-                continue
-
-            tile = map_data.get_terrain(neighbor.x, neighbor.y)
-            tentative_cost = current_cost + tile.pathfinding_cost
-
-            existing_node = next((n for n in open_set if n[0] == neighbor), None)
-            if existing_node:
-                if tentative_cost < existing_node[1]:
-                    idx = open_set.index(existing_node)
-                    open_set[idx] = (
-                        neighbor,
-                        tentative_cost,
-                        tentative_cost + heuristic(neighbor, goal),
-                    )
-                    came_from[neighbor] = current_pos
-            else:
-                open_set.append(
-                    (
-                        neighbor,
-                        tentative_cost,
-                        tentative_cost + heuristic(neighbor, goal),
-                    )
-                )
-                came_from[neighbor] = current_pos
-
-    return None
-
-
 def _water_route_exists(map_data: MapData, start_name: str, end_name: str) -> bool:
     """
     Check if a water route exists between two harbors.
@@ -299,32 +228,6 @@ def _water_route_exists(map_data: MapData, start_name: str, end_name: str) -> bo
         or (route.start_harbor == end_name and route.end_harbor == start_name)
         for route in map_data.water_routes
     )
-
-
-def _reconstruct_path(
-    current: Position,
-    came_from: dict[Position, Position],
-) -> list[Position]:
-    """
-    Reconstruct the path from A* search.
-
-    Args:
-        current (Position):
-            The current position.
-        came_from (dict[Position, Position]):
-            The came_from dictionary.
-
-    Returns:
-        list[Position]:
-            The reconstructed path.
-
-    """
-    path = [current]
-    while current in came_from:
-        current = came_from[current]
-        path.append(current)
-    path.reverse()
-    return path
 
 
 def _curve_water_route_path(
