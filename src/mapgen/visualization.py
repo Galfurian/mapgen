@@ -6,7 +6,7 @@ maps, including 2D plots, 3D terrain views, and ASCII representations of
 different map layers like elevation, rainfall, and temperature.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,6 +26,7 @@ def _apply_curves_to_path(
     elevation_map: np.ndarray,
     num_control_points: int = 5,
     smoothing_factor: float = 0.5,
+    control_func: Callable[[Position], bool] | None = None,
 ) -> list[Position]:
     """
     Apply curves to a path based on elevation.
@@ -39,6 +40,10 @@ def _apply_curves_to_path(
             Number of control points.
         smoothing_factor (float):
             Smoothing factor.
+        control_func (Callable[[Position], bool] | None):
+            Optional function to control where curving is allowed.
+            If provided, curving adjustments are only applied if the new position
+            satisfies the control function. Defaults to None (no restrictions).
 
     Returns:
         list[Position]:
@@ -84,8 +89,19 @@ def _apply_curves_to_path(
         )
         adjusted_smoothing_factor = smoothing_factor * (1 + elevation_diff)
 
-        control_points_x[i] += adjusted_smoothing_factor * gradient_x
-        control_points_y[i] += adjusted_smoothing_factor * gradient_y
+        adjusted_x = control_points_x[i] + adjusted_smoothing_factor * gradient_x
+        adjusted_y = control_points_y[i] + adjusted_smoothing_factor * gradient_y
+        new_pos = Position(round(adjusted_x), round(adjusted_y))
+
+        if control_func is not None and not control_func(new_pos):
+            continue
+
+        if (
+            0 <= new_pos.x < elevation_map.shape[1]
+            and 0 <= new_pos.y < elevation_map.shape[0]
+        ):
+            control_points_x[i] = adjusted_x
+            control_points_y[i] = adjusted_y
 
     # Create cubic spline interpolators for smooth curves
     f_x = interp1d(
@@ -264,11 +280,24 @@ def plot_map(
         ]
         for i, road in enumerate(map_data.roads):
             path = road.path
-            curved_path = _apply_curves_to_path(path, elevation_map)
+            curved_path = _apply_curves_to_path(
+                path,
+                elevation_map,
+                control_func=lambda pos: not map_data.get_terrain(
+                    pos.x, pos.y
+                ).is_salt_water,
+            )
             curved_x = [pos.x for pos in curved_path]
             curved_y = [pos.y for pos in curved_path]
             color = road_colors[i % len(road_colors)]
-            ax.plot(curved_x, curved_y, color=color, linewidth=1.25, linestyle="--", zorder=1)
+            ax.plot(
+                curved_x,
+                curved_y,
+                color=color,
+                linewidth=1.25,
+                linestyle="--",
+                zorder=1,
+            )
 
     # Plot water routes
     if enable_water_routes:
@@ -287,11 +316,24 @@ def plot_map(
         ]
         for i, water_route in enumerate(map_data.water_routes):
             path = water_route.path
-            curved_path = _apply_curves_to_path(path, elevation_map)
+            curved_path = _apply_curves_to_path(
+                path,
+                elevation_map,
+                control_func=lambda pos: map_data.get_terrain(
+                    pos.x, pos.y
+                ).is_salt_water,
+            )
             curved_x = [pos.x for pos in curved_path]
             curved_y = [pos.y for pos in curved_path]
             color = water_route_colors[i % len(water_route_colors)]
-            ax.plot(curved_x, curved_y, color=color, linewidth=1.25, linestyle="-.", zorder=1)
+            ax.plot(
+                curved_x,
+                curved_y,
+                color=color,
+                linewidth=1.25,
+                linestyle="-.",
+                zorder=1,
+            )
 
     # Plot settlements with circles and labels
     if enable_settlements:

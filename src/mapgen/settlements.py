@@ -284,80 +284,86 @@ def _place_settlements_at_positions(
 
 def _designate_harbors(map_data: MapData) -> None:
     """
-    Designate settlements as harbors by moving coastal ones closer to water
-    or electing inland ones to become harbors.
+    Designate settlements as harbors by selecting those near salt water
+    and moving them to coastal positions.
 
     Args:
         map_data (MapData):
             The map data containing settlements and terrain.
 
     """
-    # Find coastal settlements (those adjacent to water)
-    coastal_settlements = []
+    logger.debug(
+        f"Starting harbor designation for {len(map_data.settlements)} settlements"
+    )
+    # Find settlements near salt water, sorted by distance
+    settlements_with_distance = []
     for settlement in map_data.settlements:
-        pos = settlement.position
-        neighbors = map_data.get_neighbors(pos.x, pos.y, include_diagonals=True)
-        for neighbor in neighbors:
-            if map_data.get_terrain(neighbor.x, neighbor.y).is_salt_water:
-                coastal_settlements.append(settlement)
-                break
+        distance = _get_distance_to_salt_water(map_data, settlement.position)
+        if distance is not None:  # Only include settlements that can reach salt water
+            settlements_with_distance.append((settlement, distance))
+            logger.debug(
+                f"  {settlement.name} at ({settlement.position.x}, {settlement.position.y}): distance to salt water = {distance:.1f}"
+            )
 
-    if coastal_settlements:
-        # Move coastal settlements closer to the coast
-        for settlement in coastal_settlements:
-            _move_settlement_closer_to_coast(map_data, settlement)
-            settlement.is_harbor = True
-    else:
-        # Elect some settlements to be harbors by moving them to the coast
-        num_harbors = min(3, len(map_data.settlements) // 2)  # Up to 3 or half
-        candidates = sorted(
-            map_data.settlements, key=lambda s: s.connectivity, reverse=True
-        )[:num_harbors]
-        for settlement in candidates:
-            _move_settlement_to_coast(map_data, settlement)
-            settlement.is_harbor = True
+    logger.debug(f"Found {len(settlements_with_distance)} settlements near salt water")
+
+    # Sort by distance (closest first)
+    settlements_with_distance.sort(key=lambda x: x[1])
+
+    # Select harbors: scale based on total settlements and map size
+    # More settlements = more harbors, larger maps = more harbors
+    map_area = map_data.width * map_data.height
+    base_harbors = max(1, len(map_data.settlements) // 4)  # ~1 harbor per 4 settlements
+    area_bonus = max(0, (map_area // 5000) - 1)  # Bonus for large maps
+    num_harbors = min(base_harbors + area_bonus, len(settlements_with_distance))
+
+    logger.debug(f"Map size: {map_data.width}x{map_data.height} ({map_area} tiles)")
+    logger.debug(f"Total settlements: {len(map_data.settlements)}")
+    logger.debug(
+        f"Selecting {num_harbors} harbors (base: {base_harbors}, area bonus: {area_bonus})"
+    )
+
+    selected_settlements = [s for s, _ in settlements_with_distance[:num_harbors]]
+
+    logger.debug(
+        f"Selected {len(selected_settlements)} harbors: {[s.name for s in selected_settlements]}"
+    )
+
+    # Move selected settlements to the coast and mark as harbors
+    for settlement in selected_settlements:
+        logger.debug(f"Moving {settlement.name} to coast")
+        _move_settlement_to_coast(map_data, settlement)
+        settlement.is_harbor = True
+        logger.debug(f"  Moved to ({settlement.position.x}, {settlement.position.y})")
 
 
-def _move_settlement_closer_to_coast(map_data: MapData, settlement: Settlement) -> None:
+def _get_distance_to_salt_water(map_data: MapData, position: Position) -> float | None:
     """
-    Move a coastal settlement closer to the water if possible.
+    Get the distance from a position to the nearest salt water.
 
     Args:
         map_data (MapData):
             The map data.
-        settlement (Settlement):
-            The settlement to move.
+        position (Position):
+            The position to check.
+
+    Returns:
+        float | None:
+            The distance to nearest salt water, or None if no salt water exists.
 
     """
-    pos = settlement.position
-    # Find direction to nearest water
-    nearest_water = None
     min_dist = float("inf")
+    found_water = False
+
     for y in range(map_data.height):
         for x in range(map_data.width):
             if map_data.get_terrain(x, y).is_salt_water:
-                dist = ((x - pos.x) ** 2 + (y - pos.y) ** 2) ** 0.5
+                found_water = True
+                dist = ((x - position.x) ** 2 + (y - position.y) ** 2) ** 0.5
                 if dist < min_dist:
                     min_dist = dist
-                    nearest_water = Position(x, y)
 
-    if nearest_water:
-        # Move towards the water by 1 tile
-        dx = nearest_water.x - pos.x
-        dy = nearest_water.y - pos.y
-        dist = (dx**2 + dy**2) ** 0.5
-        if dist > 0:
-            new_x = pos.x + int(dx / dist)
-            new_y = pos.y + int(dy / dist)
-            new_pos = Position(new_x, new_y)
-            if (
-                map_data.is_valid_position(new_x, new_y)
-                and map_data.get_terrain(new_x, new_y).can_build_settlement
-                and not _does_settlement_overlaps(
-                    map_data, new_pos, settlement.radius, settlement.radius
-                )
-            ):
-                settlement.position = new_pos
+    return min_dist if found_water else None
 
 
 def _move_settlement_to_coast(map_data: MapData, settlement: Settlement) -> None:
