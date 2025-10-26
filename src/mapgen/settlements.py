@@ -73,6 +73,7 @@ def _generate_settlement_name() -> str:
     """Generate a random fantasy settlement name.
 
     Returns
+    -------
         str:
             A randomly generated settlement name.
 
@@ -360,8 +361,7 @@ def _get_distance_to_salt_water(map_data: MapData, position: Position) -> float 
             if map_data.get_terrain(x, y).is_salt_water:
                 found_water = True
                 dist = ((x - position.x) ** 2 + (y - position.y) ** 2) ** 0.5
-                if dist < min_dist:
-                    min_dist = dist
+                min_dist = min(min_dist, dist)
 
     return min_dist if found_water else None
 

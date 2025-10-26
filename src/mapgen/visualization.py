@@ -6,16 +6,14 @@ maps, including 2D plots, 3D terrain views, and ASCII representations of
 different map layers like elevation, rainfall, and temperature.
 """
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import patches
-from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from scipy.interpolate import interp1d
 
-from .map_data import MapData, Position
+from .map_data import MapData
 
 if TYPE_CHECKING:
     from mpl_toolkits.mplot3d import Axes3D
@@ -414,150 +412,6 @@ def plot_3d_map(
     return fig
 
 
-def get_ascii_map(map_data: MapData) -> str:
-    """
-    Generate an ASCII representation of the map.
-
-    Args:
-        map_data (MapData):
-            The map data to visualize.
-
-    Returns:
-        str:
-            The ASCII map as a string.
-
-    """
-    lines = []
-    for y in range(map_data.height):
-        line = ""
-        for x in range(map_data.width):
-            tile = map_data.get_terrain(x, y)
-            line += tile.symbol
-        lines.append(line)
-    return "\n".join(lines)
-
-
-def get_ascii_rainfall_map(map_data: MapData) -> str:
-    """
-    Generate an ASCII representation of the rainfall map using digits 0-9.
-
-    This visualization maps rainfall values to single digits where:
-        - 0 represents very dry areas (no rain)
-        - 9 represents very wet areas (maximum rainfall)
-
-    Args:
-        map_data (MapData):
-            The map data containing rainfall information.
-
-    Returns:
-        str:
-            The ASCII rainfall map as a string with digits 0-9.
-
-    Raises:
-        ValueError:
-            If rainfall_map is not available in map_data.
-
-    """
-    if not map_data.rainfall_map:
-        raise ValueError("Rainfall map is not available in map_data")
-
-    rainfall_array = np.array(map_data.rainfall_map)
-    # Normalize to 0-9 scale
-    rainfall_normalized = (rainfall_array * 9).astype(int)
-    rainfall_normalized = np.clip(rainfall_normalized, 0, 9)
-
-    lines = []
-    for y in range(map_data.height):
-        line = ""
-        for x in range(map_data.width):
-            line += str(rainfall_normalized[y, x])
-        lines.append(line)
-    return "\n".join(lines)
-
-
-def get_ascii_temperature_map(map_data: MapData) -> str:
-    """
-    Generate an ASCII representation of the temperature map using digits 0-9.
-
-    Temperature values are normalized to a 0-9 scale where:
-        - 0 represents coldest temperatures
-        - 9 represents hottest temperatures
-
-    This is useful for debugging and analyzing temperature patterns without
-    requiring graphical output.
-
-    Args:
-        map_data (MapData):
-            The map data containing the temperature map.
-
-    Returns:
-        str:
-            The ASCII temperature map as a string with digits 0-9.
-
-    Raises:
-        ValueError:
-            If temperature_map is not available in map_data.
-
-    """
-    if not map_data.temperature_map:
-        raise ValueError("Temperature map is not available in map_data")
-
-    temperature_array = np.array(map_data.temperature_map)
-    # Normalize to 0-9 scale
-    temperature_normalized = (temperature_array * 9).astype(int)
-    temperature_normalized = np.clip(temperature_normalized, 0, 9)
-
-    lines = []
-    for y in range(map_data.height):
-        line = ""
-        for x in range(map_data.width):
-            line += str(temperature_normalized[y, x])
-        lines.append(line)
-    return "\n".join(lines)
-
-
-def get_ascii_elevation_map(map_data: MapData) -> str:
-    """
-    Generate an ASCII representation of the elevation map using digits 0-9.
-
-    Elevation values are normalized to a 0-9 scale where:
-        - 0 represents lowest elevations (deepest ocean)
-        - 9 represents highest elevations (mountain peaks)
-
-    This is useful for debugging and analyzing elevation patterns without
-    requiring graphical output.
-
-    Args:
-        map_data (MapData):
-            The map data containing the elevation map.
-
-    Returns:
-        str:
-            The ASCII elevation map as a string with digits 0-9.
-
-    Raises:
-        ValueError:
-            If elevation_map is not available in map_data.
-
-    """
-    if not map_data.elevation_map:
-        raise ValueError("Elevation map is not available in map_data")
-
-    elevation_array = np.array(map_data.elevation_map)
-    # Normalize elevation from -1.0 to 1.0 range to 0-9 scale First shift from
-    # [-1, 1] to [0, 2], then scale to [0, 9]
-    elevation_normalized = ((elevation_array + 1.0) * 4.5).astype(int)
-    elevation_normalized = np.clip(elevation_normalized, 0, 9)
-
-    lines = []
-    for y in range(map_data.height):
-        line = ""
-        for x in range(map_data.width):
-            line += str(elevation_normalized[y, x])
-        lines.append(line)
-    return "\n".join(lines)
-
-
 def plot_elevation_map(
     map_data: MapData,
     colormap: str = "terrain",
@@ -686,3 +540,147 @@ def plot_temperature_map(
 
     plt.tight_layout()
     return fig
+
+
+def get_ascii_map(map_data: MapData) -> str:
+    """
+    Generate an ASCII representation of the map.
+
+    Args:
+        map_data (MapData):
+            The map data to visualize.
+
+    Returns:
+        str:
+            The ASCII map as a string.
+
+    """
+    lines = []
+    for y in range(map_data.height):
+        line = ""
+        for x in range(map_data.width):
+            tile = map_data.get_terrain(x, y)
+            line += tile.symbol
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def get_ascii_elevation_map(map_data: MapData) -> str:
+    """
+    Generate an ASCII representation of the elevation map using digits 0-9.
+
+    Elevation values are normalized to a 0-9 scale where:
+        - 0 represents lowest elevations (deepest ocean)
+        - 9 represents highest elevations (mountain peaks)
+
+    This is useful for debugging and analyzing elevation patterns without
+    requiring graphical output.
+
+    Args:
+        map_data (MapData):
+            The map data containing the elevation map.
+
+    Returns:
+        str:
+            The ASCII elevation map as a string with digits 0-9.
+
+    Raises:
+        ValueError:
+            If elevation_map is not available in map_data.
+
+    """
+    if not map_data.elevation_map:
+        raise ValueError("Elevation map is not available in map_data")
+
+    elevation_array = np.array(map_data.elevation_map)
+    # Normalize elevation from -1.0 to 1.0 range to 0-9 scale First shift from
+    # [-1, 1] to [0, 2], then scale to [0, 9]
+    elevation_normalized = ((elevation_array + 1.0) * 4.5).astype(int)
+    elevation_normalized = np.clip(elevation_normalized, 0, 9)
+
+    lines = []
+    for y in range(map_data.height):
+        line = ""
+        for x in range(map_data.width):
+            line += str(elevation_normalized[y, x])
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def get_ascii_rainfall_map(map_data: MapData) -> str:
+    """
+    Generate an ASCII representation of the rainfall map using digits 0-9.
+
+    This visualization maps rainfall values to single digits where:
+        - 0 represents very dry areas (no rain)
+        - 9 represents very wet areas (maximum rainfall)
+
+    Args:
+        map_data (MapData):
+            The map data containing rainfall information.
+
+    Returns:
+        str:
+            The ASCII rainfall map as a string with digits 0-9.
+
+    Raises:
+        ValueError:
+            If rainfall_map is not available in map_data.
+
+    """
+    if not map_data.rainfall_map:
+        raise ValueError("Rainfall map is not available in map_data")
+
+    rainfall_array = np.array(map_data.rainfall_map)
+    # Normalize to 0-9 scale
+    rainfall_normalized = (rainfall_array * 9).astype(int)
+    rainfall_normalized = np.clip(rainfall_normalized, 0, 9)
+
+    lines = []
+    for y in range(map_data.height):
+        line = ""
+        for x in range(map_data.width):
+            line += str(rainfall_normalized[y, x])
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def get_ascii_temperature_map(map_data: MapData) -> str:
+    """
+    Generate an ASCII representation of the temperature map using digits 0-9.
+
+    Temperature values are normalized to a 0-9 scale where:
+        - 0 represents coldest temperatures
+        - 9 represents hottest temperatures
+
+    This is useful for debugging and analyzing temperature patterns without
+    requiring graphical output.
+
+    Args:
+        map_data (MapData):
+            The map data containing the temperature map.
+
+    Returns:
+        str:
+            The ASCII temperature map as a string with digits 0-9.
+
+    Raises:
+        ValueError:
+            If temperature_map is not available in map_data.
+
+    """
+    if not map_data.temperature_map:
+        raise ValueError("Temperature map is not available in map_data")
+
+    temperature_array = np.array(map_data.temperature_map)
+    # Normalize to 0-9 scale
+    temperature_normalized = (temperature_array * 9).astype(int)
+    temperature_normalized = np.clip(temperature_normalized, 0, 9)
+
+    lines = []
+    for y in range(map_data.height):
+        line = ""
+        for x in range(map_data.width):
+            line += str(temperature_normalized[y, x])
+        lines.append(line)
+    return "\n".join(lines)

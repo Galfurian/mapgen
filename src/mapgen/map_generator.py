@@ -347,4 +347,7 @@ def generate_map(
         logger.debug(f"Water routes generated in {water_routes_time:.3f}s")
         logger.debug(f"Generated water routes with {len(map_data.water_routes)} routes")
 
+    end_time = time.time() - start_time
+    logger.info(f"Map generation completed in {end_time:.3f}s")
+
     return map_data
