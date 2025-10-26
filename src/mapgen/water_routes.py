@@ -10,6 +10,7 @@ import heapq
 import logging
 
 from .map_data import MapData, Position, Settlement, WaterRoute
+from .utils import compute_terrain_control_point, quadratic_bezier_points
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +42,18 @@ def generate_water_routes(map_data: MapData) -> None:
         if not start_water or not goal_water:
             logger.debug(f"No water tiles found near {harbor.name} or {nearest.name}")
             continue
+
         # Find the path
         path = _a_star_water(map_data, start_water, goal_water)
         if path is None:
-            logger.debug(f"No water path found between {harbor.name} and {nearest.name}")
+            logger.debug(
+                f"No water path found between {harbor.name} and {nearest.name}"
+            )
             continue
+
+        # Curve the path for more natural water route appearance
+        path = _curve_water_route_path(path, map_data)
+
         # Add the route (no need to check exists since we already did in worth_connecting)
         map_data.water_routes.append(
             WaterRoute(
@@ -54,7 +62,9 @@ def generate_water_routes(map_data: MapData) -> None:
                 path=path,
             )
         )
-        logger.debug(f"Connected {harbor.name} to {nearest.name} with water route of length {len(path)}")
+        logger.debug(
+            f"Connected {harbor.name} to {nearest.name} with water route of length {len(path)}"
+        )
 
     num_route_tiles = sum([len(route.path) for route in map_data.water_routes])
     logger.debug(f"Traced {len(map_data.water_routes)} water routes")
@@ -237,11 +247,12 @@ def _a_star_water(
             if neighbor in closed_set:
                 continue
 
-            tile = map_data.get_terrain(neighbor.x, neighbor.y)
-            # Only allow salt water tiles for water routes (seas/oceans, not lakes)
-            if not (tile.is_water and tile.is_salt_water):
+            # Only allow salt water tiles for water routes.
+            if not _water_route_placement_validation(map_data, neighbor):
                 continue
-            tentative_cost = current_cost + 1.0  # Simple cost
+
+            tile = map_data.get_terrain(neighbor.x, neighbor.y)
+            tentative_cost = current_cost + tile.pathfinding_cost
 
             existing_node = next((n for n in open_set if n[0] == neighbor), None)
             if existing_node:
@@ -314,3 +325,95 @@ def _reconstruct_path(
         path.append(current)
     path.reverse()
     return path
+
+
+def _curve_water_route_path(
+    path: list[Position],
+    map_data: MapData,
+) -> list[Position]:
+    """
+    Aggressively simplify the water path by trying to interpolate directly to the
+    farthest valid end point, falling back to closer points if invalid. Uses
+    Bezier curves with inverted gradients to follow deeper water channels.
+
+    Args:
+        path (list[Position]):
+            The path to simplify and curve.
+        map_data (MapData):
+            The map data containing elevation and terrain.
+
+    Returns:
+        list[Position]:
+            The simplified, curved path.
+
+    """
+    if len(path) <= 2:
+        return path
+
+    result = [path[0]]
+    current_idx = 0
+
+    while current_idx < len(path) - 1:
+        start = path[current_idx]
+        found = False
+
+        # Try farthest end first
+        for end_idx in range(len(path) - 1, current_idx, -1):
+            end = path[end_idx]
+
+            # Compute control point with inverted gradients (follow deeper water)
+            control = compute_terrain_control_point(
+                start,
+                end,
+                map_data,
+                control_factor=1.5,
+                invert_gradients=True,
+            )
+
+            # Generate Bezier points
+            bezier_points = quadratic_bezier_points(
+                start,
+                control,
+                end,
+                num_points=15,
+            )
+
+            # Check validity (must be in salt water)
+            if all(
+                _water_route_placement_validation(map_data, pos)
+                for pos in bezier_points
+            ):
+                # Valid: add the curve points (skip start)
+                result.extend(bezier_points[1:])
+                current_idx = end_idx
+                found = True
+                break
+
+        # No valid jump: add next point
+        if not found:
+            current_idx += 1
+            if current_idx < len(path):
+                result.append(path[current_idx])
+
+    return result
+
+
+def _water_route_placement_validation(map_data: MapData, pos: Position) -> bool:
+    """
+    Validate if a water route can be placed at the given position.
+
+    Args:
+        map_data (MapData):
+            The map data.
+        pos (Position):
+            The position to validate.
+
+    Returns:
+        bool:
+            True if valid for water route placement, False otherwise.
+    """
+    # First, check if position is within map bounds.
+    if not map_data.is_valid_position(pos.x, pos.y):
+        return False
+    # Then, check terrain type.
+    return map_data.get_terrain(pos.x, pos.y).is_salt_water

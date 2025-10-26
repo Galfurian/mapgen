@@ -82,20 +82,7 @@ def plot_map(
 
     # Plot roads
     if enable_roads:
-        elevation_map = np.array(map_data.elevation_map)
-        road_colors = [
-            "red",
-            "blue",
-            "green",
-            "orange",
-            "purple",
-            "cyan",
-            "magenta",
-            "yellow",
-            "black",
-            "gray",
-        ]
-        for i, road in enumerate(map_data.roads):
+        for road in map_data.roads:
             # Get original path coordinates.
             x_coords = [pos.x for pos in road.path]
             y_coords = [pos.y for pos in road.path]
@@ -104,13 +91,21 @@ def plot_map(
                 x_coords,
                 y_coords,
                 linewidth=1,
-                linestyle="--",
+                color="brown",
+                linestyle="-",
                 zorder=1,
+            )
+            ax.scatter(
+                x_coords,
+                y_coords,
+                color="brown",
+                s=1,
+                zorder=2,
             )
 
     # Plot water routes
     if enable_water_routes:
-        for i, water_route in enumerate(map_data.water_routes):
+        for water_route in map_data.water_routes:
             # Get original path coordinates.
             x_coords = [pos.x for pos in water_route.path]
             y_coords = [pos.y for pos in water_route.path]
@@ -118,8 +113,16 @@ def plot_map(
                 x_coords,
                 y_coords,
                 linewidth=1,
-                linestyle="-.",
+                color="blue",
+                linestyle="-",
                 zorder=1,
+            )
+            ax.scatter(
+                x_coords,
+                y_coords,
+                color="blue",
+                s=1,
+                zorder=2,
             )
 
     # Plot settlements with circles and labels

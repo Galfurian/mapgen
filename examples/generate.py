@@ -113,7 +113,7 @@ Examples:
     parser.add_argument(
         "--settlement-density",
         type=float,
-        default=0.002,
+        default=0.003,
         help="Density of settlements (default: 0.002)",
     )
     parser.add_argument(
@@ -131,7 +131,7 @@ Examples:
     parser.add_argument(
         "--sea-level",
         type=float,
-        default=0.0,
+        default=-0.25,
         help="Sea level for land/sea ratio (default: -0.5)",
     )
     parser.add_argument(
@@ -286,48 +286,67 @@ Examples:
     dpi = 300
     generated_files = 0
 
+    generate_elevation_map = False
+    generate_rainfall_map = False
+    generate_temperature_map = False
+
     # Elevation map (always available since elevation_map is always initialized)
-    logger.info("📊 Generating elevation map...")
-    fig = plot_elevation_map(map_data, title=f"Elevation Map (Seed: {args.seed})")
-    elevation_path = output_dir / f"seed_{args.seed}_layer_elevation.png"
-    fig.savefig(elevation_path, dpi=dpi, bbox_inches="tight")
-    fig.clear()
-    logger.info(f"💾 Elevation map saved: {elevation_path}")
-    generated_files += 1
+    if generate_elevation_map:
+        logger.info("📊 Generating elevation map...")
+        fig = plot_elevation_map(map_data, title=f"Elevation Map (Seed: {args.seed})")
+        elevation_path = output_dir / f"seed_{args.seed}_layer_elevation.png"
+        fig.savefig(elevation_path, dpi=dpi, bbox_inches="tight")
+        fig.clear()
+        logger.info(f"💾 Elevation map saved: {elevation_path}")
+        generated_files += 1
+
+        logger.info("📄 Generating ASCII elevation map...")
+        ascii_elevation_map = get_ascii_elevation_map(map_data)
+        ascii_elevation_path = output_dir / f"seed_{args.seed}_ascii_map_elevation.txt"
+        with open(ascii_elevation_path, "w") as f:
+            f.write(ascii_elevation_map)
+        logger.info(f"💾 ASCII elevation map saved: {ascii_elevation_path}")
+        generated_files += 1
 
     # Rainfall map (available if rainfall was generated)
-    logger.info("🌧️ Generating rainfall map...")
-    fig = plot_rainfall_map(map_data, title=f"Rainfall Map (Seed: {args.seed})")
-    rainfall_path = output_dir / f"seed_{args.seed}_layer_rainfall.png"
-    fig.savefig(rainfall_path, dpi=dpi, bbox_inches="tight")
-    fig.clear()
-    logger.info(f"💾 Rainfall map saved: {rainfall_path}")
-    generated_files += 1
+    if generate_rainfall_map:
+        logger.info("🌧️ Generating rainfall map...")
+        fig = plot_rainfall_map(map_data, title=f"Rainfall Map (Seed: {args.seed})")
+        rainfall_path = output_dir / f"seed_{args.seed}_layer_rainfall.png"
+        fig.savefig(rainfall_path, dpi=dpi, bbox_inches="tight")
+        fig.clear()
+        logger.info(f"💾 Rainfall map saved: {rainfall_path}")
+        generated_files += 1
 
-    logger.info("📄 Generating ASCII rainfall map...")
-    ascii_rainfall_map = get_ascii_rainfall_map(map_data)
-    ascii_rainfall_path = output_dir / f"seed_{args.seed}_ascii_map_rainfall.txt"
-    with open(ascii_rainfall_path, "w") as f:
-        f.write(ascii_rainfall_map)
-    logger.info(f"💾 ASCII rainfall map saved: {ascii_rainfall_path}")
-    generated_files += 1
+        logger.info("📄 Generating ASCII rainfall map...")
+        ascii_rainfall_map = get_ascii_rainfall_map(map_data)
+        ascii_rainfall_path = output_dir / f"seed_{args.seed}_ascii_map_rainfall.txt"
+        with open(ascii_rainfall_path, "w") as f:
+            f.write(ascii_rainfall_map)
+        logger.info(f"💾 ASCII rainfall map saved: {ascii_rainfall_path}")
+        generated_files += 1
 
     # Temperature map (available if temperature was generated)
-    logger.info("🌡️ Generating temperature map...")
-    fig = plot_temperature_map(map_data, title=f"Temperature Map (Seed: {args.seed})")
-    temperature_path = output_dir / f"seed_{args.seed}_layer_temperature.png"
-    fig.savefig(temperature_path, dpi=dpi, bbox_inches="tight")
-    fig.clear()
-    logger.info(f"💾 Temperature map saved: {temperature_path}")
-    generated_files += 1
+    if generate_temperature_map:
+        logger.info("🌡️ Generating temperature map...")
+        fig = plot_temperature_map(
+            map_data, title=f"Temperature Map (Seed: {args.seed})"
+        )
+        temperature_path = output_dir / f"seed_{args.seed}_layer_temperature.png"
+        fig.savefig(temperature_path, dpi=dpi, bbox_inches="tight")
+        fig.clear()
+        logger.info(f"💾 Temperature map saved: {temperature_path}")
+        generated_files += 1
 
-    logger.info("📄 Generating ASCII temperature map...")
-    ascii_temperature_map = get_ascii_temperature_map(map_data)
-    ascii_temperature_path = output_dir / f"seed_{args.seed}_ascii_map_temperature.txt"
-    with open(ascii_temperature_path, "w") as f:
-        f.write(ascii_temperature_map)
-    logger.info(f"💾 ASCII temperature map saved: {ascii_temperature_path}")
-    generated_files += 1
+        logger.info("📄 Generating ASCII temperature map...")
+        ascii_temperature_map = get_ascii_temperature_map(map_data)
+        ascii_temperature_path = (
+            output_dir / f"seed_{args.seed}_ascii_map_temperature.txt"
+        )
+        with open(ascii_temperature_path, "w") as f:
+            f.write(ascii_temperature_map)
+        logger.info(f"💾 ASCII temperature map saved: {ascii_temperature_path}")
+        generated_files += 1
 
     # Main terrain map (always generated)
     logger.info("🖼️ Generating main terrain map...")
@@ -339,22 +358,13 @@ Examples:
     generated_files += 1
 
     # ASCII representation
-    logger.info("📄 Generating ASCII map...")
-    ascii_map = get_ascii_map(map_data)
-    ascii_path = output_dir / f"seed_{args.seed}_ascii_map.txt"
-    with open(ascii_path, "w") as f:
-        f.write(ascii_map)
-    logger.info(f"💾 ASCII map saved: {ascii_path}")
-    generated_files += 1
-
-    # ASCII elevation map
-    logger.info("📄 Generating ASCII elevation map...")
-    ascii_elevation_map = get_ascii_elevation_map(map_data)
-    ascii_elevation_path = output_dir / f"seed_{args.seed}_ascii_map_elevation.txt"
-    with open(ascii_elevation_path, "w") as f:
-        f.write(ascii_elevation_map)
-    logger.info(f"💾 ASCII elevation map saved: {ascii_elevation_path}")
-    generated_files += 1
+    # logger.info("📄 Generating ASCII map...")
+    # ascii_map = get_ascii_map(map_data)
+    # ascii_path = output_dir / f"seed_{args.seed}_ascii_map.txt"
+    # with open(ascii_path, "w") as f:
+    #    f.write(ascii_map)
+    # logger.info(f"💾 ASCII map saved: {ascii_path}")
+    # generated_files += 1
 
     # 3D visualization
     # logger.info("🎲 Generating 3D visualization...")

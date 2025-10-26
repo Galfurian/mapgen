@@ -19,9 +19,9 @@ logger = logging.getLogger(__name__)
 
 def generate_settlements(
     map_data: MapData,
-    settlement_density: float = 0.002,
-    min_radius: float = 0.5,
-    max_radius: float = 1.0,
+    settlement_density: float,
+    min_radius: float,
+    max_radius: float,
 ) -> None:
     """
     Generate settlements on suitable terrain.
@@ -55,6 +55,8 @@ def generate_settlements(
 
     # Find all suitable positions
     suitable_positions = _find_suitable_settlement_positions(map_data)
+
+    logger.debug(f"Found {len(suitable_positions)} suitable positions for settlements")
 
     # Place settlements at suitable positions
     _place_settlements_at_positions(
@@ -165,6 +167,9 @@ def _does_settlement_overlaps(
     for existing in map_data.settlements:
         distance = position.distance_to(existing.position)
         if distance < pow(min_radius + max_radius, 6):
+            logger.debug(
+                f"Settlement at ({position.x}, {position.y}) overlaps with existing settlement '{existing.name}' at ({existing.position.x}, {existing.position.y})"
+            )
             return True
     return False
 
@@ -207,6 +212,10 @@ def _create_settlement(
     name = _generate_settlement_name()
     # Calculate connectivity based on radius.
     connectivity = int(radius * 5)
+
+    logger.debug(
+        f"Created settlement '{name}' at ({position.x}, {position.y}) with radius {radius:.2f} and connectivity {connectivity}"
+    )
 
     return Settlement(
         name=name,

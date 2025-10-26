@@ -93,7 +93,7 @@ def generate_map(
     lacunarity: float = 2.0,
     smoothing_iterations: int = 5,
     smoothing_sigma: float = 0.5,
-    settlement_density: float = 0.002,
+    settlement_density: float = 0.01,
     min_settlement_radius: float = 0.5,
     max_settlement_radius: float = 1.0,
     seed: int | None = None,

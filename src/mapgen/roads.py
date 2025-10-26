@@ -11,6 +11,7 @@ import logging
 import random
 
 from .map_data import MapData, Position, Road, Settlement
+from .utils import compute_terrain_control_point, quadratic_bezier_points
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,10 @@ def generate_roads(
         if path is None:
             logger.debug(f"No path found between {settlement.name} and {nearest.name}")
             continue
+
+        # Curve the path for more natural road appearance
+        path = _curve_road_path(path, map_data)
+
         # Check if road already exists
         if _road_exists(map_data, settlement.name, nearest.name):
             logger.debug(
@@ -104,6 +109,63 @@ def _reconstruct_path(
         path.append(current)
     path.reverse()
     return path
+
+
+def _curve_road_path(
+    path: list[Position],
+    map_data: MapData,
+) -> list[Position]:
+    """
+    Aggressively simplify the path by trying to interpolate directly to the
+    farthest valid end point, falling back to closer points if invalid. Uses
+    Bezier curves for smooth bends.
+
+    Args:
+        path (list[Position]):
+            The path to simplify and curve.
+        map_data (MapData):
+            The map data containing elevation and terrain.
+
+    Returns:
+        list[Position]:
+            The simplified, curved path.
+
+    """
+    if len(path) <= 2:
+        return path
+
+    result = [path[0]]
+    current_idx = 0
+
+    while current_idx < len(path) - 1:
+        start = path[current_idx]
+        found = False
+
+        # Try farthest end first
+        for end_idx in range(len(path) - 1, current_idx, -1):
+            end = path[end_idx]
+
+            # Compute control point
+            control = compute_terrain_control_point(start, end, map_data)
+
+            # Generate Bezier points
+            bezier_points = quadratic_bezier_points(start, control, end, num_points=20)
+
+            # Check validity.
+            if all(_road_placement_validation(map_data, pos) for pos in bezier_points):
+                # Valid: add the curve points (skip start).
+                result.extend(bezier_points[1:])
+                current_idx = end_idx
+                found = True
+                break
+
+        # No valid jump: add next point
+        if not found:
+            current_idx += 1
+            if current_idx < len(path):
+                result.append(path[current_idx])
+
+    return result
 
 
 def _find_nearest_settlement_worth_connecting(
@@ -255,9 +317,10 @@ def _a_star_search(
             if neighbor in closed_set:
                 continue
 
-            tile = map_data.get_terrain(neighbor.x, neighbor.y)
-            if tile.is_salt_water:
+            if _road_placement_validation(map_data, neighbor) is False:
                 continue
+
+            tile = map_data.get_terrain(neighbor.x, neighbor.y)
             tentative_cost = current_cost + tile.pathfinding_cost
 
             # Check if neighbor is already in open set.
@@ -308,3 +371,29 @@ def _road_exists(map_data: MapData, start_name: str, end_name: str) -> bool:
         or (road.start_settlement == end_name and road.end_settlement == start_name)
         for road in map_data.roads
     )
+
+
+def _road_placement_validation(map_data: MapData, pos: Position) -> bool:
+    """
+    This function checks if a road can be placed at the given position.
+
+    Args:
+        map_data (MapData):
+            The map data.
+        pos (Position):
+            The position to validate.
+
+    Returns:
+        bool:
+            True if a road can be placed, False otherwise.
+    """
+    # First, check if position is within map bounds.
+    if not map_data.is_valid_position(pos.x, pos.y):
+        return False
+    # Then, check terrain type.
+    terrain = map_data.get_terrain(pos.x, pos.y)
+    if terrain.is_salt_water:
+        return False
+    if terrain.is_water and not terrain.is_flowing_water:
+        return False
+    return True
