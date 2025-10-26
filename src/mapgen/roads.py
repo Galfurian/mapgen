@@ -63,6 +63,10 @@ def generate_roads(
                 path=path,
             )
         )
+        
+        logger.debug(
+            f"Connected {settlement.name} to {nearest.name} with road of length {len(path)}"
+        )
 
     num_road_tiles = sum([len(road.path) for road in map_data.roads])
 
@@ -265,8 +269,8 @@ def _find_nearest_settlement_worth_connecting(
         direct_dist = settlement.distance_to(other)
         # Get shortest path distance via roads.
         path_dist = _shortest_path_distance(map_data, settlement.name, other.name)
-        # If direct is better or no path exists.
-        if path_dist is None or path_dist > direct_dist:
+        # If direct is significantly better or no path exists.
+        if path_dist is None or direct_dist < path_dist * 0.5:
             # Update if closer.
             if direct_dist < min_dist:
                 min_dist = direct_dist
