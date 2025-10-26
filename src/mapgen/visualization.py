@@ -247,12 +247,14 @@ def plot_map(
     # Plot roads
     if enable_roads:
         elevation_map = np.array(map_data.elevation_map)
-        for road in map_data.roads:
+        road_colors = ['red', 'blue', 'green', 'orange', 'purple', 'cyan', 'magenta', 'yellow', 'black', 'gray']
+        for i, road in enumerate(map_data.roads):
             path = road.path
             curved_path = _apply_curves_to_path(path, elevation_map)
             curved_x = [pos.x for pos in curved_path]
             curved_y = [pos.y for pos in curved_path]
-            ax.plot(curved_x, curved_y, color="brown", linewidth=2, zorder=1)
+            color = road_colors[i % len(road_colors)]
+            ax.plot(curved_x, curved_y, color=color, linewidth=2, zorder=1)
 
     # Plot settlements with circles and labels
     if enable_settlements:
@@ -393,7 +395,8 @@ def plot_3d_map(
 
     # Add roads as 3D lines
     if enable_roads and map_data.roads:
-        for road in map_data.roads:
+        road_colors = ['red', 'blue', 'green', 'orange', 'purple', 'cyan', 'magenta', 'yellow', 'black', 'gray']
+        for i, road in enumerate(map_data.roads):
             if len(road.path) > 1:
                 road_x = [pos.x for pos in road.path]
                 road_y = [pos.y for pos in road.path]
@@ -401,11 +404,12 @@ def plot_3d_map(
                     scaled_elevation[pos.y, pos.x] + 0.05 for pos in road.path
                 ]  # Slightly above terrain
 
+                color = road_colors[i % len(road_colors)]
                 ax.plot(
                     road_x,
                     road_y,
                     road_z,
-                    color="brown",
+                    color=color,
                     linewidth=2,
                     alpha=0.7,
                     label=(
