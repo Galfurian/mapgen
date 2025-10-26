@@ -1,9 +1,9 @@
 """
 Water routes generation module for procedural map generation.
 
-This module handles the generation of water routes connecting harbors.
-It uses A* pathfinding to create efficient routes between harbors,
-allowing travel through water bodies.
+This module handles the generation of water routes connecting harbors. It uses
+A* pathfinding to create efficient routes between harbors, allowing travel
+through water bodies.
 """
 
 import heapq
@@ -33,31 +33,29 @@ def generate_water_routes(map_data: MapData) -> None:
     # Connect each harbor to the nearest other harbor
     for harbor in harbors:
         # Find nearest harbor worth connecting via water
-        nearest = _find_nearest_harbor_worth_connecting(harbor, harbors, map_data)
-        if not nearest:
+        result = _find_nearest_harbor_worth_connecting(
+            harbor,
+            harbors,
+            map_data,
+        )
+        if not result:
             logger.debug(f"No suitable harbor found for {harbor.name}")
             continue
-        # Find nearest water tiles for start and goal
-        start_water = _find_nearest_water_tile(map_data, harbor.position)
-        goal_water = _find_nearest_water_tile(map_data, nearest.position)
-        if not start_water or not goal_water:
-            logger.debug(f"No water tiles found near {harbor.name} or {nearest.name}")
-            continue
 
-        # Find the path
-        path = a_star_search(
-            map_data, start_water, goal_water, _water_route_placement_validation
-        )
-        if path is None:
+        # Unpack result
+        nearest, path = result
+
+        if _water_route_exists(map_data, harbor.name, nearest.name):
             logger.debug(
-                f"No water path found between {harbor.name} and {nearest.name}"
+                f"Water route between {harbor.name} and {nearest.name} already exists"
             )
             continue
 
         # Curve the path for more natural water route appearance
         path = _curve_water_route_path(path, map_data)
 
-        # Add the route (no need to check exists since we already did in worth_connecting)
+        # Add the route (no need to check exists since we already did in
+        # worth_connecting).
         map_data.water_routes.append(
             WaterRoute(
                 start_harbor=harbor.name,
@@ -78,7 +76,7 @@ def _find_nearest_harbor_worth_connecting(
     harbor: Settlement,
     harbors: list[Settlement],
     map_data: MapData,
-) -> Settlement | None:
+) -> tuple[Settlement, list[Position]] | None:
     """
     Find the nearest harbor that can be connected with a reasonable water path.
 
@@ -91,19 +89,20 @@ def _find_nearest_harbor_worth_connecting(
             The map data containing existing water routes.
 
     Returns:
-        Settlement | None:
-            The nearest harbor that can be connected, or None.
+        tuple[Settlement, list[Position]] | None:
+            The nearest harbor and path, or None.
 
     """
     # Get candidates: harbors sorted by direct distance
     candidates = sorted(
         [h for h in harbors if h.name != harbor.name],
         key=lambda h: harbor.distance_to(h),
-    )[
-        :5
-    ]  # Top 5 nearest
+    )
+    # Only consider top 5 nearest.
+    candidates = candidates[:5]
 
     best = None
+    best_path = None
     best_path_length = float("inf")
     for other in candidates:
         # Check if already connected via water routes (direct or indirect)
@@ -121,8 +120,11 @@ def _find_nearest_harbor_worth_connecting(
         )
         if path and len(path) < best_path_length:
             best = other
+            best_path = path
             best_path_length = len(path)
-    return best
+    if best is None or best_path is None:
+        return None
+    return (best, best_path)
 
 
 def _shortest_water_route_distance(
@@ -131,8 +133,8 @@ def _shortest_water_route_distance(
     end_name: str,
 ) -> float | None:
     """
-    Compute the shortest path distance between two harbors via existing
-    water routes.
+    Compute the shortest path distance between two harbors via existing water
+    routes.
 
     Args:
         map_data (MapData):
@@ -235,8 +237,8 @@ def _curve_water_route_path(
     map_data: MapData,
 ) -> list[Position]:
     """
-    Aggressively simplify the water path by trying to interpolate directly to the
-    farthest valid end point, falling back to closer points if invalid. Uses
+    Aggressively simplify the water path by trying to interpolate directly to
+    the farthest valid end point, falling back to closer points if invalid. Uses
     Bezier curves with inverted gradients to follow deeper water channels.
 
     Args:
@@ -264,7 +266,8 @@ def _curve_water_route_path(
         for end_idx in range(len(path) - 1, current_idx, -1):
             end = path[end_idx]
 
-            # Compute control point with inverted gradients (follow deeper water)
+            # Compute control point with inverted gradients (follow deeper
+            # water)
             control = compute_terrain_control_point(
                 start,
                 end,

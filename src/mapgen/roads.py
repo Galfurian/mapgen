@@ -51,15 +51,16 @@ def generate_roads(
         # Unpack result.
         nearest, path = result
 
-        # Curve the path for more natural road appearance
-        path = _curve_road_path(path, map_data)
-
         # Check if road already exists
         if _road_exists(map_data, settlement.name, nearest.name):
             logger.debug(
                 f"Road between {settlement.name} and {nearest.name} already exists"
             )
             continue
+
+        # Curve the path for more natural road appearance
+        path = _curve_road_path(path, map_data)
+
         # Add the road to the map data.
         map_data.roads.append(
             Road(
@@ -74,7 +75,6 @@ def generate_roads(
         )
 
     num_road_tiles = sum([len(road.path) for road in map_data.roads])
-
     logger.debug(f"Traced {len(map_data.roads)} roads")
     logger.info(f"Placed {num_road_tiles} road tiles")
 
