@@ -261,6 +261,7 @@ Examples:
     logger.info(f"📐 Map size: {map_data.width}x{map_data.height}")
     logger.info(f"🏘️ Settlements: {len(map_data.settlements)}")
     logger.info(f"🛣️ Roads: {len(map_data.roads)}")
+    logger.info(f"🚢 Water routes: {len(map_data.water_routes)}")
 
     # Count terrain types
     terrain_counts: dict[str, int] = {}

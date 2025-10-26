@@ -20,6 +20,7 @@ from . import (
     roads,
     settlements,
     terrain,
+    water_routes,
 )
 from .tile_collections import get_default_tile_collections
 
@@ -325,7 +326,13 @@ def generate_map(
         logger.debug(f"Road network generated in {roads_time:.3f}s")
         logger.debug(f"Generated road network with {len(map_data.roads)} roads")
 
-    total_time = time.time() - start_time
-    logger.info(f"Map generation completed successfully in {total_time:.3f}s")
+    # Phase 9: Generate water routes
+    if enable_settlements and enable_roads:
+        logger.debug("Generating water routes")
+        water_routes_start = time.time()
+        water_routes.generate_water_routes(map_data)
+        water_routes_time = time.time() - water_routes_start
+        logger.debug(f"Water routes generated in {water_routes_time:.3f}s")
+        logger.debug(f"Generated water routes with {len(map_data.water_routes)} routes")
 
     return map_data

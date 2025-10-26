@@ -3,7 +3,7 @@
 import logging
 
 from . import flora
-from .map_data import MapData, PlacementMethod, Position, Settlement, Tile
+from .map_data import MapData, PlacementMethod, Position, Settlement, Tile, Road, WaterRoute
 from .map_generator import generate_map
 from .tile_collections import (
     TileCollections,
@@ -42,6 +42,8 @@ __all__ = [
     "Position",
     "Settlement",
     "Tile",
+    "Road",
+    "WaterRoute",
     "TileCollections",
     "flora",
     "generate_map",

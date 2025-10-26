@@ -353,6 +353,32 @@ class Road(BaseModel):
     )
 
 
+class WaterRoute(BaseModel):
+    """
+    Represents a water route connecting two harbors.
+
+    Attributes:
+        start_harbor (str):
+            Name of the starting harbor.
+        end_harbor (str):
+            Name of the ending harbor.
+        path (list[Position]):
+            List of positions forming the water route path.
+
+    """
+
+    start_harbor: str = Field(
+        description="Name of the starting harbor.",
+    )
+    end_harbor: str = Field(
+        description="Name of the ending harbor.",
+    )
+    path: list[Position] = Field(
+        default_factory=list,
+        description="List of positions forming the water route path.",
+    )
+
+
 class MapData(BaseModel):
     """
     Represents a 2D map grid with terrain data.
@@ -394,6 +420,10 @@ class MapData(BaseModel):
     roads: list[Road] = Field(
         default_factory=list,
         description="List of roads connecting settlements.",
+    )
+    water_routes: list[WaterRoute] = Field(
+        default_factory=list,
+        description="List of water routes connecting harbors.",
     )
 
     @property
