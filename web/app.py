@@ -24,9 +24,16 @@ def create_interactive_map(
     """Create an interactive Plotly map with zoom and pan controls."""
     # Create base terrain image
     rgb_values = np.zeros((map_data.height, map_data.width, 3))
+    points_x = []
+    points_y = []
+    point_colors = []
 
     for y in range(map_data.height):
         for x in range(map_data.width):
+            # Store point coordinates.
+            points_x.append(x)
+            points_y.append(y)
+            # Get the terrain tile.
             tile = map_data.get_terrain(x, y)
             # Compute shade factor based on elevation.
             shade_factor = 0.5 + 0.5 * map_data.get_elevation(x, y)
@@ -34,6 +41,13 @@ def create_interactive_map(
             shaded_color = tuple(c * shade_factor for c in tile.color)
             # Convert to 0-255 range for Plotly
             rgb_values[y, x, :] = tuple(int(c * 255) for c in shaded_color)
+            # Store point color for selection.
+            point_colors.append(
+                "rgb("
+                f"{int(shaded_color[0] * 255) * 0.875},"
+                f"{int(shaded_color[1] * 255) * 0.875},"
+                f"{int(shaded_color[2] * 255) * 0.875})"
+            )
 
     # Highlight selected tiles
     if selection and "point_indices" in selection:
@@ -51,20 +65,14 @@ def create_interactive_map(
 
     # Add terrain as image
     fig.add_trace(go.Image(z=rgb_values.astype(np.uint8), hoverinfo="skip"))
-
-    # Add invisible selectable points at tile centers
-    points_x = []
-    points_y = []
-    for y in range(map_data.height):
-        for x in range(map_data.width):
-            points_x.append(x)
-            points_y.append(y)
+    
+    # Add selectable points at tile centers with tile colors.
     fig.add_trace(
         go.Scatter(
             x=points_x,
             y=points_y,
             mode="markers",
-            marker=dict(color="rgba(255,150,150,0.15)", size=2.5),
+            marker=dict(color=point_colors, size=3, opacity=0.8),
             showlegend=False,
             hoverinfo="skip",
         )
