@@ -4,15 +4,19 @@ Streamlit web interface for MapGen.
 Run with: streamlit run web/app.py
 """
 
+from typing import Any
 import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
+import json
+import os
 
-from mapgen import generate_map, plot_map
+from mapgen import generate_map
 from mapgen.map_data import MapData
 
 
-def create_interactive_map(map_data: MapData) -> go.Figure:
+@st.cache_data
+def create_interactive_map(map_data: MapData):
     """Create an interactive Plotly map with zoom and pan controls."""
     # Create base terrain image
     rgb_values = np.zeros((map_data.height, map_data.width, 3))
@@ -109,6 +113,7 @@ def create_interactive_map(map_data: MapData) -> go.Figure:
             zeroline=False,
             showticklabels=False,
             autorange=True,
+            fixedrange=False,  # Allow horizontal panning/zooming
         ),
         yaxis=dict(
             showgrid=False,
@@ -117,10 +122,12 @@ def create_interactive_map(map_data: MapData) -> go.Figure:
             autorange=True,
             scaleanchor="x",
             scaleratio=1,
+            fixedrange=False,  # Allow vertical panning/zooming
         ),
         margin=dict(l=0, r=0, t=40, b=0),
         dragmode="pan",
         hovermode="closest",
+        height=500,
     )
 
     # Enable zoom controls - Plotly has built-in zoom controls that appear on hover
@@ -143,6 +150,45 @@ def create_interactive_map(map_data: MapData) -> go.Figure:
     return fig
 
 
+STORAGE_FILE = ".web.storage"
+
+
+def save_session_data():
+    """Save relevant session state to file."""
+    # Only save our widget settings, not internal state or large objects
+    settings_to_save: dict[str, Any] = {}
+    for key, value in st.session_state.items():
+        settings_to_save[str(key)] = value
+    try:
+        with open(STORAGE_FILE, "w") as f:
+            json.dump(settings_to_save, f, indent=2)
+    except Exception as e:
+        st.warning(f"Could not save settings: {e}")
+
+
+def load_session_data() -> None:
+    """Load settings from file into session state."""
+    try:
+        if os.path.exists(STORAGE_FILE):
+            with open(STORAGE_FILE, "r") as f:
+                st.session_state.update(json.load(f))
+    except Exception:
+        pass
+
+
+def get_setting(key: str, default=None) -> Any:
+    """Get a setting value from session state, setting default if not exists."""
+    return st.session_state.get(key, default)
+
+
+def get_widget_kwargs(key: str, default, **fixed_kwargs):
+    """Build kwargs for a widget, conditionally including 'value' if key not in session_state."""
+    kwargs = {"key": key, **fixed_kwargs}
+    if key not in st.session_state:
+        kwargs["value"] = default
+    return kwargs
+
+
 def main():
     """Main Streamlit application."""
     st.set_page_config(
@@ -154,6 +200,9 @@ def main():
         "Generate procedural fantasy maps with settlements, roads, and terrain."
     )
 
+    # Load previous settings.
+    load_session_data()
+
     # Sidebar with parameters
     st.sidebar.header("⚙️ Parameters")
 
@@ -162,104 +211,176 @@ def main():
     with col1:
         width = st.number_input(
             "Width",
-            min_value=1,
-            max_value=9999,
-            value=240,
-            help="Map width in tiles",
+            **get_widget_kwargs(
+                "width",
+                240,
+                min_value=1,
+                max_value=9999,
+                help="Map width in tiles",
+                on_change=save_session_data,
+            ),
         )
+
     with col2:
         height = st.number_input(
             "Height",
-            min_value=1,
-            max_value=9999,
-            value=120,
-            help="Map height in tiles",
+            **get_widget_kwargs(
+                "height",
+                120,
+                min_value=1,
+                max_value=9999,
+                help="Map height in tiles",
+                on_change=save_session_data,
+            ),
         )
     with col3:
         seed = st.number_input(
             "Seed",
-            value=42,
-            min_value=0,
-            help="Random seed for reproducible results",
+            **get_widget_kwargs(
+                "seed",
+                42,
+                min_value=0,
+                help="Random seed for reproducible results",
+                on_change=save_session_data,
+            ),
         )
 
     # Noise parameters
     st.sidebar.subheader("🌊 Noise Settings")
     scale = st.sidebar.number_input(
         "Scale",
-        min_value=1,
-        max_value=1000,
-        value=50,
-        help="Noise scale factor",
+        **get_widget_kwargs(
+            "scale",
+            50,
+            min_value=1,
+            max_value=1000,
+            help="Noise scale factor",
+            on_change=save_session_data,
+        ),
     )
     octaves = st.sidebar.number_input(
         "Octaves",
-        min_value=1,
-        max_value=20,
-        value=6,
-        help="Noise octaves",
+        **get_widget_kwargs(
+            "octaves",
+            6,
+            min_value=1,
+            max_value=20,
+            help="Noise octaves",
+            on_change=save_session_data,
+        ),
     )
     persistence = st.sidebar.number_input(
         "Persistence",
-        min_value=0.0,
-        max_value=1.0,
-        value=0.5,
-        step=0.01,
-        help="Noise persistence",
+        **get_widget_kwargs(
+            "persistence",
+            0.5,
+            min_value=0.0,
+            max_value=1.0,
+            step=0.01,
+            help="Noise persistence",
+            on_change=save_session_data,
+        ),
     )
     lacunarity = st.sidebar.number_input(
         "Lacunarity",
-        min_value=0.1,
-        max_value=10.0,
-        value=2.0,
-        step=0.1,
-        help="Noise lacunarity",
+        **get_widget_kwargs(
+            "lacunarity",
+            2.0,
+            min_value=0.1,
+            max_value=10.0,
+            step=0.1,
+            help="Noise lacunarity",
+            on_change=save_session_data,
+        ),
     )
 
     # Terrain thresholds
     st.sidebar.subheader("🏔️ Terrain Thresholds")
     sea_level = st.sidebar.number_input(
         "Sea Level",
-        min_value=-1.0,
-        max_value=1.0,
-        value=-0.25,
-        step=0.01,
-        help="Elevation level for sea (controls land/sea ratio)",
+        **get_widget_kwargs(
+            "sea_level",
+            -0.25,
+            min_value=-1.0,
+            max_value=1.0,
+            step=0.01,
+            help="Elevation level for sea (controls land/sea ratio)",
+            on_change=save_session_data,
+        ),
     )
 
     # Other parameters
     st.sidebar.subheader("🏘️ Settlements & Roads")
     settlement_density = st.sidebar.number_input(
         "Settlement Density",
-        min_value=0.0001,
-        max_value=0.1,
-        value=0.003,
-        step=0.0001,
-        format="%.4f",
-        help="Settlement placement probability",
+        **get_widget_kwargs(
+            "settlement_density",
+            0.003,
+            min_value=0.0001,
+            max_value=0.1,
+            step=0.0001,
+            format="%.4f",
+            help="Settlement placement probability",
+            on_change=save_session_data,
+        ),
     )
     smoothing_iterations = st.sidebar.number_input(
         "Smoothing",
-        min_value=0,
-        max_value=50,
-        value=5,
-        help="Terrain smoothing iterations",
+        **get_widget_kwargs(
+            "smoothing_iterations",
+            5,
+            min_value=0,
+            max_value=50,
+            help="Terrain smoothing iterations",
+            on_change=save_session_data,
+        ),
     )
 
     # Generation options
     st.sidebar.subheader("🎯 Options")
-    generate_settlements = st.sidebar.checkbox("Generate Settlements", value=True)
-    generate_roads = st.sidebar.checkbox("Generate Roads", value=True)
-    generate_rivers = st.sidebar.checkbox("Generate Rivers", value=True)
-    generate_vegetation = st.sidebar.checkbox("Generate Vegetation", value=True)
-
-    # Display options
-    st.sidebar.subheader("👁️ Display")
-    show_zoom_controls = st.sidebar.checkbox(
-        "Interactive Zoom",
-        value=True,
-        help="Enable Google Maps-style zoom and pan controls",
+    generate_settlements = st.sidebar.checkbox(
+        "Generate Settlements",
+        **get_widget_kwargs(
+            "generate_settlements",
+            True,
+            on_change=save_session_data,
+        ),
     )
+    generate_roads = st.sidebar.checkbox(
+        "Generate Roads",
+        **get_widget_kwargs(
+            "generate_roads",
+            True,
+            on_change=save_session_data,
+        ),
+    )
+    generate_rivers = st.sidebar.checkbox(
+        "Generate Rivers",
+        **get_widget_kwargs(
+            "generate_rivers",
+            True,
+            on_change=save_session_data,
+        ),
+    )
+    generate_vegetation = st.sidebar.checkbox(
+        "Generate Vegetation",
+        **get_widget_kwargs(
+            "generate_vegetation",
+            True,
+            on_change=save_session_data,
+        ),
+    )
+
+    st.sidebar.subheader("🍪 Settings")
+    if st.sidebar.button("Clear Saved Settings"):
+        try:
+            if os.path.exists(STORAGE_FILE):
+                os.remove(STORAGE_FILE)
+            st.rerun()
+        except Exception as e:
+            st.error(f"Could not clear settings: {e}")
+
+    st.session_state.map_data = get_setting("map_data", None)
 
     # Main content area
     if st.button("🎲 Generate Map", type="primary", width="stretch"):
@@ -267,60 +388,46 @@ def main():
             try:
                 # Generate map directly with parameters
                 map_data = generate_map(
-                    width=width,
-                    height=height,
+                    width=int(width or 240),
+                    height=int(height or 120),
                     scale=scale,
-                    octaves=octaves,
-                    persistence=persistence,
-                    lacunarity=lacunarity,
-                    sea_level=sea_level,
-                    settlement_density=settlement_density,
-                    smoothing_iterations=smoothing_iterations,
-                    seed=seed,
-                    enable_settlements=generate_settlements,
-                    enable_roads=generate_roads,
-                    enable_rivers=generate_rivers,
-                    enable_vegetation=generate_vegetation,
+                    octaves=int(octaves or 6),
+                    persistence=float(persistence or 0.5),
+                    lacunarity=float(lacunarity or 2.0),
+                    sea_level=float(sea_level or -0.25),
+                    settlement_density=float(settlement_density or 0.003),
+                    smoothing_iterations=int(smoothing_iterations or 5),
+                    seed=int(seed or 42),
+                    enable_settlements=bool(generate_settlements),
+                    enable_roads=bool(generate_roads),
+                    enable_rivers=bool(generate_rivers),
+                    enable_vegetation=bool(generate_vegetation),
                 )
 
                 # Store in session state
-                st.session_state.map_data = map_data
+                st.session_state.map_data = map_data.model_dump()
 
-                st.success("Map generated successfully!")
+                save_session_data()
 
             except Exception as e:
                 st.error(f"Error generating map: {str(e)}")
                 return
 
-    # Display map if available
-    if "map_data" in st.session_state:
-        map_data = st.session_state.map_data
-
-        if show_zoom_controls:
-            # Create interactive Plotly map
-            fig = create_interactive_map(map_data)
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            # Create static matplotlib map
-            fig = plot_map(map_data)
-            st.pyplot(fig, use_container_width=True)
-
-        # Map statistics
-        st.subheader("📊 Map Statistics")
-        stats_col1, stats_col2, stats_col3 = st.columns(3)
-
-        with stats_col1:
-            st.metric("Settlements", len(map_data.settlements))
-            st.metric("Roads", len(map_data.roads))
-
-        with stats_col2:
-            st.metric("Water Routes", len(map_data.water_routes))
-            total_road_tiles = sum(len(road.path) for road in map_data.roads)
-            st.metric("Road Tiles", total_road_tiles)
-
-        with stats_col3:
-            total_water_tiles = sum(len(route.path) for route in map_data.water_routes)
-            st.metric("Water Route Tiles", total_water_tiles)
+    # Create interactive Plotly map.
+    if st.session_state.map_data is not None:
+        map_data: MapData = MapData.model_validate(st.session_state.map_data)
+        # First, create the interactive map figure.
+        fig = create_interactive_map(map_data)
+        # Use full container width and enable scroll zoom for map zooming.
+        st.plotly_chart(
+            fig,
+            config={
+                "scrollZoom": True,
+                "displayModeBar": True,
+                "displaylogo": False,
+                "modeBarButtonsToRemove": ["sendDataToCloud"],
+            },
+        )
 
 
 if __name__ == "__main__":

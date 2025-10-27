@@ -138,3 +138,4 @@ Thumbs.db
 
 # Custom ignores
 output/
+.web.storage

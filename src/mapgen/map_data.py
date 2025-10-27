@@ -14,13 +14,13 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 
-class PlacementMethod(Enum):
+class PlacementMethod(int, Enum):
     """How tiles are placed on the map."""
 
     # Assigned based on elevation/climate rules.
-    TERRAIN_BASED = "terrain_based"
+    TERRAIN_BASED = 0
     # Assigned by specific algorithms (rivers, lakes, etc.)
-    ALGORITHM_BASED = "algorithm_based"
+    ALGORITHM_BASED = 1
 
 
 @dataclass(frozen=True, slots=True)
