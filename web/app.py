@@ -485,7 +485,21 @@ def main():
 
     st.session_state.map_data = get_setting("map_data", None)
 
-    # Main content area
+    uploaded_file = st.file_uploader(
+        "Upload Map JSON file",
+        type="json",
+        accept_multiple_files=False,
+        label_visibility="collapsed",
+    )
+    if uploaded_file is not None:
+        try:
+            content = uploaded_file.getvalue().decode("utf-8")
+            map_data = MapData.model_validate_json(content)
+            st.session_state.map_data = map_data.model_dump()
+        except Exception as e:
+            st.error(f"Error loading map: {e}")
+
+    # Generate and Load buttons in columns
     if st.button("🎲 Generate Map", type="primary", width="stretch"):
         with st.spinner("Generating map..."):
             try:
