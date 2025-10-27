@@ -19,7 +19,7 @@ from mapgen.map_data import MapData
 @st.cache_data
 def create_interactive_map(
     map_data: MapData,
-    selection: dict | None = None,
+    point_indices: list[int] = [],
 ) -> go.Figure:
     """Create an interactive Plotly map with zoom and pan controls."""
     # Create base terrain image
@@ -50,22 +50,21 @@ def create_interactive_map(
             )
 
     # Highlight selected tiles
-    if selection and "point_indices" in selection:
-        for idx in selection["point_indices"]:
-            x = idx % map_data.width
-            y = idx // map_data.width
-            # Blend with red for highlight
-            original = rgb_values[y, x]
-            rgb_values[y, x] = (original * 0.85 + np.array([255, 0, 0]) * 0.15).astype(
-                np.uint8
-            )
+    for idx in point_indices:
+        x = idx % map_data.width
+        y = idx // map_data.width
+        # Blend with red for highlight
+        original = rgb_values[y, x]
+        rgb_values[y, x] = (original * 0.85 + np.array([255, 0, 0]) * 0.15).astype(
+            np.uint8
+        )
 
     # Create the figure
     fig = go.Figure()
 
     # Add terrain as image
     fig.add_trace(go.Image(z=rgb_values.astype(np.uint8), hoverinfo="skip"))
-    
+
     # Add selectable points at tile centers with tile colors.
     fig.add_trace(
         go.Scatter(
@@ -199,6 +198,8 @@ def save_session_data():
     # Only save our widget settings, not internal state or large objects
     settings_to_save: dict[str, Any] = {}
     for key, value in st.session_state.items():
+        if key in ["my_chart"]:
+            continue
         settings_to_save[str(key)] = value
     try:
         with open(STORAGE_FILE, "w") as f:
@@ -217,6 +218,19 @@ def load_session_data() -> None:
         pass
 
 
+def save_setting(key: str, value: Any) -> None:
+    """Set a setting value in session state and save to file."""
+    st.session_state[key] = value
+    save_session_data()
+
+
+def clear_setting(key: str) -> None:
+    """Clear a setting from session state and save to file."""
+    if key in st.session_state:
+        del st.session_state[key]
+        save_session_data()
+
+
 def get_setting(key: str, default=None) -> Any:
     """Get a setting value from session state, setting default if not exists."""
     return st.session_state.get(key, default)
@@ -228,6 +242,24 @@ def get_widget_kwargs(key: str, default, **fixed_kwargs):
     if key not in st.session_state:
         kwargs["value"] = default
     return kwargs
+
+
+def export_selected_area(
+    map_data: MapData,
+    point_indices: list[int],
+):
+    """Support function to export selected area. For now, prints the coordinates."""
+    if not point_indices:
+        st.warning("No valid selection found.")
+        return
+    width = map_data.width
+    selected_coords = []
+    for idx in point_indices:
+        x = idx % width
+        y = idx // width
+        selected_coords.append((x, y))
+    # For now, just print the coordinates
+    print("Selected tile coordinates:", selected_coords)
 
 
 def main():
@@ -457,10 +489,19 @@ def main():
     # Create interactive Plotly map.
     if st.session_state.map_data is not None:
         map_data: MapData = MapData.model_validate(st.session_state.map_data)
+
         # Get the current selection from session state.
-        selection = st.session_state.get("my_chart", {}).get("selection", None)
+        selected_point_indices = (
+            st.session_state.get("my_chart", {})
+            .get("selection", {})
+            .get("point_indices", [])
+        )
+
+        if selected_point_indices:
+            save_setting("point_indices", selected_point_indices)
+
         # First, create the interactive map figure.
-        fig = create_interactive_map(map_data, selection)
+        fig = create_interactive_map(map_data, selected_point_indices)
         # Use full container width and enable scroll zoom for map zooming.
         st.plotly_chart(
             fig,
@@ -479,6 +520,17 @@ def main():
             on_select="rerun",
             key="my_chart",
         )
+
+        point_indices = get_setting("point_indices", [])
+        if point_indices:
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Export Selected Area"):
+                    export_selected_area(map_data, point_indices)
+                    clear_setting("point_indices")
+            with col2:
+                if st.button("Clear Selection"):
+                    clear_setting("point_indices")
 
 
 if __name__ == "__main__":
