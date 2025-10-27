@@ -10,13 +10,17 @@ import numpy as np
 import plotly.graph_objects as go
 import json
 import os
+import math
 
 from mapgen import generate_map
 from mapgen.map_data import MapData
 
 
 @st.cache_data
-def create_interactive_map(map_data: MapData):
+def create_interactive_map(
+    map_data: MapData,
+    selection: dict | None = None,
+) -> go.Figure:
     """Create an interactive Plotly map with zoom and pan controls."""
     # Create base terrain image
     rgb_values = np.zeros((map_data.height, map_data.width, 3))
@@ -31,11 +35,40 @@ def create_interactive_map(map_data: MapData):
             # Convert to 0-255 range for Plotly
             rgb_values[y, x, :] = tuple(int(c * 255) for c in shaded_color)
 
+    # Highlight selected tiles
+    if selection and "point_indices" in selection:
+        for idx in selection["point_indices"]:
+            x = idx % map_data.width
+            y = idx // map_data.width
+            # Blend with red for highlight
+            original = rgb_values[y, x]
+            rgb_values[y, x] = (original * 0.85 + np.array([255, 0, 0]) * 0.15).astype(
+                np.uint8
+            )
+
     # Create the figure
     fig = go.Figure()
 
     # Add terrain as image
     fig.add_trace(go.Image(z=rgb_values.astype(np.uint8), hoverinfo="skip"))
+
+    # Add invisible selectable points at tile centers
+    points_x = []
+    points_y = []
+    for y in range(map_data.height):
+        for x in range(map_data.width):
+            points_x.append(x)
+            points_y.append(y)
+    fig.add_trace(
+        go.Scatter(
+            x=points_x,
+            y=points_y,
+            mode="markers",
+            marker=dict(color="rgba(255,150,150,0.15)", size=2.5),
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
 
     # Add roads
     for road in map_data.roads:
@@ -125,9 +158,9 @@ def create_interactive_map(map_data: MapData):
             fixedrange=False,  # Allow vertical panning/zooming
         ),
         margin=dict(l=0, r=0, t=40, b=0),
-        dragmode="pan",
+        dragmode="select",
         hovermode="closest",
-        height=500,
+        clickmode="event+select",
     )
 
     # Enable zoom controls - Plotly has built-in zoom controls that appear on hover
@@ -416,8 +449,10 @@ def main():
     # Create interactive Plotly map.
     if st.session_state.map_data is not None:
         map_data: MapData = MapData.model_validate(st.session_state.map_data)
+        # Get the current selection from session state.
+        selection = st.session_state.get("my_chart", {}).get("selection", None)
         # First, create the interactive map figure.
-        fig = create_interactive_map(map_data)
+        fig = create_interactive_map(map_data, selection)
         # Use full container width and enable scroll zoom for map zooming.
         st.plotly_chart(
             fig,
@@ -425,8 +460,16 @@ def main():
                 "scrollZoom": True,
                 "displayModeBar": True,
                 "displaylogo": False,
-                "modeBarButtonsToRemove": ["sendDataToCloud"],
+                "modeBarButtonsToRemove": [
+                    "sendDataToCloud",
+                    "lasso2d",
+                    "zoom",
+                    "resetAxes",
+                ],
+                "selectionMode": "box",
             },
+            on_select="rerun",
+            key="my_chart",
         )
 
 
