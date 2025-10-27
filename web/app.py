@@ -14,6 +14,7 @@ import math
 
 from mapgen import generate_map
 from mapgen.map_data import MapData
+from mapgen.export import extract_sub_map
 
 
 @st.cache_data
@@ -258,8 +259,37 @@ def export_selected_area(
         x = idx % width
         y = idx // width
         selected_coords.append((x, y))
-    # For now, just print the coordinates
-    print("Selected tile coordinates:", selected_coords)
+
+    if not selected_coords:
+        st.warning("No tiles selected.")
+        return
+
+    # Calculate bounding box
+    min_x = min(x for x, y in selected_coords)
+    max_x = max(x for x, y in selected_coords)
+    min_y = min(y for x, y in selected_coords)
+    max_y = max(y for x, y in selected_coords)
+
+    # Extract sub-map
+    try:
+        sub_map = extract_sub_map(map_data, min_x, min_y, max_x, max_y)
+
+        # Save to file
+        import os
+
+        output_dir = "output"
+        os.makedirs(output_dir, exist_ok=True)
+        filename = f"sub_map_{min_x}_{min_y}_{max_x}_{max_y}.json"
+        filepath = os.path.join(output_dir, filename)
+        sub_map.save_to_json(filepath)
+
+        st.success(f"Sub-map exported successfully to {filepath}")
+        st.write(f"Sub-map size: {sub_map.width}x{sub_map.height}")
+
+    except ValueError as e:
+        st.error(f"Error extracting sub-map: {e}")
+    except Exception as e:
+        st.error(f"Unexpected error: {e}")
 
 
 def main():
