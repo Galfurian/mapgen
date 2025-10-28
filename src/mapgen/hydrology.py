@@ -9,9 +9,11 @@ import logging
 from collections import deque
 
 import numpy as np
+from scipy import ndimage
 
-from .map_data import MapData
+from .map_data import BodyOfWater, MapData, Position
 from .utils import generate_noise_grid, normalize_array
+
 
 logger = logging.getLogger(__name__)
 
@@ -214,3 +216,106 @@ def generate_accumulation_map(map_data: MapData) -> None:
     # Round to 4 decimal places and store in map_data
     accumulation = np.round(accumulation, decimals=4)
     map_data.accumulation_map = accumulation.tolist()
+
+
+def identify_bodies_of_water(map_data: MapData) -> None:
+    """
+    Identify and label bodies of water on the map.
+
+    This function analyzes the terrain map to find contiguous water regions
+    and labels them as bodies of water in map_data.bodies_of_water.
+
+    Args:
+        map_data (MapData):
+            The map data containing terrain information.
+
+    """
+    if not map_data.elevation_map:
+        logger.warning("Elevation map is required for body of water identification")
+        return
+
+    # Get the map dimensions.
+    height, width = map_data.height, map_data.width
+
+    # Create a binary mask of water tiles
+    water_mask: np.ndarray = np.zeros((height, width), dtype=bool)
+    for y in range(height):
+        for x in range(width):
+            tile = map_data.get_terrain(x, y)
+            water_mask[y, x] = tile.is_water
+
+    # Label connected components in the water mask.
+    labeled_mask, num_features = ndimage.label(water_mask)
+
+    # Create BodyOfWater instances for each labeled water body
+    for label in range(1, num_features + 1):
+        # Get all positions in this water body.
+        body_positions = np.where(labeled_mask == label)
+        # Create a BodyOfWater instance and add it to map_data.
+        map_data.bodies_of_water.append(
+            BodyOfWater(
+                is_salt_water=True,
+                tiles=[
+                    Position(x=int(x), y=int(y))
+                    for y, x in zip(body_positions[0], body_positions[1])
+                ],
+            )
+        )
+
+
+def classify_bodies_of_water(
+    map_data: MapData,
+    lake_size_threshold: int = 1000,
+) -> None:
+    """
+    Classify bodies of water as seas or lakes based on their size.
+
+    Bodies of water with a number of tiles greater than lake_size_threshold
+    are classified as seas; otherwise, they are classified as lakes.
+
+    Args:
+        map_data (MapData):
+            The map data containing bodies of water.
+        lake_size_threshold (int):
+            The size threshold to distinguish lakes from seas.
+
+    """
+    # Find salt-water tiles in the tiles collection.
+    salt_water_tiles = map_data.find_tiles_by_properties(
+        is_water=True,
+        is_salt_water=True,
+        is_flowing_water=False,
+    )
+    fresh_water_tiles = map_data.find_tiles_by_properties(
+        is_water=True,
+        is_salt_water=False,
+        is_flowing_water=False,
+    )
+    if not salt_water_tiles:
+        logger.info("No salt-water tiles found; skipping body of water classification")
+        return
+    if not fresh_water_tiles:
+        logger.info("No fresh-water tiles found; skipping body of water classification")
+        return
+    # Sort tiles by terrain priority (higher priority first).
+    salt_water_tiles = sorted(
+        salt_water_tiles,
+        key=lambda t: t.terrain_priority,
+        reverse=True,
+    )
+    fresh_water_tiles = sorted(
+        fresh_water_tiles,
+        key=lambda t: t.terrain_priority,
+        reverse=True,
+    )
+
+    for body in map_data.bodies_of_water:
+        logger.debug(
+            f"Classifying body of water with {len(body.tiles)} tiles, as {'salt water' if body.is_salt_water else 'fresh water'}."
+        )
+        if len(body.tiles) > lake_size_threshold:
+            for tile in body.tiles:
+                map_data.set_terrain(tile.x, tile.y, salt_water_tiles[0])
+        else:
+            for tile in body.tiles:
+                map_data.set_terrain(tile.x, tile.y, fresh_water_tiles[0])

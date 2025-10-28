@@ -188,22 +188,10 @@ Examples:
         help="Minimum path length to place a river (default: 10)",
     )
     parser.add_argument(
-        "--forest-coverage",
-        type=float,
-        default=0.15,
-        help="Target forest coverage ratio (default: 0.15)",
-    )
-    parser.add_argument(
-        "--desert-coverage",
-        type=float,
-        default=0.10,
-        help="Target desert coverage ratio (default: 0.10)",
-    )
-    parser.add_argument(
-        "--max-lake-size",
+        "--lake-size-threshold",
         type=int,
-        default=None,
-        help="Maximum size for edge-connected water bodies to be classified as lakes (default: auto-calculated)",
+        default=10,
+        help="Maximum size for edge-connected water bodies to be classified as lakes (default: 1000)",
     )
     parser.add_argument(
         "--dpi",
@@ -305,9 +293,7 @@ Examples:
         rainfall_temp_weight=args.rainfall_temp_weight,
         rainfall_humidity_weight=args.rainfall_humidity_weight,
         rainfall_orographic_weight=args.rainfall_orographic_weight,
-        forest_coverage=args.forest_coverage,
-        desert_coverage=args.desert_coverage,
-        max_lake_size=args.max_lake_size,
+        lake_size_threshold=args.lake_size_threshold,
     )
 
     logger.info("✅ Map generation succeeded!")

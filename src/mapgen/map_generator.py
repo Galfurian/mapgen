@@ -13,7 +13,6 @@ import time
 import numpy as np
 
 from . import (
-    MapData,
     flora,
     hydrology,
     rivers,
@@ -22,7 +21,8 @@ from . import (
     terrain,
     water_routes,
 )
-from .tile_collections import get_default_tile_collections
+
+from .map_data import MapData, get_default_tile_collections
 
 logger = logging.getLogger(__name__)
 
@@ -108,9 +108,7 @@ def generate_map(
     rainfall_temp_weight: float = 0.3,
     rainfall_humidity_weight: float = 0.4,
     rainfall_orographic_weight: float = 0.3,
-    forest_coverage: float = 0.15,
-    desert_coverage: float = 0.10,
-    max_lake_size: int | None = None,
+    lake_size_threshold: int = 1000,
 ) -> MapData:
     """
     Generate a complete procedural fantasy map.
@@ -172,7 +170,7 @@ def generate_map(
             Target forest coverage ratio (0.0 to 1.0).
         desert_coverage (float):
             Target desert coverage ratio (0.0 to 1.0).
-        max_lake_size (int | None):
+        lake_size_threshold (int | None):
             Maximum size for edge-connected water bodies to be classified as lakes.
             Larger edge-connected bodies remain as salt water seas.
             If None, automatically calculated based on map size.
@@ -213,20 +211,23 @@ def generate_map(
     np.random.seed(seed)
     logger.debug(f"Using random seed: {seed}")
 
-    # Retrieve organized tile collections.
-    tile_collections = get_default_tile_collections()
-
-    logger.debug("Initializing map data")
     # Create the map data object with tiles and empty grid.
     map_data = MapData(
         sea_level=sea_level,
-        tiles=tile_collections.all_tiles,
-        grid=[[0 for _ in range(width)] for _ in range(height)],
+        tiles=get_default_tile_collections(),
     )
 
-    # Phase 1: Generate elevation map
+    logger.debug("Initializing the map data")
+    step_time = time.time()
+    terrain.initialize_map_data(
+        map_data,
+        width,
+        height,
+    )
+    logger.debug(f"Map data initialized in {time.time() - step_time:.3f}s\n")
+
     logger.debug("Generating elevation map")
-    terrain_start = time.time()
+    step_time = time.time()
     terrain.generate_elevation_map(
         map_data,
         scale,
@@ -234,71 +235,73 @@ def generate_map(
         persistence,
         lacunarity,
     )
-    terrain_time = time.time() - terrain_start
-    logger.debug(f"Elevation map generation completed in {terrain_time:.3f}s")
+    logger.debug(f"Elevation map generated in {time.time() - step_time:.3f}s\n")
 
-    # Phase 1.5: Smooth elevation map
     logger.debug("Smoothing elevation map")
-    smooth_start = time.time()
+    step_time = time.time()
     terrain.smooth_elevation_map(
         map_data,
         iterations=smoothing_iterations,
         sigma=smoothing_sigma,
     )
-    smooth_time = time.time() - smooth_start
-    logger.debug(f"Elevation smoothing completed in {smooth_time:.3f}s")
+    logger.debug(f"Elevation smoothed in {time.time() - step_time:.3f}s\n")
 
-    # Phase 2: Generate rainfall map (provides climate data for vegetation and
-    # analysis)
     logger.debug("Generating rainfall map")
-    rainfall_start = time.time()
+    step_time = time.time()
     hydrology.generate_rainfall_map(
         map_data,
         rainfall_temp_weight,
         rainfall_humidity_weight,
         rainfall_orographic_weight,
     )
-    rainfall_time = time.time() - rainfall_start
-    logger.debug(f"Rainfall map generation completed in {rainfall_time:.3f}s")
+    logger.debug(f"Rainfall map generated in {time.time() - step_time:.3f}s\n")
 
     # Phase 2.5: Compute water accumulation (runoff)
     logger.debug("Computing water accumulation (runoff) map")
-    accumulation_start = time.time()
-    hydrology.generate_accumulation_map(map_data)
-    accumulation_time = time.time() - accumulation_start
-    logger.debug(f"Accumulation map generation completed in {accumulation_time:.3f}s")
+    step_time = time.time()
+    hydrology.generate_accumulation_map(
+        map_data,
+    )
+    logger.debug(f"Accumulation map generated in {time.time() - step_time:.3f}s\n")
 
     # Phase 3: Apply base terrain (elevation-driven only)
     logger.debug("Applying base terrain features")
-    features_start = time.time()
-    terrain.apply_base_terrain(map_data, tile_collections.base_terrain)
-    features_time = time.time() - features_start
-    logger.debug(f"Base terrain applied in {features_time:.3f}s")
+    step_time = time.time()
+    terrain.apply_base_terrain(
+        map_data,
+    )
+    logger.debug(f"Base terrain applied in {time.time() - step_time:.3f}s\n")
+
+    # Identify the bodies of water before classifying them.
+    logger.debug("Identifying bodies of water")
+    step_time = time.time()
+    hydrology.identify_bodies_of_water(
+        map_data,
+    )
+    logger.debug(f"Bodies of water identified in {time.time() - step_time:.3f}s\n")
 
     # Phase 3.5: Classify water bodies (seas vs lakes)
     logger.debug("Classifying water bodies as seas or lakes")
-    water_classify_start = time.time()
-    terrain.classify_water_bodies(map_data, max_lake_size=max_lake_size)
-    water_classify_time = time.time() - water_classify_start
-    logger.debug(f"Water bodies classified in {water_classify_time:.3f}s")
+    step_time = time.time()
+    hydrology.classify_bodies_of_water(
+        map_data,
+        lake_size_threshold=lake_size_threshold,
+    )
+    logger.debug(f"Water bodies classified in {time.time() - step_time:.3f}s\n")
 
     # Phase 4: Place vegetation (climate-driven)
     if enable_vegetation:
         logger.debug("Placing climate-driven vegetation")
-        vegetation_start = time.time()
+        step_time = time.time()
         flora.place_vegetation(
             map_data,
-            tile_collections.vegetation,
-            forest_coverage=forest_coverage,
-            desert_coverage=desert_coverage,
         )
-        vegetation_time = time.time() - vegetation_start
-        logger.debug(f"Vegetation placement completed in {vegetation_time:.3f}s")
+        logger.debug(f"Vegetation placed in {time.time() - step_time:.3f}s\n")
 
     # Phase 5: Generate rivers using simple downhill flow
     if enable_rivers:
         logger.debug("Generating rivers")
-        rivers_start = time.time()
+        step_time = time.time()
         rivers.generate_rivers(
             map_data,
             min_source_elevation=min_source_elevation,
@@ -306,42 +309,34 @@ def generate_map(
             min_river_length=min_river_length,
             sea_level=sea_level,
         )
-        rivers_time = time.time() - rivers_start
-        logger.debug(f"River generation completed in {rivers_time:.3f}s")
+        logger.debug(f"Rivers generated in {time.time() - step_time:.3f}s\n")
 
     # Phase 7: Generate settlements
     if enable_settlements:
         logger.debug("Generating settlements")
-        settlements_start = time.time()
+        step_time = time.time()
         settlements.generate_settlements(
             map_data,
             settlement_density,
             min_settlement_radius,
             max_settlement_radius,
         )
-        settlements_time = time.time() - settlements_start
-        logger.debug(f"Settlements generated in {settlements_time:.3f}s")
-        logger.debug(f"Generated {len(map_data.settlements)} settlements")
+        logger.debug(f"Settlements generated in {time.time() - step_time:.3f}s\n")
 
     # Phase 8: Generate roads
     if enable_roads:
         logger.debug("Generating road network")
-        roads_start = time.time()
+        step_time = time.time()
         roads.generate_roads(map_data)
-        roads_time = time.time() - roads_start
-        logger.debug(f"Road network generated in {roads_time:.3f}s")
-        logger.debug(f"Generated road network with {len(map_data.roads)} roads")
+        logger.debug(f"Road network generated in {time.time() - step_time:.3f}s\n")
 
     # Phase 9: Generate water routes
     if enable_settlements and enable_roads:
         logger.debug("Generating water routes")
-        water_routes_start = time.time()
+        step_time = time.time()
         water_routes.generate_water_routes(map_data)
-        water_routes_time = time.time() - water_routes_start
-        logger.debug(f"Water routes generated in {water_routes_time:.3f}s")
-        logger.debug(f"Generated water routes with {len(map_data.water_routes)} routes")
+        logger.debug(f"Water routes generated in {time.time() - step_time:.3f}s\n")
 
-    end_time = time.time() - start_time
-    logger.info(f"Map generation completed in {end_time:.3f}s")
+    logger.info(f"Map generation completed in {time.time() - start_time:.3f}s\n")
 
     return map_data

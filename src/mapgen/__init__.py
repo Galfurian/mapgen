@@ -5,18 +5,14 @@ import logging
 from . import flora
 from .map_data import (
     MapData,
-    PlacementMethod,
     Position,
     Road,
     Settlement,
     Tile,
     WaterRoute,
-)
-from .map_generator import generate_map
-from .tile_collections import (
-    TileCollections,
     get_default_tile_collections,
 )
+from .map_generator import generate_map
 from .visualization import (
     get_ascii_layer,
     get_ascii_map,
@@ -42,12 +38,10 @@ if not logger.handlers:
 
 __all__ = [
     "MapData",
-    "PlacementMethod",
     "Position",
     "Road",
     "Settlement",
     "Tile",
-    "TileCollections",
     "WaterRoute",
     "flora",
     "generate_map",
