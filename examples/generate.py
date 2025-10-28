@@ -12,17 +12,11 @@ from pathlib import Path
 
 from mapgen import (
     generate_map,
-    get_ascii_accumulation_map,
-    get_ascii_elevation_map,
-    get_ascii_map,
-    get_ascii_rainfall_map,
-    get_ascii_temperature_map,
     logger,
-    plot_accumulation_map,
-    plot_elevation_map,
+    get_ascii_layer,
+    get_ascii_map,
     plot_map,
-    plot_rainfall_map,
-    plot_temperature_map,
+    plot_map_layer,
 )
 from mapgen.visualization import plot_3d_map
 
@@ -134,8 +128,8 @@ Examples:
     parser.add_argument(
         "--sea-level",
         type=float,
-        default=-0.25,
-        help="Sea level for land/sea ratio (default: -0.5)",
+        default=0.00,
+        help="Sea level for land/sea ratio (default: 0.0)",
     )
     parser.add_argument(
         "--rainfall-temp-weight",
@@ -154,12 +148,6 @@ Examples:
         type=float,
         default=0.3,
         help="Weight for orographic influence on rainfall (default: 0.3)",
-    )
-    parser.add_argument(
-        "--rainfall-variation-strength",
-        type=float,
-        default=0.1,
-        help="Strength of random variation in rainfall (default: 0.1)",
     )
     parser.add_argument(
         "--disable-settlements",
@@ -218,6 +206,62 @@ Examples:
         help="Maximum size for edge-connected water bodies to be classified as lakes (default: auto-calculated)",
     )
     parser.add_argument(
+        "--dpi",
+        type=int,
+        default=900,
+        help="DPI for output images (default: 900)",
+    )
+    parser.add_argument(
+        "--dump-ascii",
+        action="store_true",
+        help="Dump ASCII representation of the main terrain map",
+    )
+    parser.add_argument(
+        "--dump-3dmap",
+        action="store_true",
+        help="Dump 3D representation of the main terrain map",
+    )
+    parser.add_argument(
+        "--dump-json",
+        action="store_true",
+        help="Dump map data as JSON file",
+    )
+    parser.add_argument(
+        "--dump-elevation",
+        action="store_true",
+        help="Dump elevation data, both as text and as a visualization",
+    )
+    parser.add_argument(
+        "--dump-temperature",
+        action="store_true",
+        help="Dump temperature data, both as text and as a visualization",
+    )
+    parser.add_argument(
+        "--dump-humidity",
+        action="store_true",
+        help="Dump humidity data, both as text and as a visualization",
+    )
+    parser.add_argument(
+        "--dump-orographic",
+        action="store_true",
+        help="Dump orographic data, both as text and as a visualization",
+    )
+    parser.add_argument(
+        "--dump-rainfall",
+        action="store_true",
+        help="Dump rainfall data, both as text and as a visualization",
+    )
+    parser.add_argument(
+        "--dump-accumulation",
+        action="store_true",
+        help="Dump water accumulation data, both as text and as a visualization",
+    )
+    parser.add_argument(
+        "--dump-all",
+        action="store_true",
+        help="Dump all available visualizations and data",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -261,7 +305,6 @@ Examples:
         rainfall_temp_weight=args.rainfall_temp_weight,
         rainfall_humidity_weight=args.rainfall_humidity_weight,
         rainfall_orographic_weight=args.rainfall_orographic_weight,
-        rainfall_variation_strength=args.rainfall_variation_strength,
         forest_coverage=args.forest_coverage,
         desert_coverage=args.desert_coverage,
         max_lake_size=args.max_lake_size,
@@ -285,137 +328,168 @@ Examples:
         percentage = (count / (map_data.width * map_data.height)) * 100
         logger.info(f"   {tile_name}: {count:,} tiles ({percentage:.1f}%)")
 
-    # Generate ALL available visualizations automatically
-    dpi = 900
-    generated_files = 0
-
-    generate_elevation_map = False
-    generate_rainfall_map = False
-    generate_temperature_map = False
-    generate_accumulation_map = False
-    generate_ascii_map = False
-    generate_3d_map = False
-    generate_json_data = False
-
     # Elevation map (always available since elevation_map is always initialized)
-    if generate_elevation_map:
+    if args.dump_elevation or args.dump_all:
         logger.info("📊 Generating elevation map...")
-        fig = plot_elevation_map(map_data, title=f"Elevation Map (Seed: {args.seed})")
+        fig = plot_map_layer(
+            map_data.elevation_map,
+            colormap="terrain",
+            title=f"Elevation Map (Seed: {args.seed})",
+            label="Elevation",
+        )
         elevation_path = output_dir / f"seed_{args.seed}_layer_elevation.png"
-        fig.savefig(elevation_path, dpi=dpi, bbox_inches="tight")
+        fig.savefig(elevation_path, dpi=args.dpi, bbox_inches="tight")
         fig.clear()
         logger.info(f"💾 Elevation map saved: {elevation_path}")
-        generated_files += 1
 
         logger.info("📄 Generating ASCII elevation map...")
-        ascii_elevation_map = get_ascii_elevation_map(map_data)
+        ascii_elevation_map = get_ascii_layer(map_data.elevation_map)
         ascii_elevation_path = output_dir / f"seed_{args.seed}_ascii_map_elevation.txt"
         with open(ascii_elevation_path, "w") as f:
             f.write(ascii_elevation_map)
         logger.info(f"💾 ASCII elevation map saved: {ascii_elevation_path}")
-        generated_files += 1
 
     # Rainfall map (available if rainfall was generated)
-    if generate_rainfall_map:
+    if args.dump_rainfall or args.dump_all:
         logger.info("🌧️ Generating rainfall map...")
-        fig = plot_rainfall_map(map_data, title=f"Rainfall Map (Seed: {args.seed})")
+        fig = plot_map_layer(
+            map_data.rainfall_map,
+            colormap="Blues",
+            title=f"Rainfall Map (Seed: {args.seed})",
+            label="Rainfall Intensity",
+        )
         rainfall_path = output_dir / f"seed_{args.seed}_layer_rainfall.png"
-        fig.savefig(rainfall_path, dpi=dpi, bbox_inches="tight")
+        fig.savefig(rainfall_path, dpi=args.dpi, bbox_inches="tight")
         fig.clear()
         logger.info(f"💾 Rainfall map saved: {rainfall_path}")
-        generated_files += 1
 
         logger.info("📄 Generating ASCII rainfall map...")
-        ascii_rainfall_map = get_ascii_rainfall_map(map_data)
+        ascii_rainfall_map = get_ascii_layer(map_data.rainfall_map)
         ascii_rainfall_path = output_dir / f"seed_{args.seed}_ascii_map_rainfall.txt"
         with open(ascii_rainfall_path, "w") as f:
             f.write(ascii_rainfall_map)
         logger.info(f"💾 ASCII rainfall map saved: {ascii_rainfall_path}")
-        generated_files += 1
 
     # Temperature map (available if temperature was generated)
-    if generate_temperature_map:
+    if args.dump_temperature or args.dump_all:
         logger.info("🌡️ Generating temperature map...")
-        fig = plot_temperature_map(
-            map_data, title=f"Temperature Map (Seed: {args.seed})"
+        fig = plot_map_layer(
+            map_data.temperature_map,
+            colormap="RdYlBu_r",
+            title=f"Temperature Map (Seed: {args.seed})",
+            label="Temperature",
         )
         temperature_path = output_dir / f"seed_{args.seed}_layer_temperature.png"
-        fig.savefig(temperature_path, dpi=dpi, bbox_inches="tight")
+        fig.savefig(temperature_path, dpi=args.dpi, bbox_inches="tight")
         fig.clear()
         logger.info(f"💾 Temperature map saved: {temperature_path}")
-        generated_files += 1
 
         logger.info("📄 Generating ASCII temperature map...")
-        ascii_temperature_map = get_ascii_temperature_map(map_data)
+        ascii_temperature_map = get_ascii_layer(map_data.temperature_map)
         ascii_temperature_path = (
             output_dir / f"seed_{args.seed}_ascii_map_temperature.txt"
         )
         with open(ascii_temperature_path, "w") as f:
             f.write(ascii_temperature_map)
         logger.info(f"💾 ASCII temperature map saved: {ascii_temperature_path}")
-        generated_files += 1
 
     # Accumulation map (available if accumulation was generated)
-    if generate_accumulation_map:
+    if args.dump_accumulation or args.dump_all:
         logger.info("💧 Generating accumulation map...")
-        fig = plot_accumulation_map(
-            map_data, title=f"Water Accumulation Map (Seed: {args.seed})"
+        fig = plot_map_layer(
+            map_data.accumulation_map,
+            colormap="Blues",
+            title=f"Water Accumulation Map (Seed: {args.seed})",
+            label="Water Accumulation",
         )
         accumulation_path = output_dir / f"seed_{args.seed}_layer_accumulation.png"
-        fig.savefig(accumulation_path, dpi=dpi, bbox_inches="tight")
+        fig.savefig(accumulation_path, dpi=args.dpi, bbox_inches="tight")
         fig.clear()
         logger.info(f"💾 Accumulation map saved: {accumulation_path}")
-        generated_files += 1
 
         logger.info("📄 Generating ASCII accumulation map...")
-        ascii_accumulation_map = get_ascii_accumulation_map(map_data)
+        ascii_accumulation_map = get_ascii_layer(map_data.accumulation_map)
         ascii_accumulation_path = (
             output_dir / f"seed_{args.seed}_ascii_map_accumulation.txt"
         )
         with open(ascii_accumulation_path, "w") as f:
             f.write(ascii_accumulation_map)
         logger.info(f"💾 ASCII accumulation map saved: {ascii_accumulation_path}")
-        generated_files += 1
 
-    # ASCII representation
-    if generate_ascii_map:
+    if args.dump_humidity or args.dump_all:
+        logger.info("💧 Generating humidity map...")
+        fig = plot_map_layer(
+            map_data.humidity_map,
+            colormap="Blues",
+            title=f"Humidity Map (Seed: {args.seed})",
+            label="Humidity",
+        )
+        humidity_path = output_dir / f"seed_{args.seed}_layer_humidity.png"
+        fig.savefig(humidity_path, dpi=args.dpi, bbox_inches="tight")
+        fig.clear()
+        logger.info(f"💾 Humidity map saved: {humidity_path}")
+
+        logger.info("📄 Generating ASCII humidity map...")
+        ascii_humidity_map = get_ascii_layer(map_data.humidity_map)
+        ascii_humidity_path = output_dir / f"seed_{args.seed}_ascii_map_humidity.txt"
+        with open(ascii_humidity_path, "w") as f:
+            f.write(ascii_humidity_map)
+        logger.info(f"💾 ASCII humidity map saved: {ascii_humidity_path}")
+
+    if args.dump_orographic or args.dump_all:
+        logger.info("⛰️ Generating orographic map...")
+        fig = plot_map_layer(
+            map_data.orographic_map,
+            colormap="terrain",
+            title=f"Orographic Map (Seed: {args.seed})",
+            label="Orographic Factor",
+        )
+        orographic_path = output_dir / f"seed_{args.seed}_layer_orographic.png"
+        fig.savefig(orographic_path, dpi=args.dpi, bbox_inches="tight")
+        fig.clear()
+        logger.info(f"💾 Orographic map saved: {orographic_path}")
+
+        logger.info("📄 Generating ASCII orographic map...")
+        ascii_orographic_map = get_ascii_layer(map_data.orographic_map)
+        ascii_orographic_path = (
+            output_dir / f"seed_{args.seed}_ascii_map_orographic.txt"
+        )
+        with open(ascii_orographic_path, "w") as f:
+            f.write(ascii_orographic_map)
+        logger.info(f"💾 ASCII orographic map saved: {ascii_orographic_path}")
+
+    if args.dump_ascii or args.dump_all:
         logger.info("📄 Generating ASCII map...")
         ascii_map = get_ascii_map(map_data)
         ascii_path = output_dir / f"seed_{args.seed}_ascii_map.txt"
         with open(ascii_path, "w") as f:
             f.write(ascii_map)
         logger.info(f"💾 ASCII map saved: {ascii_path}")
-        generated_files += 1
 
-    # 3D visualization
-    if generate_3d_map:
+    if args.dump_3dmap or args.dump_all:
         logger.info("🎲 Generating 3D visualization...")
         fig = plot_3d_map(map_data)
         map_3d_path = output_dir / f"seed_{args.seed}_3d_map.png"
-        fig.savefig(map_3d_path, dpi=dpi, bbox_inches="tight")
+        fig.savefig(map_3d_path, dpi=args.dpi, bbox_inches="tight")
         fig.clear()
         logger.info(f"💾 3D map saved: {map_3d_path}")
-        generated_files += 1
 
-    if generate_json_data:
+    if args.dump_json or args.dump_all:
         logger.info("📦 Saving map data as JSON...")
         json_path = output_dir / f"seed_{args.seed}_map_data.json"
         map_data.save_to_json(str(json_path))
         logger.info(f"💾 JSON data saved: {json_path}")
-        generated_files += 1
 
     # Main terrain map (always generated)
     logger.info("🖼️ Generating main terrain map...")
     fig = plot_map(map_data)
     main_map_path = output_dir / f"seed_{args.seed}_map.png"
-    fig.savefig(main_map_path, dpi=dpi, bbox_inches="tight", facecolor="white")
+    fig.savefig(main_map_path, dpi=args.dpi, bbox_inches="tight", facecolor="white")
     fig.clear()
     logger.info(f"💾 Main map saved: {main_map_path}")
-    generated_files += 1
 
     logger.info("🎉 Map generation and visualization finished!")
     logger.info(f"📁 All outputs saved to: {output_dir}")
-    logger.info(f"📊 Generated {generated_files} files")
 
 
 if __name__ == "__main__":

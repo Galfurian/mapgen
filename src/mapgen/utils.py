@@ -424,3 +424,45 @@ def _reconstruct_path(
         path.append(current)
     path.reverse()
     return path
+
+
+def normalize_array(
+    arr: np.ndarray,
+    min_val: float | None = None,
+    max_val: float | None = None,
+    clip: bool = True,
+    decimals: int | None = 4,
+) -> np.ndarray:
+    """
+    Normalize a numpy array to the [0, 1] range using min-max scaling.
+
+    Args:
+        arr (np.ndarray):
+            The input array to normalize.
+        min_val (float | None):
+            The minimum value to use for normalization. If None, uses np.min(arr).
+        max_val (float | None):
+            The maximum value to use for normalization. If None, uses np.max(arr).
+        clip (bool):
+            Whether to clip values to [0, 1] after normalization. Default is True.
+        decimals (int | None):
+            Number of decimal places to round to. If None, no rounding is applied.
+            Default is 4.
+
+    Returns:
+        np.ndarray:
+            The normalized array.
+    """
+    if min_val is None:
+        min_val = float(np.min(arr))
+    if max_val is None:
+        max_val = float(np.max(arr))
+    if max_val > min_val:
+        normalized = (arr - min_val) / (max_val - min_val)
+    else:
+        normalized = np.zeros_like(arr)
+    if clip:
+        normalized = np.clip(normalized, 0.0, 1.0)
+    if decimals is not None:
+        normalized = np.round(normalized, decimals=decimals)
+    return normalized

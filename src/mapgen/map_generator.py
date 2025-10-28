@@ -108,7 +108,6 @@ def generate_map(
     rainfall_temp_weight: float = 0.3,
     rainfall_humidity_weight: float = 0.4,
     rainfall_orographic_weight: float = 0.3,
-    rainfall_variation_strength: float = 0.1,
     forest_coverage: float = 0.15,
     desert_coverage: float = 0.10,
     max_lake_size: int | None = None,
@@ -262,7 +261,6 @@ def generate_map(
         temp_weight=rainfall_temp_weight,
         humidity_weight=rainfall_humidity_weight,
         orographic_weight=rainfall_orographic_weight,
-        variation_strength=rainfall_variation_strength,
     )
     rainfall_time = time.time() - rainfall_start
     logger.debug(f"Rainfall map generation completed in {rainfall_time:.3f}s")

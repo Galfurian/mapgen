@@ -457,6 +457,26 @@ class MapData(BaseModel):
         self.layers["temperature"] = value
 
     @property
+    def humidity_map(self) -> list[list[float]]:
+        """Get the humidity map layer."""
+        return self.layers.get("humidity", [])
+
+    @humidity_map.setter
+    def humidity_map(self, value: list[list[float]]) -> None:
+        """Set the humidity map layer."""
+        self.layers["humidity"] = value
+
+    @property
+    def orographic_map(self) -> list[list[float]]:
+        """Get the orographic map layer."""
+        return self.layers.get("orographic", [])
+
+    @orographic_map.setter
+    def orographic_map(self, value: list[list[float]]) -> None:
+        """Set the orographic map layer."""
+        self.layers["orographic"] = value
+
+    @property
     def accumulation_map(self) -> list[list[float]]:
         """Get the accumulation map layer."""
         return self.layers.get("accumulation", [])

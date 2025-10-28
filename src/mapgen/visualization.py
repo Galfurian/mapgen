@@ -415,184 +415,6 @@ def plot_3d_map(
     return fig
 
 
-def plot_elevation_map(
-    map_data: MapData,
-    colormap: str = "terrain",
-    title: str = "Elevation Map",
-) -> Figure:
-    """
-    Plot the elevation map as a standalone visualization.
-
-    Args:
-        map_data (MapData):
-            The map data containing elevation.
-        colormap (str):
-            Matplotlib colormap for elevation coloring.
-        title (str):
-            Title for the plot.
-
-    Returns:
-        Figure:
-            The matplotlib figure containing the elevation map.
-
-    """
-    if not map_data.elevation_map:
-        raise ValueError("Map data missing elevation_map")
-
-    fig, ax = plt.subplots(figsize=(10, 8))
-
-    elevation_array = np.array(map_data.elevation_map)
-    im = ax.imshow(elevation_array, cmap=colormap, origin="upper")
-
-    # Add colorbar
-    cbar = fig.colorbar(im, ax=ax, shrink=0.8, aspect=20)
-    cbar.set_label("Elevation")
-
-    ax.set_title(title)
-    ax.set_xlabel("X Coordinate")
-    ax.set_ylabel("Y Coordinate")
-    ax.set_xticks([])
-    ax.set_yticks([])
-
-    plt.tight_layout()
-    return fig
-
-
-def plot_rainfall_map(
-    map_data: MapData,
-    colormap: str = "Blues",
-    title: str = "Rainfall Map",
-) -> Figure:
-    """
-    Plot the rainfall map as a standalone visualization.
-
-    Args:
-        map_data (MapData):
-            The map data containing rainfall.
-        colormap (str):
-            Matplotlib colormap for rainfall coloring.
-        title (str):
-            Title for the plot.
-
-    Returns:
-        Figure:
-            The matplotlib figure containing the rainfall map.
-
-    """
-    if not map_data.rainfall_map:
-        raise ValueError("Map data missing rainfall_map")
-
-    fig, ax = plt.subplots(figsize=(10, 8))
-
-    rainfall_array = np.array(map_data.rainfall_map)
-    im = ax.imshow(rainfall_array, cmap=colormap, origin="upper")
-
-    # Add colorbar
-    cbar = fig.colorbar(im, ax=ax, shrink=0.8, aspect=20)
-    cbar.set_label("Rainfall Intensity")
-
-    ax.set_title(title)
-    ax.set_xlabel("X Coordinate")
-    ax.set_ylabel("Y Coordinate")
-    ax.set_xticks([])
-    ax.set_yticks([])
-
-    plt.tight_layout()
-    return fig
-
-
-def plot_temperature_map(
-    map_data: MapData,
-    colormap: str = "RdYlBu_r",
-    title: str = "Temperature Map",
-) -> Figure:
-    """
-    Plot the temperature map as a standalone visualization.
-
-    Args:
-        map_data (MapData):
-            The map data containing temperature.
-        colormap (str):
-            Matplotlib colormap for temperature coloring (default: RdYlBu_r for
-            hot=red, cold=blue).
-        title (str):
-            Title for the plot.
-
-    Returns:
-        Figure:
-            The matplotlib figure containing the temperature map.
-
-    """
-    if not map_data.temperature_map:
-        raise ValueError("Map data missing temperature_map")
-
-    fig, ax = plt.subplots(figsize=(10, 8))
-
-    temperature_array = np.array(map_data.temperature_map)
-    im = ax.imshow(temperature_array, cmap=colormap, origin="upper")
-
-    # Add colorbar
-    cbar = fig.colorbar(im, ax=ax, shrink=0.8, aspect=20)
-    cbar.set_label("Temperature")
-
-    ax.set_title(title)
-    ax.set_xlabel("X Coordinate")
-    ax.set_ylabel("Y Coordinate")
-    ax.set_xticks([])
-    ax.set_yticks([])
-
-    plt.tight_layout()
-    return fig
-
-
-def plot_accumulation_map(
-    map_data: MapData,
-    colormap: str = "Blues",
-    title: str = "Water Accumulation Map",
-) -> Figure:
-    """
-    Plot the water accumulation map as a standalone visualization.
-
-    This shows areas where water tends to accumulate based on terrain and
-    rainfall patterns. Higher values indicate areas prone to water accumulation
-    (valleys, low-lying areas), while lower values show areas where water
-    flows through quickly.
-
-    Args:
-        map_data (MapData):
-            The map data containing accumulation information.
-        colormap (str):
-            Matplotlib colormap for accumulation coloring (default: Blues).
-        title (str):
-            Title for the plot.
-
-    Returns:
-        Figure:
-            The matplotlib figure containing the accumulation map.
-
-    """
-    if not map_data.accumulation_map:
-        raise ValueError("Map data missing accumulation_map")
-
-    fig, ax = plt.subplots(figsize=(10, 8))
-
-    accumulation_array = np.array(map_data.accumulation_map)
-    im = ax.imshow(accumulation_array, cmap=colormap, origin="upper")
-
-    # Add colorbar
-    cbar = fig.colorbar(im, ax=ax, shrink=0.8, aspect=20)
-    cbar.set_label("Water Accumulation")
-
-    ax.set_title(title)
-    ax.set_xlabel("X Coordinate")
-    ax.set_ylabel("Y Coordinate")
-    ax.set_xticks([])
-    ax.set_yticks([])
-
-    plt.tight_layout()
-    return fig
-
-
 def get_ascii_map(map_data: MapData) -> str:
     """
     Generate an ASCII representation of the map.
@@ -616,167 +438,91 @@ def get_ascii_map(map_data: MapData) -> str:
     return "\n".join(lines)
 
 
-def get_ascii_elevation_map(map_data: MapData) -> str:
+def plot_map_layer(
+    data: list[list[float]],
+    colormap: str = "terrain",
+    title: str = "Map Layer",
+    label: str = "Value",
+) -> Figure:
     """
-    Generate an ASCII representation of the elevation map using digits 0-9.
+    Plot a generic map layer as a standalone visualization.
 
-    Elevation values are normalized to a 0-9 scale where:
-        - 0 represents lowest elevations (deepest ocean)
-        - 9 represents highest elevations (mountain peaks)
-
-    This is useful for debugging and analyzing elevation patterns without
-    requiring graphical output.
+    This function can be used to plot various map layers like elevation,
+    rainfall, temperature, or accumulation by specifying the data attribute.
 
     Args:
-        map_data (MapData):
-            The map data containing the elevation map.
+        data (list[list[float]]):
+            The 2D data layer to visualize.
+        colormap (str):
+            Matplotlib colormap for coloring the layer.
+        title (str):
+            Title for the plot.
+        label (str):
+            Label for the colorbar.
 
     Returns:
-        str:
-            The ASCII elevation map as a string with digits 0-9.
+        Figure:
+            The matplotlib figure containing the map layer.
 
     Raises:
         ValueError:
-            If elevation_map is not available in map_data.
+            If the specified data attribute is not available in map_data.
 
     """
-    if not map_data.elevation_map:
-        raise ValueError("Elevation map is not available in map_data")
+    fig, ax = plt.subplots(figsize=(10, 8))
 
-    elevation_array = np.array(map_data.elevation_map)
-    # Normalize elevation from -1.0 to 1.0 range to 0-9 scale First shift from
-    # [-1, 1] to [0, 2], then scale to [0, 9]
-    elevation_normalized = ((elevation_array + 1.0) * 4.5).astype(int)
-    elevation_normalized = np.clip(elevation_normalized, 0, 9)
+    data_array = np.array(data)
+    im = ax.imshow(data_array, cmap=colormap, origin="upper")
 
-    lines = []
-    for y in range(map_data.height):
-        line = ""
-        for x in range(map_data.width):
-            line += str(elevation_normalized[y, x])
-        lines.append(line)
-    return "\n".join(lines)
+    # Add colorbar
+    cbar = fig.colorbar(im, ax=ax, shrink=0.8, aspect=20)
+    cbar.set_label(label)
+
+    ax.set_title(title)
+    ax.set_xlabel("X Coordinate")
+    ax.set_ylabel("Y Coordinate")
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    plt.tight_layout()
+    return fig
 
 
-def get_ascii_rainfall_map(map_data: MapData) -> str:
+def get_ascii_layer(data: list[list[float]]) -> str:
     """
-    Generate an ASCII representation of the rainfall map using digits 0-9.
+    Generate an ASCII representation of a map layer using digits 0-9.
 
-    This visualization maps rainfall values to single digits where:
-        - 0 represents very dry areas (no rain)
-        - 9 represents very wet areas (maximum rainfall)
+    This function normalizes the specified data layer to a 0-9 scale and
+    generates an ASCII grid where each cell represents the normalized value.
 
     Args:
-        map_data (MapData):
-            The map data containing rainfall information.
+        data (list[list[float]]):
+            The 2D data layer to visualize.
 
     Returns:
         str:
-            The ASCII rainfall map as a string with digits 0-9.
+            The ASCII representation as a string with digits 0-9.
 
     Raises:
         ValueError:
-            If rainfall_map is not available in map_data.
+            If the specified data attribute is not available in map_data.
 
     """
-    if not map_data.rainfall_map:
-        raise ValueError("Rainfall map is not available in map_data")
+    data_array = np.array(data)
 
-    rainfall_array = np.array(map_data.rainfall_map)
-    # Normalize to 0-9 scale
-    rainfall_normalized = (rainfall_array * 9).astype(int)
-    rainfall_normalized = np.clip(rainfall_normalized, 0, 9)
-
-    lines = []
-    for y in range(map_data.height):
-        line = ""
-        for x in range(map_data.width):
-            line += str(rainfall_normalized[y, x])
-        lines.append(line)
-    return "\n".join(lines)
-
-
-def get_ascii_temperature_map(map_data: MapData) -> str:
-    """
-    Generate an ASCII representation of the temperature map using digits 0-9.
-
-    Temperature values are normalized to a 0-9 scale where:
-        - 0 represents coldest temperatures
-        - 9 represents hottest temperatures
-
-    This is useful for debugging and analyzing temperature patterns without
-    requiring graphical output.
-
-    Args:
-        map_data (MapData):
-            The map data containing the temperature map.
-
-    Returns:
-        str:
-            The ASCII temperature map as a string with digits 0-9.
-
-    Raises:
-        ValueError:
-            If temperature_map is not available in map_data.
-
-    """
-    if not map_data.temperature_map:
-        raise ValueError("Temperature map is not available in map_data")
-
-    temperature_array = np.array(map_data.temperature_map)
-    # Normalize to 0-9 scale
-    temperature_normalized = (temperature_array * 9).astype(int)
-    temperature_normalized = np.clip(temperature_normalized, 0, 9)
-
-    lines = []
-    for y in range(map_data.height):
-        line = ""
-        for x in range(map_data.width):
-            line += str(temperature_normalized[y, x])
-        lines.append(line)
-    return "\n".join(lines)
-
-
-def get_ascii_accumulation_map(map_data: MapData) -> str:
-    """
-    Generate an ASCII representation of the water accumulation map using digits 0-9.
-
-    Accumulation values are normalized to a 0-9 scale where:
-        - 0 represents areas with minimal water accumulation
-        - 9 represents areas with maximum water accumulation (valleys, wetlands)
-
-    This visualization helps identify drainage patterns and areas prone to
-    flooding or wetland formation.
-
-    Args:
-        map_data (MapData):
-            The map data containing the accumulation map.
-
-    Returns:
-        str:
-            The ASCII accumulation map as a string with digits 0-9.
-
-    Raises:
-        ValueError:
-            If accumulation_map is not available in map_data.
-
-    """
-    if not map_data.accumulation_map:
-        raise ValueError("Accumulation map is not available in map_data")
-
-    accumulation_array = np.array(map_data.accumulation_map)
-    # Normalize to 0-9 scale (accumulation can be > 1.0, so we need to handle this)
-    max_accumulation = np.max(accumulation_array)
-    if max_accumulation > 0:
-        accumulation_normalized = (accumulation_array / max_accumulation * 9).astype(int)
+    # Normalize to 0-9 scale using min-max scaling
+    min_val = np.min(data_array)
+    max_val = np.max(data_array)
+    if max_val > min_val:
+        normalized = (data_array - min_val) / (max_val - min_val) * 9
     else:
-        accumulation_normalized = np.zeros_like(accumulation_array, dtype=int)
-    accumulation_normalized = np.clip(accumulation_normalized, 0, 9)
+        normalized = np.zeros_like(data_array)
+    normalized = np.clip(normalized, 0, 9).astype(int)
 
     lines = []
-    for y in range(map_data.height):
+    for y in range(len(data)):
         line = ""
-        for x in range(map_data.width):
-            line += str(accumulation_normalized[y, x])
+        for x in range(len(data[y])):
+            line += str(normalized[y, x])
         lines.append(line)
     return "\n".join(lines)

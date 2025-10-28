@@ -18,17 +18,11 @@ from .tile_collections import (
     get_default_tile_collections,
 )
 from .visualization import (
-    get_ascii_accumulation_map,
-    get_ascii_elevation_map,
+    get_ascii_layer,
     get_ascii_map,
-    get_ascii_rainfall_map,
-    get_ascii_temperature_map,
     plot_3d_map,
-    plot_accumulation_map,
-    plot_elevation_map,
     plot_map,
-    plot_rainfall_map,
-    plot_temperature_map,
+    plot_map_layer,
 )
 
 __version__ = "0.1.0"
@@ -57,17 +51,11 @@ __all__ = [
     "WaterRoute",
     "flora",
     "generate_map",
-    "get_ascii_accumulation_map",
-    "get_ascii_elevation_map",
+    "get_ascii_layer",
     "get_ascii_map",
-    "get_ascii_rainfall_map",
-    "get_ascii_temperature_map",
     "get_default_tile_collections",
     "logger",
     "plot_3d_map",
-    "plot_accumulation_map",
-    "plot_elevation_map",
     "plot_map",
-    "plot_rainfall_map",
-    "plot_temperature_map",
+    "plot_map_layer",
 ]
