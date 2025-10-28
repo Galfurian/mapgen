@@ -22,6 +22,7 @@ from mapgen import (
     plot_rainfall_map,
     plot_temperature_map,
 )
+from mapgen.visualization import plot_3d_map
 
 
 def main() -> None:
@@ -283,12 +284,15 @@ Examples:
         logger.info(f"   {tile_name}: {count:,} tiles ({percentage:.1f}%)")
 
     # Generate ALL available visualizations automatically
-    dpi = 300
+    dpi = 900
     generated_files = 0
 
     generate_elevation_map = False
     generate_rainfall_map = False
     generate_temperature_map = False
+    generate_ascii_map = False
+    generate_3d_map = False
+    generate_json_data = False
 
     # Elevation map (always available since elevation_map is always initialized)
     if generate_elevation_map:
@@ -348,6 +352,33 @@ Examples:
         logger.info(f"💾 ASCII temperature map saved: {ascii_temperature_path}")
         generated_files += 1
 
+    # ASCII representation
+    if generate_ascii_map:
+        logger.info("📄 Generating ASCII map...")
+        ascii_map = get_ascii_map(map_data)
+        ascii_path = output_dir / f"seed_{args.seed}_ascii_map.txt"
+        with open(ascii_path, "w") as f:
+            f.write(ascii_map)
+        logger.info(f"💾 ASCII map saved: {ascii_path}")
+        generated_files += 1
+
+    # 3D visualization
+    if generate_3d_map:
+        logger.info("🎲 Generating 3D visualization...")
+        fig = plot_3d_map(map_data)
+        map_3d_path = output_dir / f"seed_{args.seed}_3d_map.png"
+        fig.savefig(map_3d_path, dpi=dpi, bbox_inches="tight")
+        fig.clear()
+        logger.info(f"💾 3D map saved: {map_3d_path}")
+        generated_files += 1
+
+    if generate_json_data:
+        logger.info("📦 Saving map data as JSON...")
+        json_path = output_dir / f"seed_{args.seed}_map_data.json"
+        map_data.save_to_json(str(json_path))
+        logger.info(f"💾 JSON data saved: {json_path}")
+        generated_files += 1
+
     # Main terrain map (always generated)
     logger.info("🖼️ Generating main terrain map...")
     fig = plot_map(map_data)
@@ -356,31 +387,6 @@ Examples:
     fig.clear()
     logger.info(f"💾 Main map saved: {main_map_path}")
     generated_files += 1
-
-    # ASCII representation
-    # logger.info("📄 Generating ASCII map...")
-    # ascii_map = get_ascii_map(map_data)
-    # ascii_path = output_dir / f"seed_{args.seed}_ascii_map.txt"
-    # with open(ascii_path, "w") as f:
-    #    f.write(ascii_map)
-    # logger.info(f"💾 ASCII map saved: {ascii_path}")
-    # generated_files += 1
-
-    # 3D visualization
-    # logger.info("🎲 Generating 3D visualization...")
-    # fig = plot_3d_map(map_data)
-    # map_3d_path = output_dir / f"seed_{args.seed}_3d_map.png"
-    # fig.savefig(map_3d_path, dpi=dpi, bbox_inches="tight")
-    # fig.clear()
-    # logger.info(f"💾 3D map saved: {map_3d_path}")
-    # generated_files += 1
-
-    # JSON data
-    # logger.info("📦 Saving map data as JSON...")
-    # json_path = output_dir / f"seed_{args.seed}_map_data.json"
-    # map_data.save_to_json(str(json_path))
-    # logger.info(f"💾 JSON data saved: {json_path}")
-    # generated_files += 1
 
     logger.info("🎉 Map generation and visualization finished!")
     logger.info(f"📁 All outputs saved to: {output_dir}")

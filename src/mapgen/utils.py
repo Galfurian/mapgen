@@ -95,6 +95,170 @@ def quadratic_bezier_points(
     return points
 
 
+def calculate_bezier_points_count(
+    start: Position,
+    end: Position,
+    min_points: int = 8,
+    max_points: int = 30,
+    points_per_unit: float = 0.5,
+) -> int:
+    """
+    Calculate the appropriate number of Bezier curve points based on distance.
+
+    This ensures smoother curves for longer distances while avoiding excessive
+    computation for short curves.
+
+    Args:
+        start (Position): Start position.
+        end (Position): End position.
+        min_points (int): Minimum number of points (default: 8).
+        max_points (int): Maximum number of points (default: 30).
+        points_per_unit (float): Points to add per unit distance (default: 0.5).
+
+    Returns:
+        int: Number of points to use for the Bezier curve.
+    """
+    distance = start.distance_to(end)
+    num_points = int(min_points + distance * points_per_unit)
+    return max(min_points, min(max_points, num_points))
+
+
+def curve_path(
+    path: list[Position],
+    map_data: MapData,
+    position_validator: Callable[[MapData, Position], bool],
+    control_factor: float = 2.0,
+    invert_gradients: bool = False,
+) -> list[Position]:
+    """
+    Aggressively simplify the path by trying to interpolate directly to the
+    farthest valid end point, falling back to closer points if invalid. Uses
+    Bezier curves for smooth bends. Tries both forward and backward directions
+    and chooses the one with fewer points.
+
+    Args:
+        path (list[Position]):
+            The path to simplify and curve.
+        map_data (MapData):
+            The map data containing elevation and terrain.
+        position_validator (Callable[[MapData, Position], bool]):
+            Function to validate if a position is valid for path placement.
+        control_factor (float):
+            Multiplier for gradient influence in control point calculation.
+        invert_gradients (bool):
+            If True, invert gradient direction for control point calculation.
+
+    Returns:
+        list[Position]:
+            The simplified, curved path.
+    """
+    if len(path) <= 2:
+        return path
+
+    # Try curving in forward direction
+    forward_path = curve_path_direction(
+        path,
+        map_data,
+        position_validator,
+        control_factor,
+        invert_gradients,
+        reverse=False,
+    )
+
+    # Try curving in backward direction
+    backward_path = curve_path_direction(
+        path,
+        map_data,
+        position_validator,
+        control_factor,
+        invert_gradients,
+        reverse=True,
+    )
+
+    # Return the one with fewer points
+    return forward_path if len(forward_path) <= len(backward_path) else backward_path
+
+
+def curve_path_direction(
+    path: list[Position],
+    map_data: MapData,
+    position_validator: Callable[[MapData, Position], bool],
+    control_factor: float = 2.0,
+    invert_gradients: bool = False,
+    reverse: bool = False,
+) -> list[Position]:
+    """
+    Aggressively simplify the path in one direction by trying to interpolate
+    directly to the farthest valid end point, falling back to closer points if invalid.
+
+    Args:
+        path (list[Position]):
+            The path to simplify and curve.
+        map_data (MapData):
+            The map data containing elevation and terrain.
+        position_validator (Callable[[MapData, Position], bool]):
+            Function to validate if a position is valid for path placement.
+        control_factor (float):
+            Multiplier for gradient influence in control point calculation.
+        invert_gradients (bool):
+            If True, invert gradient direction for control point calculation.
+        reverse (bool):
+            Whether to process the path in reverse order.
+
+    Returns:
+        list[Position]:
+            The simplified, curved path.
+    """
+    if len(path) <= 2:
+        return path
+
+    # Work on a copy and potentially reverse it
+    work_path = path[::-1] if reverse else path[:]
+
+    result = [work_path[0]]
+    current_idx = 0
+
+    while current_idx < len(work_path) - 1:
+        start = work_path[current_idx]
+        found = False
+
+        # Try farthest end first
+        for end_idx in range(len(work_path) - 1, current_idx, -1):
+            end = work_path[end_idx]
+
+            # Compute control point
+            control = compute_terrain_control_point(
+                start,
+                end,
+                map_data,
+                control_factor=control_factor,
+                invert_gradients=invert_gradients,
+            )
+
+            # Generate Bezier points
+            num_points = calculate_bezier_points_count(start, end)
+            bezier_points = quadratic_bezier_points(
+                start, control, end, num_points=num_points
+            )
+
+            # Check validity
+            if all(position_validator(map_data, pos) for pos in bezier_points):
+                # Valid: add the curve points (skip start)
+                result.extend(bezier_points[1:])
+                current_idx = end_idx
+                found = True
+                break
+
+        # No valid jump: add next point
+        if not found:
+            current_idx += 1
+            if current_idx < len(work_path):
+                result.append(work_path[current_idx])
+
+    # If we reversed, we need to reverse the result back
+    return result[::-1] if reverse else result
+
+
 def compute_terrain_control_point(
     start: Position,
     end: Position,

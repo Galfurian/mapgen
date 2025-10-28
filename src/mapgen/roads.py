@@ -11,7 +11,7 @@ import logging
 import random
 
 from .map_data import MapData, Position, Road, Settlement
-from .utils import a_star_search, compute_terrain_control_point, quadratic_bezier_points
+from .utils import a_star_search, curve_path
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ def generate_roads(
         nearest, path = result
 
         # Check if road already exists
-        if _road_exists(map_data, settlement.name, nearest.name):
+        if map_data.find_road(settlement, nearest):
             logger.debug(
                 f"Road between {settlement.name} and {nearest.name} already exists"
             )
@@ -128,80 +128,13 @@ def _curve_road_path(
             The simplified, curved path.
 
     """
-    if len(path) <= 2:
-        return path
-
-    # Try curving in forward direction
-    forward_path = _curve_road_path_direction(path, map_data, reverse=False)
-    
-    # Try curving in backward direction
-    backward_path = _curve_road_path_direction(path, map_data, reverse=True)
-    
-    # Return the one with fewer points
-    return forward_path if len(forward_path) <= len(backward_path) else backward_path
-
-
-def _curve_road_path_direction(
-    path: list[Position],
-    map_data: MapData,
-    reverse: bool = False,
-) -> list[Position]:
-    """
-    Aggressively simplify the path in one direction by trying to interpolate 
-    directly to the farthest valid end point, falling back to closer points if invalid.
-
-    Args:
-        path (list[Position]):
-            The path to simplify and curve.
-        map_data (MapData):
-            The map data containing elevation and terrain.
-        reverse (bool):
-            Whether to process the path in reverse order.
-
-    Returns:
-        list[Position]:
-            The simplified, curved path.
-
-    """
-    if len(path) <= 2:
-        return path
-
-    # Work on a copy and potentially reverse it
-    work_path = path[::-1] if reverse else path[:]
-    
-    result = [work_path[0]]
-    current_idx = 0
-
-    while current_idx < len(work_path) - 1:
-        start = work_path[current_idx]
-        found = False
-
-        # Try farthest end first
-        for end_idx in range(len(work_path) - 1, current_idx, -1):
-            end = work_path[end_idx]
-
-            # Compute control point
-            control = compute_terrain_control_point(start, end, map_data)
-
-            # Generate Bezier points
-            bezier_points = quadratic_bezier_points(start, control, end, num_points=20)
-
-            # Check validity.
-            if all(_road_placement_validation(map_data, pos) for pos in bezier_points):
-                # Valid: add the curve points (skip start).
-                result.extend(bezier_points[1:])
-                current_idx = end_idx
-                found = True
-                break
-
-        # No valid jump: add next point
-        if not found:
-            current_idx += 1
-            if current_idx < len(work_path):
-                result.append(work_path[current_idx])
-
-    # If we reversed, we need to reverse the result back
-    return result[::-1] if reverse else result
+    return curve_path(
+        path,
+        map_data,
+        _road_placement_validation,
+        control_factor=1.5,
+        invert_gradients=True,
+    )
 
 
 def _find_nearest_settlement_worth_connecting(
@@ -308,27 +241,3 @@ def _shortest_path_distance(
     if dist[end_name] == float("inf"):
         return None
     return dist[end_name]
-
-
-def _road_exists(map_data: MapData, start_name: str, end_name: str) -> bool:
-    """
-    Check if a road exists between two settlements.
-
-    Args:
-        map_data (MapData):
-            The map data.
-        start_name (str):
-            Name of the start settlement.
-        end_name (str):
-            Name of the end settlement.
-
-    Returns:
-        bool:
-            True if a road exists, False otherwise.
-
-    """
-    return any(
-        (road.start_settlement == start_name and road.end_settlement == end_name)
-        or (road.start_settlement == end_name and road.end_settlement == start_name)
-        for road in map_data.roads
-    )

@@ -806,3 +806,62 @@ class MapData(BaseModel):
             if matches:
                 matching_tiles.append(tile)
         return matching_tiles
+
+    def find_road(
+        self,
+        settlement_a: Settlement,
+        settlement_b: Settlement,
+    ) -> Road | None:
+        """
+        Find the road between two settlements.
+
+        Args:
+            settlement_a (Settlement):
+                The first settlement.
+            settlement_b (Settlement):
+                The second settlement.
+
+        Returns:
+            Road | None:
+                The road between the two settlements, or None if not found.
+        """
+        for road in self.roads:
+            if (
+                road.start_settlement == settlement_a.name
+                and road.end_settlement == settlement_b.name
+            ) or (
+                road.start_settlement == settlement_b.name
+                and road.end_settlement == settlement_a.name
+            ):
+                return road
+        return None
+
+    def find_water_route(
+        self,
+        settlement_a: Settlement,
+        settlement_b: Settlement,
+    ) -> WaterRoute | None:
+        """
+        Find the water route between two settlements.
+
+        Args:
+            settlement_a (Settlement):
+                The first settlement.
+            settlement_b (Settlement):
+                The second settlement.
+
+        Returns:
+            WaterRoute | None:
+                The water route between the two settlements, or None if not
+                found.
+        """
+        for route in self.water_routes:
+            if (
+                route.start_harbor == settlement_a.name
+                and route.end_harbor == settlement_b.name
+            ) or (
+                route.start_harbor == settlement_b.name
+                and route.end_harbor == settlement_a.name
+            ):
+                return route
+        return None
