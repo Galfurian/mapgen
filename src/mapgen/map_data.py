@@ -401,6 +401,10 @@ class MapData(BaseModel):
 
     """
 
+    sea_level: float = Field(
+        default=0.0,
+        description="Elevation threshold below which tiles are considered ocean.",
+    )
     tiles: list[Tile] = Field(
         default_factory=list,
         description="List of unique tile types used in the map.",

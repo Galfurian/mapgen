@@ -18,8 +18,6 @@ logger = logging.getLogger(__name__)
 
 def generate_rainfall_map(
     map_data: MapData,
-    width: int,
-    height: int,
     temp_weight: float = 0.3,
     humidity_weight: float = 0.4,
     orographic_weight: float = 0.3,
@@ -35,10 +33,6 @@ def generate_rainfall_map(
     Args:
         map_data (MapData):
             The map data to update.
-        width (int):
-            The width of the rainfall map.
-        height (int):
-            The height of the rainfall map.
         temp_weight (float):
             Weight for temperature factor in rainfall calculation.
         humidity_weight (float):
@@ -55,8 +49,8 @@ def generate_rainfall_map(
     # - lacunarity: 2.0 (standard frequency scaling)
     # - base: 1 (unique seed for temperature patterns)
     temperature_noise: np.ndarray = generate_noise_grid(
-        width=width,
-        height=height,
+        width=map_data.width,
+        height=map_data.height,
         scale=100,
         octaves=4,
         persistence=0.6,
@@ -71,8 +65,8 @@ def generate_rainfall_map(
     # - lacunarity: 2.2 (slightly higher for different visual patterns)
     # - base: 2 (different seed from temperature)
     humidity_noise: np.ndarray = generate_noise_grid(
-        width=width,
-        height=height,
+        width=map_data.width,
+        height=map_data.height,
         scale=80,
         octaves=5,
         persistence=0.5,
@@ -87,8 +81,8 @@ def generate_rainfall_map(
     # - lacunarity: 1.8 (lower value for different frequency relationships)
     # - base: 3 (different seed from other climate factors)
     elevation_noise: np.ndarray = generate_noise_grid(
-        width=width,
-        height=height,
+        width=map_data.width,
+        height=map_data.height,
         scale=150.0,
         octaves=3,
         persistence=0.7,
@@ -103,8 +97,8 @@ def generate_rainfall_map(
     # - lacunarity: 2.5 (higher value for different small-scale patterns)
     # - base: 4 (different seed from other factors)
     variation_noise: np.ndarray = generate_noise_grid(
-        width=width,
-        height=height,
+        width=map_data.width,
+        height=map_data.height,
         scale=20.0,
         octaves=2,
         persistence=0.3,

@@ -219,6 +219,7 @@ def generate_map(
     logger.debug("Initializing map data")
     # Create the map data object with tiles and empty grid.
     map_data = MapData(
+        sea_level=sea_level,
         tiles=tile_collections.all_tiles,
         grid=[[0 for _ in range(width)] for _ in range(height)],
     )
@@ -228,13 +229,10 @@ def generate_map(
     terrain_start = time.time()
     terrain.generate_elevation_map(
         map_data,
-        width,
-        height,
         scale,
         octaves,
         persistence,
         lacunarity,
-        sea_level,
     )
     terrain_time = time.time() - terrain_start
     logger.debug(f"Elevation map generation completed in {terrain_time:.3f}s")
@@ -256,11 +254,9 @@ def generate_map(
     rainfall_start = time.time()
     hydrology.generate_rainfall_map(
         map_data,
-        width,
-        height,
-        temp_weight=rainfall_temp_weight,
-        humidity_weight=rainfall_humidity_weight,
-        orographic_weight=rainfall_orographic_weight,
+        rainfall_temp_weight,
+        rainfall_humidity_weight,
+        rainfall_orographic_weight,
     )
     rainfall_time = time.time() - rainfall_start
     logger.debug(f"Rainfall map generation completed in {rainfall_time:.3f}s")

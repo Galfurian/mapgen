@@ -20,13 +20,10 @@ logger = logging.getLogger(__name__)
 
 def generate_elevation_map(
     map_data: MapData,
-    width: int,
-    height: int,
     scale: float = 50.0,
     octaves: int = 6,
     persistence: float = 0.5,
     lacunarity: float = 2.0,
-    sea_level: float = 0.0,
 ) -> None:
     """
     Generate an elevation map using Perlin noise.
@@ -34,10 +31,6 @@ def generate_elevation_map(
     Args:
         map_data (MapData):
             The map data to store the elevation map in.
-        width (int):
-            The width of the elevation map.
-        height (int):
-            The height of the elevation map.
         scale (float):
             The scale of the noise.
         octaves (int):
@@ -46,13 +39,11 @@ def generate_elevation_map(
             The persistence value.
         lacunarity (float):
             The lacunarity value.
-        sea_level (float):
-            The sea level elevation (controls land/sea ratio).
 
     """
     elevation_map = generate_noise_grid(
-        width=width,
-        height=height,
+        width=map_data.width,
+        height=map_data.height,
         scale=scale,
         octaves=octaves,
         persistence=persistence,
@@ -67,8 +58,8 @@ def generate_elevation_map(
         elevation_map = (elevation_map - min_val) / (max_val - min_val) * 2 - 1
 
     # Adjust the elevation map based on sea level to control land/sea ratio.
-    if sea_level != 0.0:
-        shifted = elevation_map - sea_level
+    if map_data.sea_level != 0.0:
+        shifted = elevation_map - map_data.sea_level
         sea_mask = shifted < 0
         land_mask = shifted >= 0
 
