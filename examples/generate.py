@@ -12,11 +12,13 @@ from pathlib import Path
 
 from mapgen import (
     generate_map,
+    get_ascii_accumulation_map,
     get_ascii_elevation_map,
     get_ascii_map,
     get_ascii_rainfall_map,
     get_ascii_temperature_map,
     logger,
+    plot_accumulation_map,
     plot_elevation_map,
     plot_map,
     plot_rainfall_map,
@@ -290,6 +292,7 @@ Examples:
     generate_elevation_map = False
     generate_rainfall_map = False
     generate_temperature_map = False
+    generate_accumulation_map = False
     generate_ascii_map = False
     generate_3d_map = False
     generate_json_data = False
@@ -350,6 +353,28 @@ Examples:
         with open(ascii_temperature_path, "w") as f:
             f.write(ascii_temperature_map)
         logger.info(f"💾 ASCII temperature map saved: {ascii_temperature_path}")
+        generated_files += 1
+
+    # Accumulation map (available if accumulation was generated)
+    if generate_accumulation_map:
+        logger.info("💧 Generating accumulation map...")
+        fig = plot_accumulation_map(
+            map_data, title=f"Water Accumulation Map (Seed: {args.seed})"
+        )
+        accumulation_path = output_dir / f"seed_{args.seed}_layer_accumulation.png"
+        fig.savefig(accumulation_path, dpi=dpi, bbox_inches="tight")
+        fig.clear()
+        logger.info(f"💾 Accumulation map saved: {accumulation_path}")
+        generated_files += 1
+
+        logger.info("📄 Generating ASCII accumulation map...")
+        ascii_accumulation_map = get_ascii_accumulation_map(map_data)
+        ascii_accumulation_path = (
+            output_dir / f"seed_{args.seed}_ascii_map_accumulation.txt"
+        )
+        with open(ascii_accumulation_path, "w") as f:
+            f.write(ascii_accumulation_map)
+        logger.info(f"💾 ASCII accumulation map saved: {ascii_accumulation_path}")
         generated_files += 1
 
     # ASCII representation

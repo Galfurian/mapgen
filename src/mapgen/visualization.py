@@ -545,6 +545,54 @@ def plot_temperature_map(
     return fig
 
 
+def plot_accumulation_map(
+    map_data: MapData,
+    colormap: str = "Blues",
+    title: str = "Water Accumulation Map",
+) -> Figure:
+    """
+    Plot the water accumulation map as a standalone visualization.
+
+    This shows areas where water tends to accumulate based on terrain and
+    rainfall patterns. Higher values indicate areas prone to water accumulation
+    (valleys, low-lying areas), while lower values show areas where water
+    flows through quickly.
+
+    Args:
+        map_data (MapData):
+            The map data containing accumulation information.
+        colormap (str):
+            Matplotlib colormap for accumulation coloring (default: Blues).
+        title (str):
+            Title for the plot.
+
+    Returns:
+        Figure:
+            The matplotlib figure containing the accumulation map.
+
+    """
+    if not map_data.accumulation_map:
+        raise ValueError("Map data missing accumulation_map")
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    accumulation_array = np.array(map_data.accumulation_map)
+    im = ax.imshow(accumulation_array, cmap=colormap, origin="upper")
+
+    # Add colorbar
+    cbar = fig.colorbar(im, ax=ax, shrink=0.8, aspect=20)
+    cbar.set_label("Water Accumulation")
+
+    ax.set_title(title)
+    ax.set_xlabel("X Coordinate")
+    ax.set_ylabel("Y Coordinate")
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    plt.tight_layout()
+    return fig
+
+
 def get_ascii_map(map_data: MapData) -> str:
     """
     Generate an ASCII representation of the map.
@@ -685,5 +733,50 @@ def get_ascii_temperature_map(map_data: MapData) -> str:
         line = ""
         for x in range(map_data.width):
             line += str(temperature_normalized[y, x])
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def get_ascii_accumulation_map(map_data: MapData) -> str:
+    """
+    Generate an ASCII representation of the water accumulation map using digits 0-9.
+
+    Accumulation values are normalized to a 0-9 scale where:
+        - 0 represents areas with minimal water accumulation
+        - 9 represents areas with maximum water accumulation (valleys, wetlands)
+
+    This visualization helps identify drainage patterns and areas prone to
+    flooding or wetland formation.
+
+    Args:
+        map_data (MapData):
+            The map data containing the accumulation map.
+
+    Returns:
+        str:
+            The ASCII accumulation map as a string with digits 0-9.
+
+    Raises:
+        ValueError:
+            If accumulation_map is not available in map_data.
+
+    """
+    if not map_data.accumulation_map:
+        raise ValueError("Accumulation map is not available in map_data")
+
+    accumulation_array = np.array(map_data.accumulation_map)
+    # Normalize to 0-9 scale (accumulation can be > 1.0, so we need to handle this)
+    max_accumulation = np.max(accumulation_array)
+    if max_accumulation > 0:
+        accumulation_normalized = (accumulation_array / max_accumulation * 9).astype(int)
+    else:
+        accumulation_normalized = np.zeros_like(accumulation_array, dtype=int)
+    accumulation_normalized = np.clip(accumulation_normalized, 0, 9)
+
+    lines = []
+    for y in range(map_data.height):
+        line = ""
+        for x in range(map_data.width):
+            line += str(accumulation_normalized[y, x])
         lines.append(line)
     return "\n".join(lines)
