@@ -165,6 +165,10 @@ class Tile(BaseModel):
         default=False,
         description="Whether this tile can support vegetation growth.",
     )
+    suitability_params: dict | None = Field(
+        default=None,
+        description="Parameters defining environmental suitability and growth dynamics for vegetation tiles.",
+    )
 
     # Water properties
     is_water: bool = Field(
@@ -848,6 +852,23 @@ def get_default_tile_collections() -> list[Tile]:
             is_walkable=True,
             movement_cost=1.2,
             is_vegetation=True,
+            suitability_params={
+                # Viability ranges (0.0-1.0 normalized)
+                "temperature_range": (0.2, 0.8),
+                "rainfall_range": (0.4, 1.0),
+                "elevation_range": (0.0, 0.7),
+                "humidity_range": (0.3, 1.0),
+                # Growth dynamics
+                "growth_probability": 0.8,
+                "competition_strength": 0.8,
+                "seed_threshold": 0.6,
+                "mortality_rate": 0.001,
+                "max_age": 1200,
+                # Environmental modifiers
+                "water_proximity_bonus": 3.5,
+                "slope_penalty": 0.1,
+                "clustering_strength": 0.1,
+            },
         ),
         Tile(
             id=5,
