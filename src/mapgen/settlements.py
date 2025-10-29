@@ -128,7 +128,7 @@ def _is_position_suitable_for_settlement(
     # Get the tile at the position.
     tile = map_data.get_terrain(position.x, position.y)
     # Check if the tile allows settlement building.
-    return tile.can_build_settlement
+    return tile.habitability > 0.5
 
 
 def _does_settlement_overlaps(
@@ -392,7 +392,8 @@ def _move_settlement_to_coast(map_data: MapData, settlement: Settlement) -> None
     min_dist = float("inf")
     for y in range(map_data.height):
         for x in range(map_data.width):
-            if map_data.get_terrain(x, y).can_build_settlement:
+            tile = map_data.get_terrain(x, y)
+            if tile.habitability > 0.5:
                 neighbors = map_data.get_neighbors(x, y, include_diagonals=True)
                 has_water = any(
                     map_data.get_terrain(n.x, n.y).is_salt_water for n in neighbors

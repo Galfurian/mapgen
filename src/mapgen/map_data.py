@@ -86,7 +86,7 @@ class Tile(BaseModel):
             Human-readable name for this tile type.
         description (str):
             Detailed description of this tile type.
-        walkable (bool):
+        is_walkable (bool):
             Whether units can move through this tile.
         movement_cost (float):
             Base cost for pathfinding algorithms (higher = harder to traverse).
@@ -96,10 +96,6 @@ class Tile(BaseModel):
             Whether settlements and buildings can be constructed on this tile.
         habitability (float):
             How suitable this tile is for settlements (0.0 to 1.0).
-        road_buildable (bool):
-            Whether roads can be built on or through this tile.
-        elevation_penalty (float):
-            Additional pathfinding cost due to elevation changes.
         elevation_influence (float):
             How much this tile affects terrain elevation during generation.
         smoothing_weight (float):
@@ -108,8 +104,6 @@ class Tile(BaseModel):
             Minimum elevation for terrain generation.
         elevation_max (float):
             Maximum elevation for terrain generation.
-        terrain_priority (int):
-            Priority for terrain assignment (higher = preferred).
         smoothing_priority (int):
             Priority for smoothing assignment (higher = preferred).
         diggable (bool):
@@ -134,41 +128,7 @@ class Tile(BaseModel):
     is_base_tile: bool = Field(
         description="Whether this tile is a base terrain tile.",
     )
-    # Core properties that drive all algorithms
-    walkable: bool = Field(
-        description="Whether units can move through this tile.",
-    )
-    movement_cost: float = Field(
-        description="Base cost for pathfinding algorithms (higher = harder to traverse).",
-    )
-    # Settlement and building
-    habitability: float = Field(
-        description="How suitable this tile is for settlements (0.0 to 1.0).",
-    )
-    # Road generation
-    road_buildable: bool = Field(
-        description="Whether roads can be built on or through this tile.",
-    )
-    elevation_penalty: float = Field(
-        description="Additional pathfinding cost due to elevation changes.",
-    )
-    # Terrain generation
-    elevation_min: float = Field(
-        default=0.0,
-        description="Minimum elevation for terrain generation.",
-    )
-    elevation_max: float = Field(
-        default=1.0,
-        description="Maximum elevation for terrain generation.",
-    )
-    terrain_priority: int = Field(
-        default=0,
-        description="Priority for terrain assignment (higher = preferred).",
-    )
-    diggable: bool = Field(
-        default=False,
-        description="Whether this tile can be dug into (e.g., floor).",
-    )
+
     # Visualization (optional - can be computed from other properties)
     symbol: str = Field(
         description="Character symbol used for text-based map representation.",
@@ -176,11 +136,36 @@ class Tile(BaseModel):
     color: tuple[float, float, float] = Field(
         description="RGB color tuple for visualization (0.0 to 1.0).",
     )
+
+    # Settlement and building
+    habitability: float = Field(
+        description="How suitable this tile is for settlements (0.0 to 1.0).",
+    )
+
+    # Movement properties
+    is_walkable: bool = Field(
+        description="Whether units can move through this tile.",
+    )
+    movement_cost: float = Field(
+        description="Base cost for pathfinding algorithms (higher = harder to traverse).",
+    )
+
+    # Terrain generation
+    elevation_threshold: float = Field(
+        default=0.0,
+        description="Elevation threshold for terrain assignment.",
+    )
+
     # Vegetation properties
     is_vegetation: bool = Field(
         default=False,
         description="Whether this tile is covered by vegetation.",
     )
+    can_host_vegetation: bool = Field(
+        default=False,
+        description="Whether this tile can support vegetation growth.",
+    )
+
     # Water properties
     is_water: bool = Field(
         default=False,
@@ -194,65 +179,16 @@ class Tile(BaseModel):
         default=False,
         description="Whether this water tile represents flowing water (rivers, streams).",
     )
-    # Vegetation support
-    can_host_vegetation: bool = Field(
-        default=False,
-        description="Whether this base terrain tile can support vegetation growth.",
-    )
 
     def __hash__(self) -> int:
         """Return hash based on all tile properties."""
         return hash(
             (
-                self.walkable,
-                self.movement_cost,
-                self.habitability,
-                self.road_buildable,
-                self.elevation_penalty,
-                self.elevation_min,
-                self.elevation_max,
-                self.terrain_priority,
-                self.diggable,
-                self.symbol,
-                self.color,
+                self.id,
                 self.name,
                 self.description,
-                self.is_water,
-                self.is_salt_water,
-                self.is_flowing_water,
             )
         )
-
-    # Computed properties
-    @property
-    def is_walkable(self) -> bool:
-        """Check if this tile can be walked on."""
-        return self.walkable
-
-    @property
-    def can_build_settlement(self) -> bool:
-        """Check if settlements can be built on this tile."""
-        return self.habitability > 0.5
-
-    @property
-    def can_build_road(self) -> bool:
-        """Check if roads can be built on this tile."""
-        return self.road_buildable
-
-    @property
-    def pathfinding_cost(self) -> float:
-        """Get the total cost for pathfinding algorithms."""
-        return self.movement_cost + self.elevation_penalty
-
-    @property
-    def is_fresh_water(self) -> bool:
-        """Check if this tile is fresh water."""
-        return self.is_water and not self.is_salt_water
-
-    @property
-    def is_still_water(self) -> bool:
-        """Check if this tile is still water."""
-        return self.is_water and not self.is_flowing_water
 
 
 class BodyOfWater(BaseModel):
@@ -268,6 +204,9 @@ class BodyOfWater(BaseModel):
 
     is_salt_water: bool = Field(
         description="Whether this body of water is salt water, or not.",
+    )
+    is_edge_connected: bool = Field(
+        description="Whether this body of water is connected to the map edge.",
     )
     tiles: list[Position] = Field(
         default_factory=list,
@@ -506,30 +445,6 @@ class MapData(BaseModel):
             return 0
         return len(self.grid[0])
 
-    def get_elevation(self, x: int, y: int) -> float:
-        """
-        Get the elevation at the specified coordinates.
-
-        Args:
-            x (int):
-                The x coordinate.
-            y (int):
-                The y coordinate.
-
-        Returns:
-            float:
-                The elevation at the coordinates (0.0 if elevation data not
-                available).
-
-        Raises:
-            IndexError:
-                If coordinates are out of bounds when elevation data exists.
-
-        """
-        if not self.elevation_map:
-            return 0.0
-        return self.elevation_map[y][x]
-
     def get_terrain(self, x: int, y: int) -> Tile:
         """
         Get the terrain tile at the specified coordinates.
@@ -748,30 +663,6 @@ class MapData(BaseModel):
         """Get the grid as list of list of tiles."""
         return [[self.tiles[i] for i in row] for row in self.grid]
 
-    def get_rainfall(self, x: int, y: int) -> float:
-        """
-        Get the rainfall at the specified coordinates.
-
-        Args:
-            x (int):
-                The x coordinate.
-            y (int):
-                The y coordinate.
-
-        Returns:
-            float:
-                The rainfall at the coordinates (0.0 if rainfall data not
-                available).
-
-        Raises:
-            IndexError:
-                If coordinates are out of bounds when rainfall data exists.
-
-        """
-        if not self.rainfall_map:
-            return 0.0
-        return self.rainfall_map[y][x]
-
     def find_tiles_by_properties(self, **properties) -> list[Tile]:
         """
         Find tiles that match the given properties.
@@ -885,16 +776,15 @@ def get_default_tile_collections() -> list[Tile]:
             name="sea",
             description="Sea water terrain",
             is_base_tile=True,
-            walkable=True,
-            movement_cost=2.0,
-            habitability=0.0,
-            road_buildable=False,
-            elevation_penalty=0.0,
-            elevation_min=-1.0,
-            elevation_max=+0.0,
-            terrain_priority=1,
             symbol="~",
             color=(0.2, 0.5, 1.0),
+            # Settlement and building properties
+            habitability=0.0,
+            # Terrain generation properties
+            elevation_threshold=0.0,
+            #
+            is_walkable=True,
+            movement_cost=2.0,
             is_water=True,
             is_salt_water=True,
             is_flowing_water=False,
@@ -904,32 +794,30 @@ def get_default_tile_collections() -> list[Tile]:
             name="coast",
             description="Coastal shoreline terrain",
             is_base_tile=True,
-            walkable=True,
-            movement_cost=1.5,
-            habitability=0.6,
-            road_buildable=True,
-            elevation_penalty=0.0,
-            elevation_min=0.0,
-            elevation_max=0.05,
-            terrain_priority=2,
             symbol="c",
             color=(0.9647, 0.8627, 0.7412),
+            # Settlement and building properties
+            habitability=0.6,
+            # Terrain generation properties
+            elevation_threshold=0.02,
+            #
+            is_walkable=True,
+            movement_cost=1.5,
         ),
         Tile(
             id=2,
             name="plains",
             description="Open plains",
             is_base_tile=True,
-            walkable=True,
-            movement_cost=1.0,
-            habitability=0.9,
-            road_buildable=True,
-            elevation_penalty=0.0,
-            elevation_min=0.05,
-            elevation_max=0.5,
-            terrain_priority=3,
             symbol=".",
             color=(0.8, 0.9, 0.6),
+            # Settlement and building properties
+            habitability=0.9,
+            # Terrain generation properties
+            elevation_threshold=0.5,
+            #
+            is_walkable=True,
+            movement_cost=1.0,
             can_host_vegetation=True,
         ),
         Tile(
@@ -937,32 +825,28 @@ def get_default_tile_collections() -> list[Tile]:
             name="mountain",
             description="Mountain terrain",
             is_base_tile=True,
-            walkable=False,
-            movement_cost=1.0,
-            habitability=0.1,
-            road_buildable=False,
-            elevation_penalty=0.0,
-            elevation_min=0.5,
-            elevation_max=1.0,
-            terrain_priority=5,
             symbol="^",
             color=(0.5, 0.4, 0.3),
+            # Settlement and building properties
+            habitability=0.1,
+            # Terrain generation properties
+            elevation_threshold=1.0,
+            #
+            is_walkable=False,
+            movement_cost=1.0,
         ),
         Tile(
             id=4,
             name="forest",
             description="Dense forest with tall trees",
             is_base_tile=False,
-            walkable=True,
-            movement_cost=1.2,
-            habitability=0.7,
-            road_buildable=True,
-            elevation_penalty=0.0,
-            elevation_min=0.0,
-            elevation_max=0.6,
-            terrain_priority=4,
             symbol="F",
             color=(0.2, 0.6, 0.2),
+            # Settlement and building properties
+            habitability=0.7,
+            #
+            is_walkable=True,
+            movement_cost=1.2,
             is_vegetation=True,
         ),
         Tile(
@@ -970,16 +854,13 @@ def get_default_tile_collections() -> list[Tile]:
             name="river",
             description="Flowing river water",
             is_base_tile=False,
-            walkable=True,
-            movement_cost=1.5,
-            habitability=0.0,
-            road_buildable=False,
-            elevation_penalty=0.0,
-            elevation_min=-0.5,
-            elevation_max=1.0,
-            terrain_priority=1,
             symbol="R",
             color=(0.2, 0.6, 0.7),
+            # Settlement and building properties
+            habitability=0.0,
+            #
+            is_walkable=True,
+            movement_cost=1.5,
             is_water=True,
             is_salt_water=False,
             is_flowing_water=True,
@@ -989,16 +870,13 @@ def get_default_tile_collections() -> list[Tile]:
             name="lake",
             description="Fresh water lake",
             is_base_tile=False,
-            walkable=True,
-            movement_cost=1.5,
-            habitability=0.0,
-            road_buildable=False,
-            elevation_penalty=0.0,
-            elevation_min=-0.5,
-            elevation_max=1.0,
-            terrain_priority=1,
             symbol="L",
             color=(0.3, 0.6, 0.7),
+            # Settlement and building properties
+            habitability=0.0,
+            #
+            is_walkable=True,
+            movement_cost=1.5,
             is_water=True,
             is_salt_water=False,
             is_flowing_water=False,

@@ -39,8 +39,8 @@ def initialize_map_data(
     if not base_tiles:
         logger.warning("No base terrain tiles found in tile catalog")
         return
-    # Sort the base tiles by terrain priority.
-    base_tiles.sort(key=lambda t: t.terrain_priority)
+    # Sort the base tiles by elevation threshold ascending.
+    base_tiles.sort(key=lambda t: t.elevation_threshold)
     # Pick the highest priority base tile.
     base_tile = base_tiles[0]
     logger.debug(
@@ -194,8 +194,8 @@ def apply_base_terrain(
         logger.warning("No base terrain tiles found in tile catalog")
         return
 
-    # Sort the base tiles by terrain priority, highest priority first.
-    tiles.sort(key=lambda t: t.terrain_priority, reverse=True)
+    # Sort the base tiles by elevation threshold, lowest first.
+    tiles.sort(key=lambda t: t.elevation_threshold)
 
     logger.debug(f"Applying terrain features using {len(tiles)} terrain tiles")
 
@@ -241,13 +241,11 @@ def _apply_suitable_tile(
 
     """
     # Get the elevation at the current position.
-    elevation = map_data.get_elevation(x, y)
+    elevation = map_data.elevation_map[y][x]
 
     # Find tiles that match the elevation range.
     suitable_tiles = [
-        tile
-        for tile in terrain_tiles
-        if tile.elevation_min <= elevation <= tile.elevation_max
+        tile for tile in terrain_tiles if tile.elevation_threshold >= elevation
     ]
 
     # If no tiles match, return False.

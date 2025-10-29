@@ -252,20 +252,26 @@ def identify_bodies_of_water(map_data: MapData) -> None:
         # Get all positions in this water body.
         body_positions = np.where(labeled_mask == label)
         # Create a BodyOfWater instance and add it to map_data.
-        map_data.bodies_of_water.append(
-            BodyOfWater(
-                is_salt_water=True,
-                tiles=[
-                    Position(x=int(x), y=int(y))
-                    for y, x in zip(body_positions[0], body_positions[1])
-                ],
-            )
+        bow = BodyOfWater(
+            is_salt_water=True,
+            is_edge_connected=False,
+            tiles=[
+                Position(x=int(x), y=int(y))
+                for y, x in zip(body_positions[0], body_positions[1])
+            ],
         )
+        # Check if it is connected to the edges of the map.
+        bow.is_edge_connected = any(
+            y == 0 or y == height - 1 or x == 0 or x == width - 1
+            for y, x in zip(body_positions[0], body_positions[1])
+        )
+        # Add the body of water.
+        map_data.bodies_of_water.append(bow)
 
 
 def classify_bodies_of_water(
     map_data: MapData,
-    lake_size_threshold: int = 1000,
+    lake_size_threshold: int,
 ) -> None:
     """
     Classify bodies of water as seas or lakes based on their size.
@@ -297,25 +303,16 @@ def classify_bodies_of_water(
     if not fresh_water_tiles:
         logger.info("No fresh-water tiles found; skipping body of water classification")
         return
-    # Sort tiles by terrain priority (higher priority first).
-    salt_water_tiles = sorted(
-        salt_water_tiles,
-        key=lambda t: t.terrain_priority,
-        reverse=True,
-    )
-    fresh_water_tiles = sorted(
-        fresh_water_tiles,
-        key=lambda t: t.terrain_priority,
-        reverse=True,
-    )
 
     for body in map_data.bodies_of_water:
         logger.debug(
             f"Classifying body of water with {len(body.tiles)} tiles, as {'salt water' if body.is_salt_water else 'fresh water'}."
         )
-        if len(body.tiles) > lake_size_threshold:
-            for tile in body.tiles:
-                map_data.set_terrain(tile.x, tile.y, salt_water_tiles[0])
-        else:
-            for tile in body.tiles:
-                map_data.set_terrain(tile.x, tile.y, fresh_water_tiles[0])
+        # By default it is salt water.
+        body.is_salt_water = True
+        water_tile = salt_water_tiles[0]
+        if len(body.tiles) <= lake_size_threshold and not body.is_edge_connected:
+            body.is_salt_water = False
+            water_tile = fresh_water_tiles[0]
+        for tile in body.tiles:
+            map_data.set_terrain(tile.x, tile.y, water_tile)

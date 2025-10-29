@@ -376,7 +376,7 @@ def a_star_search(
                 continue
 
             tile = map_data.get_terrain(neighbor.x, neighbor.y)
-            tentative_cost = current_cost + tile.pathfinding_cost
+            tentative_cost = current_cost + tile.movement_cost
 
             # Check if neighbor is already in open set.
             existing_node = next((n for n in open_set if n[0] == neighbor), None)

@@ -56,7 +56,7 @@ def plot_map(
         for x in range(map_data.width):
             tile = map_data.get_terrain(x, y)
             # Compute shade factor based on elevation.
-            shade_factor = 0.5 + 0.5 * map_data.get_elevation(x, y)
+            shade_factor = 0.5 + 0.5 * map_data.elevation_map[y][x]
             # Generate shaded color.
             shaded_color = tuple(c * shade_factor for c in tile.color)
             # Replace with shaded color.

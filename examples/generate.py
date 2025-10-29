@@ -190,7 +190,7 @@ Examples:
     parser.add_argument(
         "--lake-size-threshold",
         type=int,
-        default=10,
+        default=1000,
         help="Maximum size for edge-connected water bodies to be classified as lakes (default: 1000)",
     )
     parser.add_argument(

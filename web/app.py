@@ -37,7 +37,7 @@ def create_interactive_map(
             # Get the terrain tile.
             tile = map_data.get_terrain(x, y)
             # Compute shade factor based on elevation.
-            shade_factor = 0.5 + 0.5 * map_data.get_elevation(x, y)
+            shade_factor = 0.5 + 0.5 * map_data.elevation_map[y][x]
             # Generate shaded color.
             shaded_color = tuple(c * shade_factor for c in tile.color)
             # Convert to 0-255 range for Plotly

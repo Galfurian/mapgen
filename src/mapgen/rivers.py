@@ -413,7 +413,7 @@ def _place_river_tiles(
                 continue
 
             # Get elevation at position.
-            elevation = map_data.get_elevation(x, y)
+            elevation = map_data.elevation_map[y][x]
             # Skip sea areas.
             if elevation <= sea_level:
                 continue
