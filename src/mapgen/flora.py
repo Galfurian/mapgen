@@ -147,6 +147,20 @@ def place_vegetation(
         logger.warning("No vegetation tiles with suitability parameters found")
         return
 
+    # Extract vegetation parameters for each type at the beginning
+    # This centralizes parameter access and makes the defaults clear
+    vegetation_params = {}
+    for tile_id, veg_tile in vegetation_by_id.items():
+        params = veg_tile.suitability_params
+        vegetation_params[tile_id] = {
+            'seed_threshold': params.get("seed_threshold", 0.8),
+            'growth_probability': params.get("growth_probability", 0.2),
+            'competition_strength': params.get("competition_strength", 0.5),
+            'mortality_rate': params.get("mortality_rate", 0.05),
+            'max_age': params.get("max_age", 20),
+            'clustering_strength': params.get("clustering_strength", 0.3),
+        }
+
     # Initialize vegetation tracking
     vegetation_grid: List[List[Optional[VegetationInstance]]] = [
         [None for _ in range(map_data.width)] for _ in range(map_data.height)
@@ -175,7 +189,7 @@ def place_vegetation(
                     humidity,
                 )
 
-                seed_threshold = veg_tile.suitability_params.get("seed_threshold", 0.8)
+                seed_threshold = vegetation_params[tile_id]['seed_threshold']
                 if suitability >= seed_threshold:
                     # Seed this vegetation type
                     vegetation_grid[y][x] = VegetationInstance(tile_id)
@@ -197,8 +211,9 @@ def place_vegetation(
         # Age all existing vegetation
         for y in range(map_data.height):
             for x in range(map_data.width):
-                if vegetation_grid[y][x] is not None:
-                    vegetation_grid[y][x].age += 1
+                veg_instance = vegetation_grid[y][x]
+                if veg_instance is not None:
+                    veg_instance.age += 1
 
         # Attempt growth to adjacent tiles
         growth_attempts = 0
@@ -217,8 +232,8 @@ def place_vegetation(
                 if not veg_tile:
                     continue
 
-                params = veg_tile.suitability_params
-                growth_prob = params.get("growth_probability", 0.2)
+                params = vegetation_params[veg_instance.tile_id]
+                growth_prob = params['growth_probability']
 
                 # Try to spread to adjacent tiles
                 for dy, dx in [(-1, 0), (1, 0), (0, -1), (0, 1)]:  # Cardinal directions
@@ -270,9 +285,7 @@ def place_vegetation(
                                     (
                                         other_id,
                                         other_suitability,
-                                        other_tile.suitability_params.get(
-                                            "competition_strength", 0.5
-                                        ),
+                                        vegetation_params[other_id]['competition_strength'],
                                     )
                                 )
 
@@ -284,7 +297,7 @@ def place_vegetation(
                             successful_growth += 1
                         else:
                             # Competition resolution
-                            our_strength = params.get("competition_strength", 0.5)
+                            our_strength = params['competition_strength']
                             our_score = suitability * our_strength
 
                             winner = veg_instance.tile_id
@@ -325,9 +338,9 @@ def place_vegetation(
                 if not veg_tile:
                     continue
 
-                params = veg_tile.suitability_params
-                mortality_rate = params.get("mortality_rate", 0.05)
-                max_age = params.get("max_age", 20)
+                params = vegetation_params[veg_instance.tile_id]
+                mortality_rate = params['mortality_rate']
+                max_age = params['max_age']
 
                 # Calculate local suitability for mortality check
                 elevation = map_data.elevation_map[y][x]
@@ -363,7 +376,7 @@ def place_vegetation(
                 # Clustering bonus: reduce mortality when surrounded by similar vegetation
                 if neighbor_count > 0:
                     clustering_factor = same_type_neighbors / neighbor_count
-                    clustering_bonus = clustering_factor * params.get("clustering_strength", 0.3)
+                    clustering_bonus = clustering_factor * params['clustering_strength']
                 
                 # Higher mortality in unsuitable conditions and for old vegetation
                 age_factor = veg_instance.age / max_age
